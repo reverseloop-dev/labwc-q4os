@@ -299,6 +299,7 @@ CORE_PKGS=(
     python3-gi
     python3-gi-cairo
     gir1.2-gtk-3.0
+    libgtk-3-bin
     pkexec
     zram-tools
     fonts-font-awesome
@@ -431,6 +432,8 @@ for entry in labwc-theme-switcher labwc-menu-editor labwc-help; do
 done
 backup_tree "$CONFIG/applications/labwc-zram.desktop" "config/applications/labwc-zram.desktop"
 backup_tree "$CONFIG/applications/labwc-doctor.desktop" "config/applications/labwc-doctor.desktop"
+backup_tree "$CONFIG/applications/labwc-app-manager.desktop" "config/applications/labwc-app-manager.desktop"
+backup_tree "$CONFIG/applications/labwc-sysinfo.desktop" "config/applications/labwc-sysinfo.desktop"
 
 # -----------------------------------------------------------------------------
 # Installazione file condivisi
@@ -451,7 +454,13 @@ install -m 0644 "$REPO_DIR/configs/gtk/settings.ini" "$SHARE/templates/gtk-setti
 install -m 0755 "$REPO_DIR/scripts/generate-wallpapers.py" "$SHARE/scripts/generate-wallpapers.py"
 install -m 0755 "$REPO_DIR/scripts/render-menu.py" "$SHARE/scripts/render-menu.py"
 install -m 0755 "$REPO_DIR/scripts/labwc-theme-apply" "$SHARE/scripts/labwc-theme-apply"
+install -m 0755 "$REPO_DIR/scripts/labwc-sysinfo" "$SHARE/scripts/labwc-sysinfo"
 install -m 0644 "$REPO_DIR/scripts/help.txt" "$SHARE/help.txt"
+install -m 0644 "$REPO_DIR/VERSION" "$SHARE/VERSION"
+printf 'version=%s\ninstalled=%s\nrepo=%s\n' \
+    "$(head -n1 "$REPO_DIR/VERSION" | tr -d '[:space:]')" \
+    "$(date -Iseconds)" \
+    "https://github.com/reverseloop-dev/labwc-q4os" > "$SHARE/version-info"
 
 for helper in \
     labwc-theme-apply \
@@ -463,6 +472,9 @@ for helper in \
     labwc-screenshot \
     labwc-zram \
     labwc-doctor \
+    labwc-app-manager \
+    labwc-power-menu \
+    labwc-sysinfo \
     labwc-session-start
 do
     install -m 0755 "$REPO_DIR/scripts/$helper" "$BIN/$helper"
@@ -520,6 +532,28 @@ Terminal=false
 Categories=Documentation;
 Keywords=labwc;aiuto;scorciatoie;
 EOF
+cat > "$CONFIG/applications/labwc-app-manager.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=App nel menu Labwc
+Comment=Cerca app, tasto destro per preferiti e categorie
+Exec=$HOME/.local/bin/labwc-app-manager
+Icon=applications-system
+Terminal=false
+Categories=Settings;Utility;
+Keywords=labwc;menu;preferiti;categorie;app;
+EOF
+cat > "$CONFIG/applications/labwc-sysinfo.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Informazioni Labwc
+Comment=Versione script, applicazioni, stato sessione e link repository
+Exec=foot -H -e $HOME/.local/bin/labwc-sysinfo
+Icon=help-about
+Terminal=false
+Categories=System;Documentation;
+Keywords=labwc;informazioni;versione;repo;
+EOF
 cat > "$CONFIG/applications/labwc-zram.desktop" <<EOF
 [Desktop Entry]
 Type=Application
@@ -546,7 +580,9 @@ chmod 0644 "$CONFIG/applications/labwc-theme-switcher.desktop" \
           "$CONFIG/applications/labwc-menu-editor.desktop" \
           "$CONFIG/applications/labwc-help.desktop" \
           "$CONFIG/applications/labwc-zram.desktop" \
-          "$CONFIG/applications/labwc-doctor.desktop"
+          "$CONFIG/applications/labwc-doctor.desktop" \
+          "$CONFIG/applications/labwc-app-manager.desktop" \
+          "$CONFIG/applications/labwc-sysinfo.desktop"
 
 # -----------------------------------------------------------------------------
 # Generazione sfondi
@@ -707,7 +743,9 @@ log "Verifica finale..."
 [ -f "$CONFIG/labwc/themerc-override" ] || die "themerc-override mancante."
 [ -f "$SHARE/wallpapers/$THEME.png" ] || die "sfondo del tema mancante."
 [ -f "$CONFIG/labwc/menu.xml" ] || die "menu.xml mancante."
-for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-doctor; do
+[ -f "$SHARE/VERSION" ] || die "VERSION mancante."
+[ -f "$SHARE/version-info" ] || die "version-info mancante."
+for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-doctor labwc-app-manager labwc-power-menu labwc-sysinfo; do
     [ -x "$BIN/$helper" ] || die "helper non eseguibile: $helper"
 done
 ok "Tutto in ordine."
@@ -745,6 +783,7 @@ ${C_BOLD}Da ricordare${C_RESET}
   Super+D .............. Fuzzel (launcher)
   Super+Invio .......... terminale foot
   Tasto destro ......... menu completo + gestione app preferite
+  Doppio clic sinistro . aiuto, scorciatoie e informazioni di sistema
   Tasto destro ......... ZRAM — memoria compressa (attiva/disattiva)
   Super+Shift+R ........ ricarica menu e desktop
   Super+Shift+T ........ cambia tema

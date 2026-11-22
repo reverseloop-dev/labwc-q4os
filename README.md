@@ -5,12 +5,25 @@ Installazione automatizzata di **labwc + Waybar + Fuzzel**, tre temi coordinati
 (blu, rosso tenue, verde salvia), sfondi originali generati in locale, menu
 contestuale dinamico e ottimizzazione della memoria con zram.
 
+> ### Lo scopo del progetto
+>
+> **labwc-q4os non sostituisce Q4OS: aggiunge una sessione Wayland moderna
+> alla base Q4OS già collaudata.** L'obiettivo è unire la stabilità, la
+> leggerezza e l'affidabilità di Q4OS con **labwc**, un compositor Wayland
+> essenziale e reattivo, per ottenere **prestazioni più alte, avvio e
+> interazione più veloci** e un desktop grafico curato, senza rinunciare alle
+> sessioni Trinity/Plasma già installate. Le caratteristiche già collaudate e
+> **performanti di Q4OS restano la fondazione**; labwc aggiunge il livello
+> grafico moderno e selezionabile al login.
+
+> **[Scarica Q4OS 6](https://www.q4os.org/downloads1.html)**
+
 [![Q4OS](https://img.shields.io/badge/Q4OS-6.x%20Andromeda-1e293b?style=flat-square)](https://q4os.org)
 [![Debian](https://img.shields.io/badge/Debian-13%20Trixie-a80030?style=flat-square)](https://debian.org)
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.0.0**
 
 ---
 
@@ -26,11 +39,17 @@ manager, senza toccare Trinity, Plasma o le configurazioni esistenti.
   rete, batteria, CPU, RAM e menu sessione.
 - **Fuzzel** come launcher: icone, ricerca fuzzy, bordi arrotondati e colori
   sincronizzati al tema.
-- **Mako** per notifiche discrete, **swaybg** per lo sfondo, **wlogout** per
-  uscita/riavvio/spegnimento, **swaylock** per bloccare lo schermo.
+- **Mako** per notifiche discrete, **swaybg** per lo sfondo, **swaylock**
+  per bloccare lo schermo e **labwc-power-menu** per la sessione.
 - Tre temi completi e intercambiabili a caldo.
 - Tre sfondi 2560×1440 generati con Pillow, senza download esterni.
 - Menu del tasto destro con **App preferite** gestibili dall'utente.
+- **App nel menu Labwc**: gestore grafico con tasto destro per aggiungere ai
+  preferiti, spostare in una categoria (es. Multimedia) o rimuovere.
+- **Menu sessione affidabile** da Waybar: blocca, esci, sospendi, riavvia e
+  spegni senza dipendere da wlogout.
+- **Doppio clic sinistro sul desktop**: guida, scorciatoie, versioni delle app,
+  versione script, data di aggiornamento e link al repository.
 - Guida integrata in italiano con tasti rapidi e istruzioni di modifica file.
 - **ZRAM — memoria compressa**: pannello grafico per attivare/disattivare zram
   con indicatori live di RAM, swap, compressione e cronologia.
@@ -47,6 +66,25 @@ manager, senza toccare Trinity, Plasma o le configurazioni esistenti.
 | ![Nordic Cobalt](preview/nordic-cobalt.png) | ![Muted Crimson](preview/muted-crimson.png) | ![Sage Emerald](preview/sage-emerald.png) |
 
 Ogni sfondo riporta la firma discreta `reverseloop-dev` in basso a destra.
+
+---
+
+## Correzioni recenti
+
+- Pulsante sessione di Waybar: ora apre `labwc-power-menu` e le azioni
+  riavvio/spegnimento/sospensione/blocco funzionano davvero.
+- Editor menu: aggiunta/rimozione più robuste, supporto `remove-id`,
+  rimozione diretta dalla sezione **★ App preferite** e protezione dai loop
+  su selezioni non valide.
+- Nuovo **App nel menu Labwc** con menu contestuale tasto destro per
+  preferiti e categorie.
+- Doppio clic sinistro sul desktop: guida + informazioni di sistema.
+- Pannello ZRAM: corrette unità RAM, label di stato e grafico storico, aggiunta
+  dipendenza Cairo.
+- Tema labwc: usato `themerc-override` (la vecchia posizione non veniva letta).
+- Waybar: rimossi moduli workspace non disponibili nel pacchetto Debian;
+  corretti colori `rgba` non validi.
+- Aggiunto SDDM opzionale per TDM, con ritorno a TDM documentato.
 
 ---
 
@@ -178,8 +216,10 @@ Al primo login partono automaticamente:
 | `Super + Ctrl + L` | Menu sessione |
 | Tasti volume/luminosità | Audio e brightnessctl |
 
-Tasto destro sul desktop: menu completo. Tasto destro sul titolo: menu della
-finestra. Rotellina sul desktop: cambia desktop.
+Tasto destro sul desktop: menu completo. **Doppio clic sinistro sul desktop:**
+guida, scorciatoie e informazioni di sistema (versioni, tema, repo, ultimo
+aggiornamento). Tasto destro sul titolo: menu della finestra. Rotellina sul
+desktop: cambia desktop.
 
 ---
 
@@ -231,13 +271,37 @@ Il menu e' generato dinamicamente da `scripts/render-menu.py` leggendo i file
 1. **★ App preferite** — scelte dall'utente, in cima al menu.
 2. **Categorie** — Internet, Multimedia, Grafica, Ufficio, Sviluppo, Giochi,
    Istruzione, Scienza, Sistema, Impostazioni, Accessori, Altre applicazioni.
-3. **Labwc & Desktop** — cambia tema, editor menu, ricarica, aiuto, screenshot,
-   pannello zram, diagnostica, blocco schermo, sessione.
+3. **Labwc & Desktop** — gestione app/preferite, cambio tema, editor rapido
+   Fuzzel, ricarica, aiuto, screenshot, pannello zram, diagnostica, blocco
+   schermo e menu sessione.
+
+### App nel menu, preferite e categorie
+
+Fuzzel **non supporta menu contestuali per singola voce**: il tasto destro su
+un'app dentro Fuzzel non può essere intercettato. Per ottenere la stessa
+funzione c'è **App nel menu Labwc** (`labwc-app-manager`), apribile da:
+
+- tasto destro sull'icona launcher di Waybar;
+- menu desktop → **Labwc & Desktop → Gestisci app e preferite**;
+- ricerca Fuzzel: “App nel menu Labwc”.
+
+Qui il **tasto destro su una riga** permette di:
+
+- **Aprire** l'app;
+- **Aggiungere ai preferiti**;
+- **Spostare in categoria** (Multimedia, Internet, Grafica, Ufficio, ...);
+- **Rimuovere dai preferiti**;
+- **Ripristinare la categoria automatica**.
+
+Nella sezione **★ App preferite** del menu desktop è presente anche
+**“Rimuovi dai preferiti...”**, per eliminare una voce senza aprire l'editor.
+
+![App nel menu Labwc](preview/app-manager.png)
 
 ### Aggiungere o rimuovere app
 
-Tasto destro → **Labwc & Desktop** → **Aggiungi / rimuovi app nel menu**
-(oppure `Super + Shift + M`).
+Tasto destro → **Labwc & Desktop** → **Gestisci app e preferite**
+(oppure `Super + Shift + M` per l'editor rapido Fuzzel).
 
 L'editor usa Fuzzel (`--dmenu`) su Wayland, con fallback a Zenity e Whiptail.
 Legge:
@@ -269,8 +333,8 @@ Voce **Ricarica menu e desktop** oppure `Super + Shift + R`:
 
 ## Aiuto integrato
 
-`Super + Shift + H`, oppure tasto destro → **Aiuto e scorciatoie**, apre una
-guida italiana con:
+`Super + Shift + H`, doppio clic sinistro sul desktop, oppure tasto destro →
+**Aiuto, scorciatoie e sistema**, apre una guida italiana con:
 
 - tutti i tasti rapidi;
 - uso di Fuzzel e modalità `--dmenu`;
@@ -278,7 +342,9 @@ guida italiana con:
 - esempi per modificare `rc.xml`, `style.css`, `fuzzel.ini`, `mako/config`,
   `autostart` e `environment`;
 - comandi di ricarica e troubleshooting;
-- gestione screenshot e cronologia appunti.
+- gestione screenshot e cronologia appunti;
+- versione script, data di installazione, versioni delle app, tema, sessione
+  e link al repository.
 
 Il file sorgente è `~/.config/labwc/help.txt`.
 
@@ -358,7 +424,7 @@ Moduli attivi:
 
 | Modulo | Interazione |
 |---|---|
-| Launcher icona menu | Click: Fuzzel · tasto destro: editor menu |
+| Launcher icona menu | Click: Fuzzel · tasto destro: App nel menu Labwc |
 | Taskbar | Click: attiva · centrale: chiude · destro: fullscreen |
 | Orologio | Click: calendario · tooltip: mese |
 | Tray | Applicazioni di sistema |
@@ -366,7 +432,7 @@ Moduli attivi:
 | Rete | Click: `nm-connection-editor` |
 | Batteria | Dettagli con `upower` (se presente) |
 | CPU / RAM | Utilizzo in tempo reale |
-| icona sessione | Click: wlogout · destro: swaylock |
+| icona sessione | Click: menu sessione · destro: swaylock |
 
 Il modulo workspace sperimentale (`wlr/workspaces`) non è incluso nel pacchetto
 Waybar di Debian. La barra usa quindi la **taskbar** con le finestre aperte; per
@@ -408,6 +474,7 @@ scelta="$(printf 'Si\nNo\n' | fuzzel --dmenu --prompt='Confermi? ')"
 labwc-q4os/
 ├── install.sh                     # entry point
 ├── bootstrap.sh                   # one-liner: clone + install
+├── VERSION                        # versione script
 ├── configs/
 │   ├── labwc/rc.xml               # keybind, mouse, desktop
 │   ├── labwc/autostart            # avvio sessione
@@ -428,6 +495,9 @@ labwc-q4os/
 │   ├── labwc-reload               # reconfigure + Waybar
 │   ├── labwc-screenshot           # grim + slurp
 │   ├── labwc-zram                 # pannello GTK zram
+│   ├── labwc-app-manager          # gestore app/preferite/categorie
+│   ├── labwc-power-menu           # menu sessione Fuzzel/Zenity
+│   ├── labwc-sysinfo              # versioni e informazioni sistema
 │   ├── labwc-doctor               # diagnostica e riparazione
 │   ├── labwc-session-start        # autostart sessione
 │   ├── labwc-help                 # visualizzatore guida
@@ -449,6 +519,7 @@ Configurazione utente:
 ~/.config/labwc/rc.xml
 ~/.config/labwc/menu.xml
 ~/.config/labwc/favorites.tsv
+~/.config/labwc/placements.tsv
 ~/.config/labwc/themerc-override
 ~/.config/labwc/theme
 ~/.config/labwc/autostart
@@ -467,6 +538,8 @@ Configurazione utente:
 ~/.config/applications/labwc-help.desktop
 ~/.config/applications/labwc-zram.desktop
 ~/.config/applications/labwc-doctor.desktop
+~/.config/applications/labwc-app-manager.desktop
+~/.config/applications/labwc-sysinfo.desktop
 ```
 
 Dati e strumenti:
@@ -523,6 +596,17 @@ labwc-doctor --fix-system
 Il doctor controlla configurazioni, permessi, sessione, barra, tema, menu,
 zram, portali, XWayland e log, e ripara i file utente mancanti. Dal menu:
 **Labwc & Desktop → Diagnostica e ripara desktop**.
+
+**Il pulsante sessione di Waybar non faceva nulla**
+Corretto: ora apre `labwc-power-menu` (Fuzzel/Zenity) con blocco, uscita,
+sospensione, riavvio e spegnimento. Se un'azione di sistema viene negata,
+controlla che `lxpolkit` sia attivo e che il servizio `polkit` sia in esecuzione.
+
+**Non riesco ad aggiungere/rimuovere un'app dal menu**
+Usa **App nel menu Labwc** col tasto destro sulla riga, oppure
+**Labwc & Desktop → Gestisci app e preferite**. Fuzzel non ha un menu
+contestuale per voce. Le preferite si rimuovono anche da **★ App preferite →
+Rimuovi dai preferiti...**.
 
 **La sessione Labwc non compare nel display manager**
 Verifica che esista `/usr/share/wayland-sessions/labwc.desktop`. Il display

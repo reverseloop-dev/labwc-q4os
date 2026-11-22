@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-sysinfo - informazioni di sistema, versioni e stato del desktop
+# =============================================================================
+set -uo pipefail
+
+CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}"
+SHARE="${LABWC_Q4OS_SHARE:-${XDG_DATA_HOME:-$HOME/.local/share}/labwc-q4os}"
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/labwc-q4os"
+REPO_URL="https://github.com/reverseloop-dev/labwc-q4os"
+SCRIPT_VERSION="dev"
+INSTALLED="non disponibile"
+
+if [ -r "$SHARE/version-info" ]; then
+    while IFS='=' read -r key value; do
+        case "$key" in
+            version) SCRIPT_VERSION="$value" ;;
+            installed) INSTALLED="$value" ;;
+        esac
+    done < "$SHARE/version-info"
+elif [ -r "$SHARE/VERSION" ]; then
+    SCRIPT_VERSION="$(head -n1 "$SHARE/VERSION" | tr -d '[:space:]')"
+fi
+
+pkgver() {
+    if command -v dpkg-query >/dev/null 2>&1; then
+        dpkg-query -W -f='${Version}' "$1" 2>/dev/null || echo "non installato"
+    else
+        echo "n/d"
+    fi
+}
+
+cmdver() {
+    local label="$1" cmd="$2" output
+    if command -v "$cmd" >/dev/null 2>&1; then
+        output="$("$cmd" --version 2>/dev/null | head -n1)"
+        [ -n "$output" ] || output="$cmd"
+        printf '%-22s %s\n' "$label" "$output"
+    else
+        printf '%-22s %s\n' "$label" "non installato"
+    fi
+}
+
+theme="nordic-cobalt"
+[ -r "$CONFIG/labwc/theme" ] && theme="$(tr -d '[:space:]' < "$CONFIG/labwc/theme")"
+
+os_name="sconosciuto"
+if [ -r /etc/os-release ]; then
+    # shellcheck disable=SC1091
+    . /etc/os-release
+    os_name="${PRETTY_NAME:-${NAME:-sconosciuto}}"
+fi
+
+dm="non rilevato"
+if [ -e /etc/systemd/system/display-manager.service ]; then
+    dm="$(basename "$(readlink -f /etc/systemd/system/display-manager.service)" .service)"
+elif [ -r /etc/X11/default-display-manager ]; then
+    dm="$(basename "$(cat /etc/X11/default-display-manager 2>/dev/null)")"
+fi
+
+printf 'LABWC-Q4OS — INFORMAZIONI DI SISTEMA\n'
+printf '===================================\n\n'
+printf 'Versione script ........ %s\n' "$SCRIPT_VERSION"
+printf 'Installato/aggiornato .. %s\n' "$INSTALLED"
+printf 'Repository ............. %s\n' "$REPO_URL"
+printf 'Sistema operativo ...... %s\n' "$os_name"
+printf 'Kernel ................. %s\n' "$(uname -srm)"
+printf 'Architettura ........... %s\n' "$(uname -m)"
+printf 'Display manager ........ %s\n' "$dm"
+printf 'Sessione ............... %s / %s\n' "${XDG_SESSION_TYPE:-n/d}" "${XDG_CURRENT_DESKTOP:-n/d}"
+printf 'Wayland display ........ %s\n' "${WAYLAND_DISPLAY:-n/d}"
+printf 'Tema attivo ............ %s\n' "$theme"
+printf 'Uptime ................. %s\n' "$(uptime -p 2>/dev/null || uptime 2>/dev/null || echo n/d)"
+printf 'ZRAM ................... %s\n' "$(if command -v zramctl >/dev/null 2>&1 && [ -n "$(zramctl 2>/dev/null)" ]; then echo attivo; else echo non attivo; fi)"
+printf 'vm.swappiness .......... %s\n' "$(cat /proc/sys/vm/swappiness 2>/dev/null || echo n/d)"
+
+printf '\nAPP E COMPONENTI\n'
+printf -- '----------------\n'
+cmdver "labwc" labwc
+cmdver "Waybar" waybar
+cmdver "Fuzzel" fuzzel
+cmdver "swaybg" swaybg
+cmdver "swaylock" swaylock
+cmdver "wlogout" wlogout
+cmdver "foot" foot
+printf '%-22s %s\n' "Mako" "$(pkgver mako-notifier)"
+printf '%-22s %s\n' "python3-pil" "$(pkgver python3-pil)"
+printf '%-22s %s\n' "zram-tools" "$(pkgver zram-tools)"
+printf '%-22s %s\n' "grim" "$(pkgver grim)"
+printf '%-22s %s\n' "slurp" "$(pkgver slurp)"
+printf '%-22s %s\n' "pcmanfm" "$(pkgver pcmanfm)"
+printf '%-22s %s\n' "labwc-theme-apply" "$([ -x "$HOME/.local/bin/labwc-theme-apply" ] && echo installato || echo mancante)"
+printf '%-22s %s\n' "labwc-zram" "$([ -x "$HOME/.local/bin/labwc-zram" ] && echo installato || echo mancante)"
+printf '%-22s %s\n' "labwc-doctor" "$([ -x "$HOME/.local/bin/labwc-doctor" ] && echo installato || echo mancante)"
+printf '%-22s %s\n' "labwc-power-menu" "$([ -x "$HOME/.local/bin/labwc-power-menu" ] && echo installato || echo mancante)"
+
+printf '\nSTATO SESSIONE\n'
+printf -- '-------------\n'
+for proc in labwc waybar mako swaybg; do
+    if pgrep -x "$proc" >/dev/null 2>&1; then
+        printf '%-22s %s\n' "$proc" "attivo"
+    else
+        printf '%-22s %s\n' "$proc" "non attivo"
+    fi
+done
+printf '%-22s %s\n' "Log sessione" "$STATE/session.log"
+
+if [ -r "$STATE/session.log" ]; then
+    printf '\nULTIMI ERRORI DAL LOG\n'
+    printf -- '---------------------\n'
+    tail -n 200 "$STATE/session.log" 2>/dev/null |
+        grep -Ei 'error|failed|invalid' | tail -n 5 || printf 'nessuno\n'
+fi

@@ -177,7 +177,7 @@
       <action name="Execute" command="swaylock -f" />
     </keybind>
     <keybind key="W-C-l">
-      <action name="Execute" command="wlogout" />
+      <action name="Execute" command="@@HOME@@/.local/bin/labwc-power-menu" />
     </keybind>
 
     <!-- Audio -->
@@ -298,8 +298,8 @@
     </context>
 
     <context name="Root">
-      <mousebind button="Left" action="Press">
-        <action name="ShowMenu" menu="root-menu" />
+      <mousebind button="Left" action="DoubleClick">
+        <action name="Execute" command="@@HOME@@/.local/bin/labwc-help" />
       </mousebind>
       <mousebind button="Right" action="Press">
         <action name="ShowMenu" menu="root-menu" />

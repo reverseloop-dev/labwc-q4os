@@ -29,7 +29,7 @@
         "tooltip": true,
         "tooltip-format": "Apri Fuzzel  ·  Super+D",
         "on-click": "fuzzel",
-        "on-click-right": "labwc-menu-editor"
+        "on-click-right": "sh -c 'exec $HOME/.local/bin/labwc-app-manager'"
     },
     "wlr/taskbar": {
         "format": "{icon}",
@@ -103,7 +103,7 @@
         "format": "\uf011",
         "tooltip": true,
         "tooltip-format": "Sessione: blocca, esci, riavvia, spegni",
-        "on-click": "wlogout",
+        "on-click": "sh -c 'exec $HOME/.local/bin/labwc-power-menu'",
         "on-click-right": "swaylock -f"
     }
 }

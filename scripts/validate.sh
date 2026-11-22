@@ -28,8 +28,8 @@ done < <(find . -path ./.git -prune -o -type f \( -name '*.sh' -o -path './scrip
 # --- 2. sintassi Python ------------------------------------------------------
 check "sintassi Python"
 PYCACHE_DIR="$(mktemp -d)"
-if PYTHONPYCACHEPREFIX="$PYCACHE_DIR" python3 -m py_compile scripts/generate-wallpapers.py scripts/render-menu.py scripts/labwc-zram; then
-    pass "generate-wallpapers.py, render-menu.py, labwc-zram"
+if PYTHONPYCACHEPREFIX="$PYCACHE_DIR" python3 -m py_compile scripts/generate-wallpapers.py scripts/render-menu.py scripts/labwc-zram scripts/labwc-app-manager; then
+    pass "generate-wallpapers.py, render-menu.py, labwc-zram, labwc-app-manager"
 else
     bad "py_compile"
 fi
@@ -39,6 +39,17 @@ if python3 scripts/labwc-zram --status >/dev/null 2>&1; then
 else
     bad "labwc-zram --status"
 fi
+if bash scripts/labwc-power-menu --help >/dev/null 2>&1; then
+    pass "labwc-power-menu --help"
+else
+    bad "labwc-power-menu --help"
+fi
+if LABWC_POWER_DRY_RUN=1 bash scripts/labwc-power-menu --action reboot | grep -q 'DRY-RUN'; then
+    pass "labwc-power-menu --action (dry-run)"
+else
+    bad "labwc-power-menu --action (dry-run)"
+fi
+if [ -s VERSION ]; then pass "VERSION"; else bad "VERSION"; fi
 
 # --- 3. JSON -----------------------------------------------------------------
 check "JSON (Waybar, wlogout)"
@@ -54,6 +65,7 @@ check "permessi eseguibili"
 for f in install.sh bootstrap.sh scripts/labwc-theme-apply scripts/labwc-theme-switcher \
          scripts/labwc-menu-editor scripts/labwc-reload scripts/labwc-generate-wallpapers \
          scripts/labwc-help scripts/labwc-screenshot scripts/labwc-zram scripts/labwc-doctor \
+         scripts/labwc-app-manager scripts/labwc-power-menu scripts/labwc-sysinfo \
          scripts/labwc-session-start scripts/validate.sh scripts/generate-wallpapers.py scripts/render-menu.py; do
     if [ -x "$f" ]; then pass "$f"; else bad "$f non eseguibile"; fi
 done
@@ -103,6 +115,11 @@ if xmllint --noout "$TMP/.config/labwc/menu.xml"; then
 else
     bad "menu.xml XML non valido"
 fi
+if HOME="$TMP" python3 scripts/render-menu.py --json | jq -e '.categories|length > 0' >/dev/null; then
+    pass "render-menu.py --json"
+else
+    bad "render-menu.py --json"
+fi
 
 # --- 7. shellcheck (opzionale) ----------------------------------------------
 check "shellcheck"
@@ -110,8 +127,8 @@ if command -v shellcheck >/dev/null 2>&1; then
     if shellcheck -x -S warning install.sh bootstrap.sh scripts/lib.sh \
         scripts/labwc-theme-apply scripts/labwc-theme-switcher scripts/labwc-menu-editor \
         scripts/labwc-reload scripts/labwc-generate-wallpapers scripts/labwc-help \
-        scripts/labwc-screenshot scripts/labwc-doctor \
-        scripts/labwc-session-start scripts/validate.sh; then
+        scripts/labwc-screenshot scripts/labwc-doctor scripts/labwc-power-menu \
+        scripts/labwc-sysinfo scripts/labwc-session-start scripts/validate.sh; then
         pass "shellcheck"
     else
         bad "shellcheck"

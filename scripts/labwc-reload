@@ -9,7 +9,7 @@ STATE="${XDG_STATE_HOME:-$HOME/.local/state}/labwc-q4os"
 mkdir -p "$STATE"
 
 if pgrep -x labwc >/dev/null 2>&1 && [ -n "${WAYLAND_DISPLAY:-}" ]; then
-    labwc --reconfigure >/dev/null 2>&1 || printf 'labwc --reconfigure ha restituito un errore\n' >&2
+    labwc --reconfigure >/dev/null 2>&1 || pkill -HUP -x labwc >/dev/null 2>&1 || printf 'labwc --reconfigure ha restituito un errore\n' >&2
 fi
 
 if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v waybar >/dev/null 2>&1; then

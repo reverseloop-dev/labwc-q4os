@@ -17,6 +17,7 @@ sopravvivono agli aggiornamenti e alla rigenerazione del menu.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import shlex
@@ -31,6 +32,7 @@ CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME", HOME / ".config"))
 LABWC_DIR = CONFIG_HOME / "labwc"
 MENU_FILE = LABWC_DIR / "menu.xml"
 FAVORITES_FILE = LABWC_DIR / "favorites.tsv"
+PLACEMENTS_FILE = LABWC_DIR / "placements.tsv"
 HELPER_DIR = HOME / ".local" / "bin"
 
 
@@ -208,7 +210,7 @@ def choose_category(categories: str) -> str:
     return "Altre applicazioni"
 
 
-def load_apps() -> list[App]:
+def load_apps(placements: dict[str, str] | None = None) -> list[App]:
     apps: list[App] = []
     seen_ids: set[str] = set()
     seen_signatures: set[tuple[str, str]] = set()
@@ -248,12 +250,18 @@ def load_apps() -> list[App]:
             else:
                 command = exec_line
 
+            automatic_category = choose_category(data.get("Categories", ""))
+            category = automatic_category
+            if placements and desktop_id in placements:
+                candidate = placements[desktop_id]
+                if candidate in CATEGORY_ORDER:
+                    category = candidate
             application = App(
                 desktop_id=desktop_id,
                 name=name,
                 comment=localized(data, "Comment"),
                 command=command,
-                category=choose_category(data.get("Categories", "")),
+                category=category,
                 icon=data.get("Icon", ""),
             )
             signature = (application.name.casefold(), application.command)
@@ -285,6 +293,33 @@ def read_favorites() -> list[tuple[str, str, str]]:
             continue
         favorites.append((desktop_id, label, command))
     return favorites
+
+
+def read_placements() -> dict[str, str]:
+    placements: dict[str, str] = {}
+    if not PLACEMENTS_FILE.exists():
+        return placements
+    try:
+        lines = PLACEMENTS_FILE.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return placements
+    for line in lines:
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        fields = line.split("\t")
+        if len(fields) >= 2 and fields[1] in CATEGORY_ORDER:
+            placements[fields[0]] = fields[1]
+    return placements
+
+
+def write_placements(placements: dict[str, str]) -> None:
+    LABWC_DIR.mkdir(parents=True, exist_ok=True)
+    lines = ["# id\tcategoria -- categorie personalizzate del menu"]
+    for desktop_id, category in sorted(placements.items()):
+        lines.append(f"{desktop_id}\t{category}")
+    tmp = PLACEMENTS_FILE.with_suffix(".tmp")
+    tmp.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    os.replace(tmp, PLACEMENTS_FILE)
 
 
 def write_favorites(favorites: list[tuple[str, str, str]]) -> None:
@@ -361,6 +396,11 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     if favorites:
         for _, label, command in favorites:
             favorites_body += item(label, command)
+        remove_body = ""
+        for desktop_id, label, _command in favorites:
+            remove_body += item(label, helper("labwc-menu-editor", f"remove-id {desktop_id}"))
+        favorites_body += "    <separator />\n"
+        favorites_body += submenu("favorites-remove-menu", "Rimuovi dai preferiti...", remove_body)
     else:
         favorites_body += item(
             "Nessuna preferita: aggiungine una...", helper("labwc-menu-editor", "add")
@@ -379,16 +419,18 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     parts.append("    <separator />\n")
 
     desktop_body = ""
-    desktop_body += item("Aggiungi / rimuovi app nel menu", helper("labwc-menu-editor"))
+    desktop_body += item("Gestisci app e preferite", helper("labwc-app-manager"))
+    desktop_body += item("Editor rapido del menu (Fuzzel)", helper("labwc-menu-editor"))
     desktop_body += item("Ricarica menu e desktop", helper("labwc-reload"))
-    desktop_body += item("Aiuto e scorciatoie", helper("labwc-help"))
+    desktop_body += item("Aiuto, scorciatoie e sistema", helper("labwc-help"))
+    desktop_body += item("Informazioni di sistema", f"foot -H -e {helper('labwc-sysinfo')}")
     desktop_body += "    <separator />\n"
     desktop_body += item("Cattura schermo (area)", helper("labwc-screenshot", "region"))
     desktop_body += item("Cattura schermo (intero)", helper("labwc-screenshot", "full"))
     desktop_body += item("ZRAM — memoria compressa", helper("labwc-zram"))
     desktop_body += item("Diagnostica e ripara desktop", f"foot -H -e {helper('labwc-doctor')} --fix")
     desktop_body += item("Blocca schermo", "swaylock -f")
-    desktop_body += item("Menu sessione (esci, riavvia, spegni)", "wlogout")
+    desktop_body += item("Menu sessione (blocca, esci, riavvia, spegni)", helper("labwc-power-menu"))
     desktop_body += "    <separator />\n"
     desktop_body += item("Riconfigura labwc", "labwc --reconfigure")
 
@@ -407,7 +449,8 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
 
 
 def render_menu() -> None:
-    apps = load_apps()
+    placements = read_placements()
+    apps = load_apps(placements)
     favorites = read_favorites()
     LABWC_DIR.mkdir(parents=True, exist_ok=True)
     content = build_menu(apps, favorites)
@@ -459,6 +502,75 @@ def remove_favorite(index: int) -> int:
     return 0
 
 
+def remove_favorite_id(desktop_id: str) -> int:
+    desktop_id = desktop_id.removesuffix(".desktop")
+    favorites = read_favorites()
+    kept = [fav for fav in favorites if fav[0] != desktop_id]
+    if len(kept) == len(favorites):
+        print(f"Preferita non trovata: {desktop_id}", file=sys.stderr)
+        return 1
+    write_favorites(kept)
+    render_menu()
+    print(f"Rimossa: {desktop_id}")
+    return 0
+
+
+def set_category(desktop_id: str, category: str) -> int:
+    desktop_id = desktop_id.removesuffix(".desktop")
+    if category not in CATEGORY_ORDER:
+        print(f"Categoria non valida: {category}", file=sys.stderr)
+        return 1
+    if not any(app.desktop_id == desktop_id for app in load_apps()):
+        print(f"Applicazione non trovata: {desktop_id}", file=sys.stderr)
+        return 1
+    placements = read_placements()
+    placements[desktop_id] = category
+    write_placements(placements)
+    render_menu()
+    print(f"Categoria impostata: {desktop_id} -> {category}")
+    return 0
+
+
+def clear_category(desktop_id: str) -> int:
+    desktop_id = desktop_id.removesuffix(".desktop")
+    placements = read_placements()
+    if desktop_id not in placements:
+        print(f"Nessuna categoria personalizzata per: {desktop_id}")
+        return 0
+    del placements[desktop_id]
+    write_placements(placements)
+    render_menu()
+    print(f"Categoria automatica ripristinata: {desktop_id}")
+    return 0
+
+
+def json_state() -> None:
+    placements = read_placements()
+    favorites = read_favorites()
+    favorite_ids = {fav[0] for fav in favorites}
+    apps = load_apps(placements)
+    payload = {
+        "categories": CATEGORY_ORDER,
+        "favorites": [
+            {"id": desktop_id, "name": label, "command": command}
+            for desktop_id, label, command in favorites
+        ],
+        "apps": [
+            {
+                "id": app.desktop_id,
+                "name": app.name,
+                "comment": app.comment,
+                "category": app.category,
+                "command": app.command,
+                "favorite": app.desktop_id in favorite_ids,
+                "placement": placements.get(app.desktop_id, ""),
+            }
+            for app in apps
+        ],
+    }
+    print(json.dumps(payload, ensure_ascii=False))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Menu dinamico per labwc-q4os")
     group = parser.add_mutually_exclusive_group(required=True)
@@ -467,6 +579,10 @@ def main() -> int:
     group.add_argument("--list-favorites", action="store_true")
     group.add_argument("--add", metavar="ID")
     group.add_argument("--remove", metavar="INDICE", type=int)
+    group.add_argument("--remove-id", metavar="ID")
+    group.add_argument("--set-category", nargs=2, metavar=("ID", "CATEGORIA"))
+    group.add_argument("--clear-category", metavar="ID")
+    group.add_argument("--json", action="store_true")
     group.add_argument("--path", action="store_true")
     args = parser.parse_args()
 
@@ -483,6 +599,15 @@ def main() -> int:
         return add_favorite(args.add)
     if args.remove is not None:
         return remove_favorite(args.remove)
+    if args.remove_id:
+        return remove_favorite_id(args.remove_id)
+    if args.set_category:
+        return set_category(args.set_category[0], args.set_category[1])
+    if args.clear_category:
+        return clear_category(args.clear_category)
+    if args.json:
+        json_state()
+        return 0
     if args.path:
         print(MENU_FILE)
         return 0

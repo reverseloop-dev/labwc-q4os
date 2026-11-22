@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-power-menu - menu sessione affidabile (Fuzzel / Zenity)
+#  Blocca, esci, sospendi, riavvia, spegni.
+#  Uso: labwc-power-menu [--action lock|logout|suspend|reboot|poweroff]
+# =============================================================================
+set -euo pipefail
+
+export PATH="$HOME/.local/bin:$PATH"
+
+notify() {
+    command -v notify-send >/dev/null 2>&1 || return 0
+    [ -n "${WAYLAND_DISPLAY:-}" ] || return 0
+    notify-send -a "Labwc sessione" "$1" "${2:-}" >/dev/null 2>&1 || true
+}
+
+error_dialog() {
+    if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v zenity >/dev/null 2>&1; then
+        zenity --error --title="Labwc" --text="$1" --width=420 2>/dev/null || true
+    else
+        notify "Errore sessione" "$1"
+    fi
+}
+
+confirm() {
+    local question="$1" answer
+    if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v zenity >/dev/null 2>&1; then
+        zenity --question --title="Labwc" --text="$question" \
+            --ok-label="Conferma" --cancel-label="Annulla" --width=420 2>/dev/null
+        return
+    fi
+    if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v fuzzel >/dev/null 2>&1; then
+        answer="$(printf 'Si, conferma\nNo, annulla\n' |
+            fuzzel --dmenu --prompt="Confermi? > " --width=34 --lines=3)" || return 1
+        [[ "$answer" == Si* ]]
+        return
+    fi
+    return 1
+}
+
+choose() {
+    local prompt="$1"; shift
+    [ "$#" -gt 0 ] || return 1
+
+    if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v fuzzel >/dev/null 2>&1; then
+        printf '%s\n' "$@" |
+            fuzzel --dmenu --prompt="$prompt" --width=38 --lines=8
+        return
+    fi
+    if [ -n "${DISPLAY:-}" ] && command -v zenity >/dev/null 2>&1; then
+        zenity --list --title="Labwc — Sessione" --text="$prompt" \
+            --column="Azione" --width=420 --height=360 "$@"
+        return
+    fi
+    if command -v whiptail >/dev/null 2>&1; then
+        local args=() opt
+        for opt in "$@"; do args+=("$opt" ""); done
+        whiptail --title="Labwc — Sessione" --menu "$prompt" 20 60 8 "${args[@]}" \
+            3>&1 1>&2 2>&3
+        return
+    fi
+    return 1
+}
+
+run_as_root() {
+    if [ "$(id -u)" -eq 0 ]; then
+        "$@"
+        return
+    fi
+    if command -v pkexec >/dev/null 2>&1; then
+        pkexec "$@"
+        return
+    fi
+    return 1
+}
+
+system_action() {
+    local action="$1"
+    case "$action" in
+        reboot|poweroff|suspend)
+            systemctl "$action" 2>/dev/null && return 0
+            run_as_root systemctl "$action" 2>/dev/null && return 0
+            return 1
+            ;;
+        *) return 1 ;;
+    esac
+}
+
+do_action() {
+    local action="$1"
+    if [ "${LABWC_POWER_DRY_RUN:-0}" = "1" ]; then
+        printf 'DRY-RUN azione: %s\n' "$action"
+        return 0
+    fi
+    case "$action" in
+        lock)
+            if command -v swaylock >/dev/null 2>&1; then
+                setsid -f swaylock -f >/dev/null 2>&1 || true
+            else
+                error_dialog "swaylock non installato."
+            fi
+            ;;
+        logout)
+            if command -v labwc >/dev/null 2>&1; then
+                labwc --exit >/dev/null 2>&1 || pkill -TERM -x labwc >/dev/null 2>&1 || true
+            else
+                error_dialog "labwc non trovato."
+            fi
+            ;;
+        suspend)
+            confirm "Sospendere il sistema?" || return 0
+            if ! system_action suspend; then
+                error_dialog "Impossibile sospendere. Verifica polkit/logind."
+            fi
+            ;;
+        reboot)
+            confirm "Riavviare il sistema?" || return 0
+            if ! system_action reboot; then
+                error_dialog "Impossibile riavviare. Verifica polkit/logind."
+            fi
+            ;;
+        poweroff)
+            confirm "Spegnere il sistema?" || return 0
+            if ! system_action poweroff; then
+                error_dialog "Impossibile spegnere. Verifica polkit/logind."
+            fi
+            ;;
+        *)
+            error_dialog "Azione non valida: $action"
+            return 2
+            ;;
+    esac
+}
+
+if [ "${1:-}" = "--action" ]; then
+    [ "$#" -ge 2 ] || { error_dialog "Manca il valore di --action"; exit 2; }
+    do_action "$2"
+    exit $?
+fi
+
+if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
+    sed -n '2,10p' "$0" | sed 's/^#  //'
+    exit 0
+fi
+
+choice="$(choose "Sessione > " \
+    "Blocca schermo" \
+    "Esci dalla sessione" \
+    "Sospendi" \
+    "Riavvia" \
+    "Spegni" \
+    "Annulla")" || exit 0
+[ -n "$choice" ] || exit 0
+
+case "$choice" in
+    "Blocca"*) do_action lock ;;
+    "Esci"*) do_action logout ;;
+    "Sospendi"*) do_action suspend ;;
+    "Riavvia"*) do_action reboot ;;
+    "Spegni"*) do_action poweroff ;;
+    *) exit 0 ;;
+esac

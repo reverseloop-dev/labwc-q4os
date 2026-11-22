@@ -4,7 +4,7 @@ Desktop Wayland moderno per Q4OS / Debian
 https://github.com/reverseloop-dev/labwc-q4os
 
 Questa guida e' sempre disponibile con:
-  • tasto destro sul desktop > "Labwc & Desktop" > "Aiuto e scorciatoie"
+  • tasto destro sul desktop > "Labwc & Desktop" > "Aiuto, scorciatoie e sistema"
   • Super + Shift + H
   • comando: labwc-help
 
@@ -37,14 +37,14 @@ Super = tasto Windows / Logo / Command.
   Stampa (Print) ........ Screenshot area (grim + slurp)
   Super + Stampa ........ Screenshot schermo intero
   Super + L ............. Blocca lo schermo (swaylock)
-  Super + Ctrl + L ...... Menu sessione (wlogout)
+  Super + Ctrl + L ...... Menu sessione (power-menu)
 
   Tasti multimediali .... Volume, mute, microfono, play/next/prev
   Tasti luminosita' ..... Luminosita' schermo (brightnessctl)
 
 Mouse:
   • Tasto destro sul desktop ....... menu completo labwc
-  • Tasto sinistro sul desktop ..... stesso menu (comodo)
+  • Doppio clic sinistro sul desktop guida, scorciatoie e informazioni di sistema
   • Tasto destro sul titolo ........ menu della finestra
   • Rotellina sul desktop .......... cambia desktop
   • Tasto destro su Waybar icona menu ..... editor del menu
@@ -78,8 +78,17 @@ Il menu e' organizzato in:
   Labwc & Desktop ....... strumenti, tema, aiuto, sessione
 
 Per aggiungere o rimuovere programmi:
-  tasto destro > "Labwc & Desktop" > "Aggiungi / rimuovi app nel menu"
-  oppure Super + Shift + M.
+  tasto destro > "Labwc & Desktop" > "Gestisci app e preferite"
+  (labwc-app-manager, con menu contestuale tasto destro)
+  oppure "Editor rapido del menu" / Super + Shift + M.
+
+Fuzzel non supporta un menu contestuale per singola voce. Per l'equivalente
+del tasto destro su un'app: apri "App nel menu Labwc", cerca l'app e fai
+tasto destro sulla riga per aggiungerla ai preferiti, spostarla in categoria
+(es. Multimedia) o rimuoverla.
+
+Rimozione rapida di una preferita:
+  tasto destro sul desktop > "★ App preferite" > "Rimuovi dai preferiti..."
 
 L'editor legge i file .desktop da:
   /usr/share/applications
@@ -143,8 +152,8 @@ Notifiche:
   ~/.config/mako/config ............. notifiche
 
 Sessione:
-  ~/.config/wlogout/layout .......... voci del menu sessione
-  ~/.config/wlogout/style.css ....... aspetto del menu sessione
+  ~/.config/wlogout/layout .......... menu wlogout (opzionale)
+  ~/.config/wlogout/style.css ....... stile wlogout (opzionale)
 
 Esempi pratici:
   foot -e nano ~/.config/labwc/rc.xml
@@ -178,13 +187,15 @@ area notifiche, audio, rete, batteria, CPU, RAM, pulsante sessione.
 
   • Cambio desktop: Super + 1..4 oppure rotellina sul desktop
   • Click su icona menu .............. apre Fuzzel
-  • Click destro su icona menu ....... editor menu
+  • Click destro su icona menu ....... App nel menu Labwc
   • Click su orologio ......... calendario
   • Click su audio ............ pavucontrol
   • Click su rete ............. nm-connection-editor
   • Click su batteria ......... dettagli batteria
-  • Click su icona sessione .............. menu sessione
+  • Click su icona sessione .............. menu sessione (power-menu)
   • Click destro su icona sessione ....... blocca schermo
+
+Il menu sessione offre: blocca, esci, sospendi, riavvia, spegni.
 
 Se Waybar non parte:
   cat ~/.local/state/labwc-q4os/session.log
@@ -265,8 +276,27 @@ Mako, helper, sessione nel display manager, XWayland, portali,
 processi attivi, zram, swappiness e log recente.
 Dal menu: "Labwc & Desktop" > "Diagnostica e ripara desktop".
 
-11. PROBLEMI COMUNI
+11. INFORMAZIONI DI SISTEMA
+---------------------------
+Doppio clic sinistro sul desktop, oppure:
+  labwc-sysinfo
+  labwc-help
+
+Mostra:
+  • versione dello script e data di installazione/aggiornamento;
+  • link al repository;
+  • sistema operativo, kernel, architettura, display manager;
+  • sessione Wayland, tema attivo, uptime, zram, swappiness;
+  • versioni di labwc, Waybar, Fuzzel, Mako, foot e degli altri componenti;
+  • stato dei processi labwc/Waybar/Mako/swaybg;
+  • ultimi errori dal log di sessione.
+
+12. PROBLEMI COMUNI
 -------------------
+  • Il pulsante sessione di Waybar non fa nulla: deve aprire
+    labwc-power-menu; verifica che lxpolkit sia attivo.
+  • Non riesco ad aggiungere/rimuovere un'app: usa "App nel menu Labwc"
+    (tasto destro sulla riga) oppure "Rimuovi dai preferiti...".
   • Il menu non cambia: usa "Ricarica menu e desktop" oppure
     labwc --reconfigure.
   • Waybar non appare: controlla il log e il JSON; poi Super+Shift+R.

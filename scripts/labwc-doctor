@@ -336,7 +336,8 @@ done
 
 # Script
 for helper in labwc-theme-apply labwc-theme-switcher labwc-menu-editor labwc-reload \
-              labwc-help labwc-screenshot labwc-zram labwc-session-start; do
+              labwc-help labwc-screenshot labwc-zram labwc-doctor labwc-app-manager \
+              labwc-power-menu labwc-sysinfo labwc-session-start; do
     if [ -x "$BIN/$helper" ]; then
         ok "helper eseguibile: $helper"
     else

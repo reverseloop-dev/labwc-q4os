@@ -1,20 +1,31 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  labwc-help - guida italiana con scorciatoie e file di configurazione
+#  labwc-help - guida, scorciatoie, informazioni di sistema e versioni
 # =============================================================================
 set -euo pipefail
 
 HELP="${1:-${XDG_CONFIG_HOME:-$HOME/.config}/labwc/help.txt}"
+SHARE="${LABWC_Q4OS_SHARE:-${XDG_DATA_HOME:-$HOME/.local/share}/labwc-q4os}"
+SYSINFO="$HOME/.local/bin/labwc-sysinfo"
+[ -x "$SYSINFO" ] || SYSINFO="$SHARE/scripts/labwc-sysinfo"
+VIEW="$(mktemp)"
+trap 'rm -f "$VIEW"' EXIT
 
-if [ ! -r "$HELP" ]; then
+if [ -r "$HELP" ]; then
+    if [ -x "$SYSINFO" ]; then
+        "$SYSINFO" > "$VIEW" 2>/dev/null || true
+        printf '\n\n' >> "$VIEW"
+    fi
+    cat "$HELP" >> "$VIEW"
+else
     printf 'File di aiuto non trovato: %s\n' "$HELP" >&2
     exit 1
 fi
 
 if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v zenity >/dev/null 2>&1; then
     if zenity --text-info \
-        --title="Labwc — Aiuto e scorciatoie" \
-        --filename="$HELP" \
+        --title="Labwc — Aiuto, scorciatoie e sistema" \
+        --filename="$VIEW" \
         --width=1000 --height=760 \
         --font="monospace 10" 2>/dev/null; then
         exit 0
@@ -29,14 +40,14 @@ fi
 
 if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v foot >/dev/null 2>&1; then
     if command -v less >/dev/null 2>&1; then
-        exec foot -T "Labwc — Aiuto" -e less -R "$HELP"
+        exec foot -T "Labwc — Aiuto e sistema" -e less -R "$VIEW"
     fi
     # shellcheck disable=SC2016
-    exec foot -T "Labwc — Aiuto" -e sh -c 'cat "$1"; printf "\nPremi Invio per chiudere..."; read -r _' sh "$HELP"
+    exec foot -T "Labwc — Aiuto e sistema" -e sh -c 'cat "$1"; printf "\nPremi Invio per chiudere..."; read -r _' sh "$VIEW"
 fi
 
 if [ -n "${DISPLAY:-}" ] && command -v xterm >/dev/null 2>&1; then
-    exec xterm -T "Labwc — Aiuto" -e less -R "$HELP"
+    exec xterm -T "Labwc — Aiuto e sistema" -e less -R "$VIEW"
 fi
 
-cat "$HELP"
+cat "$VIEW"

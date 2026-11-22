@@ -1,0 +1,406 @@
+#!/usr/bin/env python3
+"""
+labwc-app-manager - gestore grafico delle applicazioni nel menu di labwc.
+
+Permette di:
+  * cercare tutte le app installate;
+  * aggiungerle o rimuoverle dalle preferite;
+  * spostarle in una categoria del menu (Multimedia, Internet, ...);
+  * ripristinare la categoria automatica;
+  * aprire l'applicazione.
+
+Il tasto destro su una riga apre il menu contestuale. Fuzzel non espone un
+menu contestuale per singola voce: questo strumento copre quella funzione.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import shlex
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+HOME = Path.home()
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", HOME / ".config"))
+SHARE = Path(
+    os.environ.get(
+        "LABWC_Q4OS_SHARE",
+        Path(os.environ.get("XDG_DATA_HOME", HOME / ".local/share")) / "labwc-q4os",
+    )
+)
+RENDER = SHARE / "scripts" / "render-menu.py"
+
+
+def load_theme() -> dict[str, str]:
+    theme = "nordic-cobalt"
+    try:
+        theme = (CONFIG / "labwc" / "theme").read_text(encoding="utf-8").strip() or theme
+    except OSError:
+        pass
+    colors = {
+        "BG": "070d1a",
+        "BG_ALT": "0f172a",
+        "SURFACE": "1e293b",
+        "SURFACE_ALT": "273449",
+        "ACCENT": "3b82f6",
+        "ACCENT_SOFT": "60a5fa",
+        "FG": "e2e8f0",
+        "FG_MUTED": "94a3b8",
+        "BORDER": "334155",
+        "DANGER": "f87171",
+    }
+    path = SHARE / "themes" / theme / "theme.conf"
+    if path.is_file():
+        try:
+            for raw in path.read_text(encoding="utf-8").splitlines():
+                line = raw.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if key in colors and value:
+                    colors[key] = value.lstrip("#")
+        except OSError:
+            pass
+    return colors
+
+
+class AppManager:
+    def __init__(self, colors: dict[str, str]) -> None:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("Gdk", "3.0")
+        gi.require_version("Pango", "1.0")
+        from gi.repository import Gdk, GLib, Gtk, Pango
+
+        self.Gdk = Gdk
+        self.GLib = GLib
+        self.Gtk = Gtk
+        self.Pango = Pango
+        self.colors = colors
+        self.data: dict = {"apps": [], "categories": [], "favorites": []}
+        self.rows: list = []
+        self.search_text = ""
+
+        provider = Gtk.CssProvider()
+        provider.load_from_data(self.css().encode("utf-8"))
+        screen = Gdk.Screen.get_default()
+        if screen is not None:
+            Gtk.StyleContext.add_provider_for_screen(
+                screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+            )
+
+        self.window = Gtk.Window(title="App nel menu — Labwc")
+        self.window.set_default_size(900, 660)
+        self.window.set_border_width(14)
+        self.window.set_position(Gtk.WindowPosition.CENTER)
+        self.window.set_icon_name("applications-system")
+        self.window.connect("destroy", Gtk.main_quit)
+
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        self.window.add(outer)
+
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        titles = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        title = Gtk.Label(label="App nel menu Labwc", xalign=0)
+        title.get_style_context().add_class("title")
+        subtitle = Gtk.Label(
+            label="Cerca un'app, poi tasto destro per preferiti e categoria",
+            xalign=0,
+        )
+        subtitle.get_style_context().add_class("subtitle")
+        titles.pack_start(title, False, False, 0)
+        titles.pack_start(subtitle, False, False, 0)
+        header.pack_start(titles, True, True, 0)
+        self.counter = Gtk.Label(label="")
+        self.counter.get_style_context().add_class("pill")
+        header.pack_end(self.counter, False, False, 0)
+        outer.pack_start(header, False, False, 0)
+
+        search_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        search_icon = Gtk.Image.new_from_icon_name("edit-find-symbolic", Gtk.IconSize.BUTTON)
+        self.search = Gtk.Entry()
+        self.search.set_placeholder_text("Cerca applicazione o categoria…")
+        self.search.connect("changed", self.on_search)
+        search_box.pack_start(search_icon, False, False, 0)
+        search_box.pack_start(self.search, True, True, 0)
+        outer.pack_start(search_box, False, False, 0)
+
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_vexpand(True)
+        self.listbox = Gtk.ListBox()
+        self.listbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
+        self.listbox.connect("row-activated", self.on_row_activated)
+        scroll.add(self.listbox)
+        outer.pack_start(scroll, True, True, 0)
+
+        self.status = Gtk.Label(label="", xalign=0)
+        self.status.get_style_context().add_class("footer")
+        outer.pack_start(self.status, False, False, 0)
+
+        buttons = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        buttons.set_halign(Gtk.Align.END)
+        refresh_button = Gtk.Button(label="Aggiorna")
+        refresh_button.connect("clicked", lambda _b: self.refresh())
+        close_button = Gtk.Button(label="Chiudi")
+        close_button.connect("clicked", lambda _b: self.window.destroy())
+        buttons.pack_start(refresh_button, False, False, 0)
+        buttons.pack_start(close_button, False, False, 0)
+        outer.pack_end(buttons, False, False, 0)
+
+        self.refresh()
+        self.window.show_all()
+
+    def css(self) -> str:
+        c = self.colors
+        return f"""
+        window {{ background-color: #{c['BG']}; color: #{c['FG']}; }}
+        .title {{ font-size: 24px; font-weight: 700; }}
+        .subtitle {{ color: #{c['FG_MUTED']}; font-size: 12px; }}
+        .pill {{ background-color: #{c['ACCENT']}; color: #{c['BG']};
+                 border-radius: 999px; padding: 3px 12px; font-weight: 700; }}
+        entry {{ background-color: #{c['SURFACE']}; color: #{c['FG']};
+                 border: 1px solid #{c['BORDER']}; border-radius: 10px;
+                 padding: 8px 10px; }}
+        list {{ background-color: transparent; }}
+        row {{ background-color: #{c['SURFACE']}; border: 1px solid #{c['BORDER']};
+               border-radius: 10px; margin: 3px 0; padding: 7px 10px; }}
+        row:hover {{ border-color: #{c['ACCENT']}; }}
+        row:selected {{ background-color: #{c['SURFACE_ALT']};
+                        border-color: #{c['ACCENT']}; }}
+        .app-name {{ font-size: 13px; font-weight: 600; color: #{c['FG']}; }}
+        .app-comment {{ font-size: 11px; color: #{c['FG_MUTED']}; }}
+        .category {{ color: #{c['ACCENT_SOFT']}; font-size: 11px; font-weight: 600; }}
+        .favorite {{ color: #{c['ACCENT_SOFT']}; font-size: 15px; }}
+        button {{ background-color: #{c['SURFACE_ALT']}; color: #{c['FG']};
+                  border: 1px solid #{c['BORDER']}; border-radius: 9px;
+                  padding: 7px 14px; font-weight: 600; }}
+        button:hover {{ border-color: #{c['ACCENT']}; }}
+        .footer {{ color: #{c['FG_MUTED']}; font-size: 11px; }}
+        """
+
+    def run_render(self, *args: str) -> tuple[bool, str]:
+        try:
+            result = subprocess.run(
+                [sys.executable, str(RENDER), *args],
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            return False, str(exc)
+        if result.returncode != 0:
+            return False, (result.stderr or result.stdout or "errore sconosciuto").strip()
+        return True, result.stdout.strip()
+
+    def refresh(self) -> None:
+        Gtk = self.Gtk
+        for row in list(self.listbox.get_children()):
+            self.listbox.remove(row)
+        self.rows = []
+
+        try:
+            result = subprocess.run(
+                [sys.executable, str(RENDER), "--json"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=True,
+            )
+            self.data = json.loads(result.stdout)
+        except (OSError, subprocess.SubprocessError, json.JSONDecodeError) as exc:
+            self.status.set_text(f"Errore lettura menu: {exc}")
+            return
+
+        favorites = {fav.get("id"): fav for fav in self.data.get("favorites", [])}
+        apps = list(self.data.get("apps", []))
+        known_ids = {app["id"] for app in apps}
+        for fav in self.data.get("favorites", []):
+            if fav.get("id") not in known_ids:
+                apps.append(
+                    {
+                        "id": fav.get("id", ""),
+                        "name": fav.get("name", "?"),
+                        "comment": "Preferita non più presente nei .desktop",
+                        "category": "Preferite",
+                        "command": fav.get("command", ""),
+                        "favorite": True,
+                        "placement": "",
+                    }
+                )
+        apps.sort(key=lambda app: (app.get("favorite", False) is False, app.get("name", "").casefold()))
+        for app in apps:
+            app["favorite"] = app.get("id") in favorites or app.get("favorite", False)
+            self.add_row(app)
+        self.counter.set_text(f"{len(apps)} app")
+        self.apply_filter()
+
+    def add_row(self, app: dict) -> None:
+        Gtk = self.Gtk
+        row = Gtk.ListBoxRow()
+        row.app_data = app
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        texts = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+        name = Gtk.Label(label=app.get("name", "?"), xalign=0)
+        name.get_style_context().add_class("app-name")
+        comment = Gtk.Label(label=app.get("comment", ""), xalign=0)
+        comment.get_style_context().add_class("app-comment")
+        comment.set_ellipsize(self.Pango.EllipsizeMode.END)
+        texts.pack_start(name, False, False, 0)
+        texts.pack_start(comment, False, False, 0)
+        box.pack_start(texts, True, True, 0)
+
+        category = Gtk.Label(label=app.get("category", ""), xalign=0)
+        category.get_style_context().add_class("category")
+        box.pack_end(category, False, False, 0)
+        if app.get("favorite"):
+            star = Gtk.Label(label="★ preferita", xalign=0)
+            star.get_style_context().add_class("favorite")
+            box.pack_end(star, False, False, 0)
+
+        row.add(box)
+        row.connect("button-press-event", self.on_button_press)
+        self.listbox.add(row)
+        self.rows.append(row)
+
+    def on_search(self, entry) -> None:
+        self.search_text = entry.get_text().casefold().strip()
+        self.apply_filter()
+
+    def apply_filter(self) -> None:
+        for row in self.rows:
+            app = row.app_data
+            haystack = " ".join(
+                [app.get("name", ""), app.get("comment", ""), app.get("category", "")]
+            ).casefold()
+            row.set_visible(not self.search_text or self.search_text in haystack)
+
+    def on_row_activated(self, _listbox, row) -> None:
+        self.open_app(row.app_data)
+
+    def on_button_press(self, row, event) -> bool:
+        if event.button != 3:
+            return False
+        self.popup(row.app_data, event)
+        return True
+
+    def popup(self, app: dict, event) -> None:
+        Gtk = self.Gtk
+        menu = Gtk.Menu()
+        menu.set_reserve_toggle_size(False)
+
+        open_item = Gtk.MenuItem(label="Apri")
+        open_item.connect("activate", lambda _i: self.open_app(app))
+        menu.append(open_item)
+
+        if app.get("favorite"):
+            fav_item = Gtk.MenuItem(label="Rimuovi dai preferiti")
+            fav_item.connect("activate", lambda _i: self.action(["--remove-id", app["id"]]))
+        else:
+            fav_item = Gtk.MenuItem(label="Aggiungi ai preferiti")
+            fav_item.connect("activate", lambda _i: self.action(["--add", app["id"]]))
+        menu.append(fav_item)
+
+        menu.append(Gtk.SeparatorMenuItem())
+
+        category_item = Gtk.MenuItem(label="Sposta in categoria")
+        category_menu = Gtk.Menu()
+        for category in self.data.get("categories", []):
+            label = category
+            if category == app.get("category"):
+                label = f"● {category}"
+            entry = Gtk.MenuItem(label=label)
+            entry.connect(
+                "activate",
+                lambda _i, cat=category: self.action(["--set-category", app["id"], cat]),
+            )
+            category_menu.append(entry)
+        category_item.set_submenu(category_menu)
+        menu.append(category_item)
+
+        if app.get("placement"):
+            reset_item = Gtk.MenuItem(label="Ripristina categoria automatica")
+            reset_item.connect("activate", lambda _i: self.action(["--clear-category", app["id"]]))
+            menu.append(reset_item)
+
+        menu.append(Gtk.SeparatorMenuItem())
+        close_item = Gtk.MenuItem(label="Chiudi menu")
+        close_item.connect("activate", lambda _i: menu.popdown())
+        menu.append(close_item)
+
+        menu.show_all()
+        self.menu = menu
+        menu.popup_at_pointer(event)
+
+    def action(self, args: list[str]) -> None:
+        ok, message = self.run_render(*args)
+        if not ok:
+            dialog = self.Gtk.MessageDialog(
+                transient_for=self.window,
+                flags=0,
+                message_type=self.Gtk.MessageType.ERROR,
+                buttons=self.Gtk.ButtonsType.CLOSE,
+                text="Operazione non riuscita",
+            )
+            dialog.format_secondary_text(message)
+            dialog.run()
+            dialog.destroy()
+            return
+        self.status.set_text(message.splitlines()[-1] if message else "Menu aggiornato")
+        self.refresh()
+
+    def open_app(self, app: dict) -> None:
+        app_id = app.get("id", "")
+        command = app.get("command", "")
+        try:
+            if app_id and shutil.which("gtk-launch"):
+                subprocess.Popen(
+                    ["gtk-launch", app_id],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+                return
+            if command:
+                subprocess.Popen(
+                    shlex.split(command),
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+        except (OSError, ValueError) as exc:
+            self.status.set_text(f"Impossibile aprire: {exc}")
+
+    def run(self) -> int:
+        self.Gtk.main()
+        return 0
+
+
+def main() -> int:
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("Gdk", "3.0")
+        from gi.repository import Gtk
+    except (ImportError, ValueError) as exc:
+        print(f"GTK3/PyGObject non disponibile: {exc}", file=sys.stderr)
+        return 1
+
+    if not RENDER.is_file():
+        print(f"render-menu.py non trovato: {RENDER}", file=sys.stderr)
+        return 1
+    Gtk.init([])
+    manager = AppManager(load_theme())
+    return manager.run()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

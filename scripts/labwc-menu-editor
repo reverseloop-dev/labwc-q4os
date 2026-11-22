@@ -24,7 +24,7 @@ notify() {
 
 reconfigure() {
     if pgrep -x labwc >/dev/null 2>&1 && [ -n "${WAYLAND_DISPLAY:-}" ]; then
-        labwc --reconfigure >/dev/null 2>&1 || true
+        labwc --reconfigure >/dev/null 2>&1 || pkill -HUP -x labwc >/dev/null 2>&1 || true
     fi
 }
 
@@ -80,13 +80,15 @@ add_flow() {
         choice="$(choose "Aggiungi app > " "${displays[@]}")" || return 0
         [ -n "$choice" ] || return 0
 
-        idx="${choice%% *}"
-        idx="${idx#0}"
-        [ -n "$idx" ] || idx=0
+        if ! [[ "$choice" =~ ^([0-9]{3})[[:space:]]+(.*)$ ]]; then
+            notify "Selezione non valida" "Riprova dal menu."
+            return 0
+        fi
+        idx="${BASH_REMATCH[1]}"
         i=$((10#$idx - 1))
         if [ "$i" -lt 0 ] || [ "$i" -ge "${#rows[@]}" ]; then
-            notify "Selezione non valida" "Riprova."
-            continue
+            notify "Selezione non valida" "Riprova dal menu."
+            return 0
         fi
 
         IFS=$'\t' read -r id name comment <<<"${rows[$i]}"
@@ -119,11 +121,12 @@ remove_flow() {
         choice="$(choose "Rimuovi app > " "${displays[@]}")" || return 0
         [ -n "$choice" ] || return 0
 
-        idx="${choice%% *}"
-        if ! [[ "$idx" =~ ^[0-9]+$ ]]; then
-            continue
+        if ! [[ "$choice" =~ ^([0-9]{3})[[:space:]]+(.*)$ ]]; then
+            notify "Selezione non valida" "Riprova dal menu."
+            return 0
         fi
-        label="${choice#*  }"
+        idx="${BASH_REMATCH[1]}"
+        label="${BASH_REMATCH[2]}"
 
         if "$RENDER" --remove "$((10#$idx))"; then
             reconfigure
@@ -172,9 +175,26 @@ main_menu() {
     done
 }
 
-if [ "${1:-}" = "add" ]; then
-    add_flow
-    exit $?
-fi
+case "${1:-}" in
+    add)
+        add_flow
+        exit $?
+        ;;
+    remove-id)
+        [ "$#" -ge 2 ] || { printf 'Uso: labwc-menu-editor remove-id ID\n' >&2; exit 2; }
+        if "$RENDER" --remove-id "$2"; then
+            reconfigure
+            notify "Rimossa dal menu" "$2"
+        else
+            notify "Errore" "Impossibile rimuovere $2."
+            exit 1
+        fi
+        exit 0
+        ;;
+    remove)
+        remove_flow
+        exit $?
+        ;;
+esac
 
 main_menu

@@ -139,7 +139,7 @@ runtime_reload() {
         setsid -f swaybg -m fill -i "$WALLPAPER_PATH" >>"$STATE/session.log" 2>&1 || true
     fi
 
-    labwc --reconfigure >/dev/null 2>&1 || true
+    labwc --reconfigure >/dev/null 2>&1 || pkill -HUP -x labwc >/dev/null 2>&1 || true
 
     if command -v waybar >/dev/null 2>&1; then
         pkill -x waybar >/dev/null 2>&1 || true
