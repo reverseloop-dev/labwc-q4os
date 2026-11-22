@@ -1,0 +1,23 @@
+# Mako - labwc-q4os (colori generati dal tema attivo)
+font=Inter 10
+background-color=#@@SURFACE@@ee
+text-color=#@@FG@@
+border-color=#@@ACCENT@@
+progress-color=over #@@ACCENT@@
+border-size=2
+border-radius=14
+padding=14
+margin=14
+width=380
+height=160
+max-visible=4
+default-timeout=6000
+icons=1
+icon-path=/usr/share/icons/Adwaita
+max-icon-size=48
+anchor=top-right
+
+[urgency=critical]
+default-timeout=0
+border-color=#@@DANGER@@
+background-color=#@@BG@@f7

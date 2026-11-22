@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Autostart di labwc: avvia barra, notifiche, wallpaper e agenti.
+exec "$HOME/.local/bin/labwc-session-start"

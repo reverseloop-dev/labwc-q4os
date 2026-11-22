@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-help - guida italiana con scorciatoie e file di configurazione
+# =============================================================================
+set -euo pipefail
+
+HELP="${1:-${XDG_CONFIG_HOME:-$HOME/.config}/labwc/help.txt}"
+
+if [ ! -r "$HELP" ]; then
+    printf 'File di aiuto non trovato: %s\n' "$HELP" >&2
+    exit 1
+fi
+
+if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v zenity >/dev/null 2>&1; then
+    if zenity --text-info \
+        --title="Labwc — Aiuto e scorciatoie" \
+        --filename="$HELP" \
+        --width=1000 --height=760 \
+        --font="monospace 10" 2>/dev/null; then
+        exit 0
+    else
+        zenity_status=$?
+        # Zenity chiude con 1 quando l'utente annulla: non aprire un secondo viewer.
+        if [ "$zenity_status" -eq 1 ]; then
+            exit 0
+        fi
+    fi
+fi
+
+if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v foot >/dev/null 2>&1; then
+    if command -v less >/dev/null 2>&1; then
+        exec foot -T "Labwc — Aiuto" -e less -R "$HELP"
+    fi
+    # shellcheck disable=SC2016
+    exec foot -T "Labwc — Aiuto" -e sh -c 'cat "$1"; printf "\nPremi Invio per chiudere..."; read -r _' sh "$HELP"
+fi
+
+if [ -n "${DISPLAY:-}" ] && command -v xterm >/dev/null 2>&1; then
+    exec xterm -T "Labwc — Aiuto" -e less -R "$HELP"
+fi
+
+cat "$HELP"

@@ -1,0 +1,360 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  labwc-q4os - configurazione principale di labwc
+  https://github.com/reverseloop-dev/labwc-q4os
+
+  Modifica questo file e premi Super+Shift+R (oppure tasto destro >
+  Labwc & Desktop > Ricarica menu e desktop) per applicare le modifiche.
+-->
+<labwc_config>
+
+  <core>
+    <decoration>server</decoration>
+    <gap>0</gap>
+  </core>
+
+  <placement>
+    <policy>center</policy>
+  </placement>
+
+  <theme>
+    <cornerRadius>10</cornerRadius>
+    <keepBorder>yes</keepBorder>
+    <dropShadows>yes</dropShadows>
+    <titlebar>
+      <layout>icon:iconify,max,close</layout>
+      <showTitle>yes</showTitle>
+    </titlebar>
+    <font place="ActiveWindow">
+      <name>Inter</name>
+      <size>10</size>
+      <weight>bold</weight>
+      <slant>normal</slant>
+    </font>
+    <font place="InactiveWindow">
+      <name>Inter</name>
+      <size>10</size>
+      <weight>normal</weight>
+      <slant>normal</slant>
+    </font>
+    <font place="MenuHeader">
+      <name>Inter</name>
+      <size>10</size>
+      <weight>bold</weight>
+      <slant>normal</slant>
+    </font>
+    <font place="MenuItem">
+      <name>Inter</name>
+      <size>10</size>
+      <weight>normal</weight>
+      <slant>normal</slant>
+    </font>
+    <font place="OnScreenDisplay">
+      <name>Inter</name>
+      <size>10</size>
+      <weight>bold</weight>
+      <slant>normal</slant>
+    </font>
+  </theme>
+
+  <focus>
+    <followMouse>no</followMouse>
+    <raiseOnFocus>yes</raiseOnFocus>
+  </focus>
+
+  <resize>
+    <drawContents>yes</drawContents>
+  </resize>
+
+  <desktops>
+    <popupTime>600</popupTime>
+    <names>
+      <name>1</name>
+      <name>2</name>
+      <name>3</name>
+      <name>4</name>
+    </names>
+  </desktops>
+
+  <menu>
+    <ignoreButtonReleasePeriod>250</ignoreButtonReleasePeriod>
+    <showIcons>yes</showIcons>
+  </menu>
+
+  <keyboard>
+    <numlock>off</numlock>
+
+    <!-- Launcher e terminale -->
+    <keybind key="W-Return">
+      <action name="Execute" command="foot" />
+    </keybind>
+    <keybind key="W-d">
+      <action name="Execute" command="fuzzel" />
+    </keybind>
+    <keybind key="A-F2">
+      <action name="Execute" command="fuzzel" />
+    </keybind>
+    <keybind key="W-space">
+      <action name="Execute" command="fuzzel" />
+    </keybind>
+    <keybind key="W-e">
+      <action name="Execute" command="pcmanfm" />
+    </keybind>
+
+    <!-- Finestre -->
+    <keybind key="W-q">
+      <action name="Close" />
+    </keybind>
+    <keybind key="A-F4">
+      <action name="Close" />
+    </keybind>
+    <keybind key="W-a">
+      <action name="ToggleMaximize" />
+    </keybind>
+    <keybind key="W-f">
+      <action name="ToggleFullscreen" />
+    </keybind>
+    <keybind key="W-Tab">
+      <action name="NextWindow" />
+    </keybind>
+    <keybind key="W-S-Tab">
+      <action name="PreviousWindow" />
+    </keybind>
+    <keybind key="A-Tab">
+      <action name="NextWindow" />
+    </keybind>
+    <keybind key="A-S-Tab">
+      <action name="PreviousWindow" />
+    </keybind>
+    <keybind key="W-Left">
+      <action name="SnapToEdge" direction="left" />
+    </keybind>
+    <keybind key="W-Right">
+      <action name="SnapToEdge" direction="right" />
+    </keybind>
+    <keybind key="W-Up">
+      <action name="SnapToEdge" direction="up" />
+    </keybind>
+    <keybind key="W-Down">
+      <action name="SnapToEdge" direction="down" />
+    </keybind>
+
+    <!-- Desktop virtuali -->
+    <keybind key="W-1"><action name="GoToDesktop" to="1" wrap="yes" /></keybind>
+    <keybind key="W-2"><action name="GoToDesktop" to="2" wrap="yes" /></keybind>
+    <keybind key="W-3"><action name="GoToDesktop" to="3" wrap="yes" /></keybind>
+    <keybind key="W-4"><action name="GoToDesktop" to="4" wrap="yes" /></keybind>
+    <keybind key="W-S-1"><action name="SendToDesktop" to="1" follow="yes" /></keybind>
+    <keybind key="W-S-2"><action name="SendToDesktop" to="2" follow="yes" /></keybind>
+    <keybind key="W-S-3"><action name="SendToDesktop" to="3" follow="yes" /></keybind>
+    <keybind key="W-S-4"><action name="SendToDesktop" to="4" follow="yes" /></keybind>
+
+    <!-- Strumenti labwc-q4os -->
+    <keybind key="W-S-r">
+      <action name="Execute" command="@@HOME@@/.local/bin/labwc-reload" />
+    </keybind>
+    <keybind key="W-S-t">
+      <action name="Execute" command="@@HOME@@/.local/bin/labwc-theme-switcher" />
+    </keybind>
+    <keybind key="W-S-h">
+      <action name="Execute" command="@@HOME@@/.local/bin/labwc-help" />
+    </keybind>
+    <keybind key="W-S-m">
+      <action name="Execute" command="@@HOME@@/.local/bin/labwc-menu-editor" />
+    </keybind>
+    <keybind key="W-S-s">
+      <action name="Execute" command="@@HOME@@/.local/bin/labwc-screenshot region" />
+    </keybind>
+    <keybind key="Print">
+      <action name="Execute" command="@@HOME@@/.local/bin/labwc-screenshot region" />
+    </keybind>
+    <keybind key="W-Print">
+      <action name="Execute" command="@@HOME@@/.local/bin/labwc-screenshot full" />
+    </keybind>
+
+    <!-- Sessione -->
+    <keybind key="W-l">
+      <action name="Execute" command="swaylock -f" />
+    </keybind>
+    <keybind key="W-C-l">
+      <action name="Execute" command="wlogout" />
+    </keybind>
+
+    <!-- Audio -->
+    <keybind key="XF86AudioRaiseVolume">
+      <action name="Execute" command="pactl set-sink-volume @DEFAULT_SINK@ +5%" />
+    </keybind>
+    <keybind key="XF86AudioLowerVolume">
+      <action name="Execute" command="pactl set-sink-volume @DEFAULT_SINK@ -5%" />
+    </keybind>
+    <keybind key="XF86AudioMute">
+      <action name="Execute" command="pactl set-sink-mute @DEFAULT_SINK@ toggle" />
+    </keybind>
+    <keybind key="XF86AudioMicMute">
+      <action name="Execute" command="pactl set-source-mute @DEFAULT_SOURCE@ toggle" />
+    </keybind>
+    <keybind key="XF86AudioPlay">
+      <action name="Execute" command="playerctl play-pause" />
+    </keybind>
+    <keybind key="XF86AudioNext">
+      <action name="Execute" command="playerctl next" />
+    </keybind>
+    <keybind key="XF86AudioPrev">
+      <action name="Execute" command="playerctl previous" />
+    </keybind>
+
+    <!-- Luminosita' -->
+    <keybind key="XF86MonBrightnessUp">
+      <action name="Execute" command="brightnessctl set 10%+" />
+    </keybind>
+    <keybind key="XF86MonBrightnessDown">
+      <action name="Execute" command="brightnessctl set 10%-" />
+    </keybind>
+  </keyboard>
+
+  <mouse>
+    <doubleClickTime>500</doubleClickTime>
+
+    <context name="Frame">
+      <mousebind button="W-Left" action="Press">
+        <action name="Focus" />
+        <action name="Raise" />
+      </mousebind>
+      <mousebind button="W-Left" action="Drag">
+        <action name="Move" />
+      </mousebind>
+      <mousebind button="W-Right" action="Press">
+        <action name="Focus" />
+        <action name="Raise" />
+      </mousebind>
+      <mousebind button="W-Right" action="Drag">
+        <action name="Resize" />
+      </mousebind>
+    </context>
+
+    <context name="Top">
+      <mousebind button="Left" action="Drag"><action name="Resize" /></mousebind>
+    </context>
+    <context name="Left">
+      <mousebind button="Left" action="Drag"><action name="Resize" /></mousebind>
+    </context>
+    <context name="Right">
+      <mousebind button="Left" action="Drag"><action name="Resize" /></mousebind>
+    </context>
+    <context name="Bottom">
+      <mousebind button="Left" action="Drag"><action name="Resize" /></mousebind>
+    </context>
+    <context name="TLCorner">
+      <mousebind button="Left" action="Drag"><action name="Resize" /></mousebind>
+    </context>
+    <context name="TRCorner">
+      <mousebind button="Left" action="Drag"><action name="Resize" /></mousebind>
+    </context>
+    <context name="BLCorner">
+      <mousebind button="Left" action="Drag"><action name="Resize" /></mousebind>
+    </context>
+    <context name="BRCorner">
+      <mousebind button="Left" action="Drag"><action name="Resize" /></mousebind>
+    </context>
+
+    <context name="TitleBar">
+      <mousebind button="Left" action="Press">
+        <action name="Focus" />
+        <action name="Raise" />
+      </mousebind>
+      <mousebind button="Left" action="Drag">
+        <action name="Move" />
+      </mousebind>
+      <mousebind button="Right" action="Click">
+        <action name="ShowMenu" menu="client-menu" />
+      </mousebind>
+    </context>
+
+    <context name="Title">
+      <mousebind button="Left" action="Drag">
+        <action name="Move" />
+      </mousebind>
+      <mousebind button="Left" action="DoubleClick">
+        <action name="ToggleMaximize" />
+      </mousebind>
+      <mousebind button="Right" action="Click">
+        <action name="ShowMenu" menu="client-menu" />
+      </mousebind>
+    </context>
+
+    <context name="Client">
+      <mousebind button="Left" action="Press">
+        <action name="Focus" />
+        <action name="Raise" />
+      </mousebind>
+      <mousebind button="Middle" action="Press">
+        <action name="Focus" />
+        <action name="Raise" />
+      </mousebind>
+      <mousebind button="Right" action="Press">
+        <action name="Focus" />
+        <action name="Raise" />
+      </mousebind>
+    </context>
+
+    <context name="Root">
+      <mousebind button="Left" action="Press">
+        <action name="ShowMenu" menu="root-menu" />
+      </mousebind>
+      <mousebind button="Right" action="Press">
+        <action name="ShowMenu" menu="root-menu" />
+      </mousebind>
+      <mousebind button="Middle" action="Press">
+        <action name="ShowMenu" menu="root-menu" />
+      </mousebind>
+      <mousebind direction="Up" action="Scroll">
+        <action name="GoToDesktop" to="left" wrap="yes" />
+      </mousebind>
+      <mousebind direction="Down" action="Scroll">
+        <action name="GoToDesktop" to="right" wrap="yes" />
+      </mousebind>
+    </context>
+
+    <context name="Maximize">
+      <mousebind button="Left" action="Click">
+        <action name="ToggleMaximize" />
+      </mousebind>
+    </context>
+    <context name="Iconify">
+      <mousebind button="Left" action="Click">
+        <action name="Iconify" />
+      </mousebind>
+    </context>
+    <context name="Close">
+      <mousebind button="Left" action="Click">
+        <action name="Close" />
+      </mousebind>
+    </context>
+    <context name="WindowMenu">
+      <mousebind button="Left" action="Click">
+        <action name="ShowMenu" menu="client-menu" atCursor="no" />
+      </mousebind>
+      <mousebind button="Right" action="Click">
+        <action name="ShowMenu" menu="client-menu" atCursor="no" />
+      </mousebind>
+    </context>
+    <context name="AllDesktops">      <mousebind button="Left" action="Click">
+        <action name="ToggleOmnipresent" />
+      </mousebind>
+    </context>
+  </mouse>
+
+  <libinput>
+    <device category="touchpad">
+      <tap>yes</tap>
+      <naturalScroll>yes</naturalScroll>
+      <scrollFactor>1.0</scrollFactor>
+    </device>
+    <device category="default">
+      <naturalScroll>no</naturalScroll>
+    </device>
+  </libinput>
+
+  <windowRules />
+
+</labwc_config>

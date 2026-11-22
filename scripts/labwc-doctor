@@ -1,0 +1,452 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-doctor - controlli e riparazione del desktop labwc-q4os
+#  Uso: labwc-doctor [--fix] [--fix-system] [--quiet]
+# =============================================================================
+set -uo pipefail
+
+CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}"
+SHARE="${LABWC_Q4OS_SHARE:-${XDG_DATA_HOME:-$HOME/.local/share}/labwc-q4os}"
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/labwc-q4os"
+BIN="$HOME/.local/bin"
+
+QUIET=0
+FIX=0
+FIX_SYSTEM=0
+FAIL=0
+WARN=0
+PASS=0
+
+for arg in "$@"; do
+    case "$arg" in
+        --fix) FIX=1 ;;
+        --fix-system) FIX=1; FIX_SYSTEM=1 ;;
+        --quiet) QUIET=1 ;;
+        -h|--help)
+            cat <<'EOF'
+labwc-doctor — diagnostica del desktop labwc-q4os
+
+  --fix           ripara i file utente mancanti o non validi
+  --fix-system    ripara anche /usr/share/wayland-sessions (usa sudo)
+  --quiet         mostra solo avvisi ed errori
+EOF
+            exit 0
+            ;;
+        *)
+            printf 'Opzione sconosciuta: %s\n' "$arg" >&2
+            exit 2
+            ;;
+    esac
+done
+
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+    C_OK=$'\033[32m'; C_WARN=$'\033[33m'; C_ERR=$'\033[31m'
+    C_B=$'\033[1m'; C_R=$'\033[0m'; C_DIM=$'\033[2m'
+else
+    C_OK=''; C_WARN=''; C_ERR=''; C_B=''; C_R=''; C_DIM=''
+fi
+
+ok()   { PASS=$((PASS + 1)); [ "$QUIET" -eq 1 ] || printf '%s[ ok ]%s %s\n' "$C_OK" "$C_R" "$*"; }
+warn() { WARN=$((WARN + 1)); printf '%s[warn]%s %s\n' "$C_WARN" "$C_R" "$*"; }
+bad()  { FAIL=$((FAIL + 1)); printf '%s[FAIL]%s %s\n' "$C_ERR" "$C_R" "$*"; }
+info() { [ "$QUIET" -eq 1 ] || printf '%s[info]%s %s\n' "$C_DIM" "$C_R" "$*"; }
+fixed(){ [ "$QUIET" -eq 1 ] || printf '%s[fix ]%s %s\n' "$C_OK" "$C_R" "$*"; }
+
+have() { command -v "$1" >/dev/null 2>&1; }
+
+valid_xml() {
+    python3 - "$1" <<'PY' >/dev/null 2>&1
+import sys
+import xml.etree.ElementTree as ET
+
+try:
+    ET.parse(sys.argv[1])
+except Exception:
+    raise SystemExit(1)
+PY
+}
+
+valid_json() {
+    python3 - "$1" <<'PY' >/dev/null 2>&1
+import json
+import sys
+
+try:
+    with open(sys.argv[1], encoding="utf-8") as handle:
+        json.load(handle)
+except Exception:
+    raise SystemExit(1)
+PY
+}
+
+version_ge() {
+    [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -n1)" = "$2" ]
+}
+
+restore_from_template() {
+    local template="$1" dest="$2" mode="$3"
+    [ -e "$dest" ] && return 0
+    [ -r "$SHARE/templates/$template" ] || return 1
+    mkdir -p "$(dirname "$dest")"
+    if [ "$template" = "rc.xml" ]; then
+        sed "s|@@HOME@@|$HOME|g" "$SHARE/templates/$template" > "$dest"
+        chmod "$mode" "$dest"
+    else
+        install -m "$mode" "$SHARE/templates/$template" "$dest"
+    fi
+    fixed "ripristinato $dest"
+}
+
+ensure_menu() {
+    if [ -r "$SHARE/scripts/render-menu.py" ]; then
+        python3 "$SHARE/scripts/render-menu.py" --render >/dev/null 2>&1 || return 1
+        fixed "menu.xml rigenerato"
+    fi
+}
+
+ensure_theme() {
+    local theme="nordic-cobalt"
+    [ -r "$CONFIG/labwc/theme" ] && theme="$(tr -d '[:space:]' < "$CONFIG/labwc/theme")"
+    APPLY="$BIN/labwc-theme-apply"
+    [ -x "$APPLY" ] || APPLY="$SHARE/scripts/labwc-theme-apply"
+    if [ -x "$APPLY" ]; then
+        "$APPLY" "$theme" --no-reload --quiet >/dev/null 2>&1 || return 1
+        fixed "file del tema rigenerati"
+    fi
+}
+
+ensure_wallpaper() {
+    local theme="nordic-cobalt"
+    [ -r "$CONFIG/labwc/theme" ] && theme="$(tr -d '[:space:]' < "$CONFIG/labwc/theme")"
+    [ -f "$SHARE/wallpapers/$theme.png" ] && return 0
+    if [ -r "$SHARE/scripts/generate-wallpapers.py" ]; then
+        python3 "$SHARE/scripts/generate-wallpapers.py" \
+            --output "$SHARE/wallpapers" --width 2560 --height 1440 \
+            --only "$theme" >/dev/null 2>&1 || return 1
+        fixed "sfondo rigenerato: $theme"
+    else
+        return 1
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# Riparazioni (prima dei controlli)
+# ---------------------------------------------------------------------------
+if [ "$FIX" -eq 1 ]; then
+    info "Riparazione configurazione utente..."
+    mkdir -p "$CONFIG/labwc" "$CONFIG/waybar" "$CONFIG/fuzzel" "$CONFIG/mako" \
+             "$CONFIG/wlogout" "$CONFIG/gtk-3.0" "$CONFIG/gtk-4.0" \
+             "$CONFIG/applications" "$SHARE/wallpapers" "$STATE"
+
+    restore_from_template rc.xml "$CONFIG/labwc/rc.xml" 0644 || true
+    restore_from_template environment "$CONFIG/labwc/environment" 0644 || true
+    restore_from_template autostart "$CONFIG/labwc/autostart" 0755 || true
+    restore_from_template help.txt "$CONFIG/labwc/help.txt" 0644 || true
+    restore_from_template waybar-config.jsonc "$CONFIG/waybar/config.jsonc" 0644 || true
+    restore_from_template wlogout-layout "$CONFIG/wlogout/layout" 0644 || true
+    restore_from_template gtk-settings.ini "$CONFIG/gtk-3.0/settings.ini" 0644 || true
+    restore_from_template gtk-settings.ini "$CONFIG/gtk-4.0/settings.ini" 0644 || true
+
+    ensure_theme || true
+    ensure_menu || true
+    ensure_wallpaper || true
+    chmod 0755 "$CONFIG/labwc/autostart" 2>/dev/null || true
+
+    if [ "$FIX_SYSTEM" -eq 1 ] && have sudo; then
+        if [ ! -f /usr/share/wayland-sessions/labwc.desktop ]; then
+            session_tmp="$(mktemp)"
+            cat > "$session_tmp" <<'EOF'
+[Desktop Entry]
+Name=Labwc
+Comment=Desktop Wayland moderno (labwc-q4os by reverseloop-dev)
+Exec=labwc
+TryExec=labwc
+Type=Application
+DesktopNames=labwc
+Keywords=wayland;labwc;q4os;
+EOF
+            sudo install -d -m 0755 /usr/share/wayland-sessions
+            sudo install -m 0644 "$session_tmp" /usr/share/wayland-sessions/labwc.desktop
+            rm -f "$session_tmp"
+            fixed "sessione /usr/share/wayland-sessions/labwc.desktop ripristinata"
+        fi
+    fi
+
+    if [ -n "${WAYLAND_DISPLAY:-}" ] && pgrep -x labwc >/dev/null 2>&1 && [ -x "$BIN/labwc-reload" ]; then
+        "$BIN/labwc-reload" >/dev/null 2>&1 || true
+        fixed "desktop ricaricato"
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# Controlli
+# ---------------------------------------------------------------------------
+if [ "$QUIET" -eq 0 ]; then
+    printf '\n%sLabwc Doctor%s — controlli desktop\n' "$C_B" "$C_R"
+    printf '%sOS: %s%s\n\n' "$C_DIM" "$(sed -n 's/^PRETTY_NAME="\(.*\)"/\1/p' /etc/os-release 2>/dev/null)" "$C_R"
+fi
+
+# Sistema e compositor
+if have labwc; then
+    labwc_ver="$(labwc --version 2>/dev/null | head -n1 | awk '{print $2}')"
+    labwc_ver="${labwc_ver:-0}"
+    ok "labwc installato ($labwc_ver)"
+    if version_ge "$labwc_ver" "0.7.0"; then
+        ok "versione labwc compatibile con la configurazione completa"
+    else
+        warn "labwc $labwc_ver e' vecchio: alcune decorazioni/azioni verranno ignorate (consigliato >=0.7)"
+    fi
+else
+    bad "labwc non installato: esegui ./install.sh da Q4OS 6 / Debian 13"
+fi
+
+for cmd in waybar fuzzel foot python3 swaybg mako grim slurp swaylock wlogout lxpolkit pkexec; do
+    if have "$cmd"; then
+        ok "comando disponibile: $cmd"
+    else
+        bad "comando mancante: $cmd (reinstalla con ./install.sh)"
+    fi
+done
+
+for cmd in xwayland brightnessctl nm-applet pavucontrol zramctl cliphist; do
+    if [ "$cmd" = "xwayland" ]; then
+        if have Xwayland || have xwayland; then
+            ok "comando disponibile: Xwayland"
+        else
+            warn "comando opzionale mancante: Xwayland"
+        fi
+        continue
+    fi
+    if have "$cmd"; then
+        ok "comando disponibile: $cmd"
+    else
+        warn "comando opzionale mancante: $cmd"
+    fi
+done
+
+if [ -d /dev/dri ]; then
+    ok "dispositivi DRM presenti (/dev/dri)"
+else
+    warn "/dev/dri assente: Wayland potrebbe non partire (driver GPU?)"
+fi
+
+if [ -n "${WAYLAND_DISPLAY:-}" ]; then
+    ok "sessione Wayland attiva (WAYLAND_DISPLAY=$WAYLAND_DISPLAY)"
+    if pgrep -x labwc >/dev/null 2>&1; then
+        ok "labwc in esecuzione"
+    else
+        bad "WAYLAND_DISPLAY impostato ma labwc non in esecuzione"
+    fi
+else
+    info "non sei dentro una sessione Wayland: i controlli runtime sono limitati"
+fi
+
+if [ -n "${XDG_RUNTIME_DIR:-}" ] && [ -d "$XDG_RUNTIME_DIR" ]; then
+    perm="$(stat -c '%a' "$XDG_RUNTIME_DIR" 2>/dev/null || echo '?')"
+    if [ "$perm" = "700" ]; then
+        ok "XDG_RUNTIME_DIR con permessi corretti (700)"
+    else
+        warn "XDG_RUNTIME_DIR ha permessi $perm (atteso 700)"
+    fi
+else
+    warn "XDG_RUNTIME_DIR non impostato o inesistente"
+fi
+
+# Configurazione labwc
+for file in rc.xml menu.xml autostart environment themerc-override help.txt; do
+    if [ -r "$CONFIG/labwc/$file" ]; then
+        ok "config presente: ~/.config/labwc/$file"
+    else
+        bad "config mancante: ~/.config/labwc/$file (usa --fix)"
+    fi
+done
+
+for xml in rc.xml menu.xml; do
+    if [ -r "$CONFIG/labwc/$xml" ]; then
+        if valid_xml "$CONFIG/labwc/$xml"; then
+            ok "$xml: XML valido"
+        else
+            bad "$xml: XML non valido"
+        fi
+    fi
+done
+
+if [ -r "$CONFIG/labwc/menu.xml" ]; then
+    if grep -q 'id="root-menu"' "$CONFIG/labwc/menu.xml"; then
+        ok "menu.xml contiene root-menu"
+    else
+        bad "menu.xml non contiene root-menu"
+    fi
+    if grep -q 'reverseloop-dev' "$CONFIG/labwc/menu.xml"; then
+        ok "firma reverseloop-dev presente nel menu"
+    else
+        warn "firma reverseloop-dev assente dal menu"
+    fi
+fi
+
+if [ -x "$CONFIG/labwc/autostart" ]; then
+    ok "autostart eseguibile"
+else
+    bad "autostart non eseguibile (usa --fix)"
+fi
+
+theme_id="nordic-cobalt"
+[ -r "$CONFIG/labwc/theme" ] && theme_id="$(tr -d '[:space:]' < "$CONFIG/labwc/theme")"
+case "$theme_id" in
+    nordic-cobalt|muted-crimson|sage-emerald)
+        ok "tema valido: $theme_id" ;;
+    *)
+        bad "tema non valido in ~/.config/labwc/theme: $theme_id" ;;
+esac
+
+if [ -f "$SHARE/wallpapers/$theme_id.png" ]; then
+    ok "sfondo del tema presente"
+else
+    bad "sfondo mancante: $SHARE/wallpapers/$theme_id.png (usa --fix)"
+fi
+
+# Waybar
+if [ -r "$CONFIG/waybar/config.jsonc" ]; then
+    if valid_json "$CONFIG/waybar/config.jsonc"; then
+        ok "Waybar: config.jsonc valido"
+    else
+        bad "Waybar: config.jsonc non valido"
+    fi
+else
+    bad "Waybar: config.jsonc mancante (usa --fix)"
+fi
+if [ -r "$CONFIG/waybar/style.css" ]; then
+    if grep -q '@@[A-Z_]*@@' "$CONFIG/waybar/style.css"; then
+        bad "Waybar: style.css contiene token non sostituiti"
+    else
+        ok "Waybar: style.css renderizzato"
+    fi
+else
+    bad "Waybar: style.css mancante (usa --fix)"
+fi
+
+# Fuzzel, Mako, wlogout
+for file in "$CONFIG/fuzzel/fuzzel.ini" "$CONFIG/mako/config" "$CONFIG/wlogout/layout" "$CONFIG/wlogout/style.css"; do
+    if [ -r "$file" ]; then
+        ok "presente: ${file#"$HOME"/}"
+    else
+        bad "mancante: ${file#"$HOME"/} (usa --fix)"
+    fi
+done
+
+# Script
+for helper in labwc-theme-apply labwc-theme-switcher labwc-menu-editor labwc-reload \
+              labwc-help labwc-screenshot labwc-zram labwc-session-start; do
+    if [ -x "$BIN/$helper" ]; then
+        ok "helper eseguibile: $helper"
+    else
+        bad "helper mancante/non eseguibile: $helper"
+    fi
+done
+
+# Sessione nel display manager
+if [ -r /usr/share/wayland-sessions/labwc.desktop ]; then
+    ok "sessione Wayland registrata"
+    if grep -q '^Exec=labwc' /usr/share/wayland-sessions/labwc.desktop; then
+        ok "sessione Wayland punta a labwc"
+    else
+        bad "sessione Wayland senza Exec=labwc"
+    fi
+else
+    bad "sessione Wayland mancante: /usr/share/wayland-sessions/labwc.desktop (usa --fix-system)"
+fi
+
+dm=""
+if [ -e /etc/systemd/system/display-manager.service ]; then
+    dm="$(basename "$(readlink -f /etc/systemd/system/display-manager.service)" .service)"
+fi
+if [ -n "$dm" ]; then
+    case "$dm" in
+        tdm|tdm-trinity)
+            warn "display manager TDM: se Labwc non compare, usa SDDM o 'dbus-run-session labwc' da TTY" ;;
+        sddm|gdm3|gdm|lightdm|greetd)
+            ok "display manager: $dm" ;;
+        *)
+            info "display manager: $dm (verifica il supporto Wayland)" ;;
+    esac
+fi
+
+# Portali e XWayland
+if [ -e /usr/share/xdg-desktop-portal/portals/wlr.portal ] ||
+   [ -e /usr/libexec/xdg-desktop-portal-wlr ] ||
+   [ -e /usr/lib/xdg-desktop-portal-wlr ]; then
+    ok "xdg-desktop-portal-wlr presente"
+else
+    warn "xdg-desktop-portal-wlr non trovato: condivisione schermo/file dialog limitati"
+fi
+
+if have Xwayland || have xwayland; then
+    ok "XWayland disponibile per app X11"
+else
+    warn "XWayland non installato: le app X11 non partiranno"
+fi
+
+# Processi della sessione
+if [ -n "${WAYLAND_DISPLAY:-}" ]; then
+    for proc in waybar mako swaybg; do
+        if pgrep -x "$proc" >/dev/null 2>&1; then
+            ok "processo attivo: $proc"
+        else
+            warn "processo non attivo: $proc (apri il menu o riavvia la sessione)"
+        fi
+    done
+fi
+
+# Memoria / zram
+if have zramctl; then
+    if zram_active="$(zramctl 2>/dev/null)" && [ -n "$zram_active" ]; then
+        ok "zram attivo"
+    else
+        warn "zram non attivo: apri 'ZRAM — memoria compressa' dal menu"
+    fi
+else
+    warn "zramctl non disponibile"
+fi
+
+swap_val="$(cat /proc/sys/vm/swappiness 2>/dev/null || echo '?')"
+cache_val="$(cat /proc/sys/vm/vfs_cache_pressure 2>/dev/null || echo '?')"
+if [ "$swap_val" != "?" ]; then
+    if have zramctl && [ -n "$(zramctl 2>/dev/null)" ]; then
+        if [ "$swap_val" -lt 60 ]; then
+            warn "vm.swappiness=$swap_val con zram attivo (consigliato 100)"
+        else
+            ok "vm.swappiness=$swap_val adatto a zram"
+        fi
+    else
+        if [ "$swap_val" -gt 60 ]; then
+            warn "vm.swappiness=$swap_val senza zram (consigliato 10)"
+        else
+            ok "vm.swappiness=$swap_val"
+        fi
+    fi
+    [ "$cache_val" != "?" ] && info "vm.vfs_cache_pressure=$cache_val"
+fi
+
+# Log recente
+if [ -r "$STATE/session.log" ]; then
+    size="$(stat -c '%s' "$STATE/session.log" 2>/dev/null || echo 0)"
+    [ "$size" -gt 5242880 ] && warn "session.log supera 5 MB: valuta di ruotarlo"
+    recent="$(tail -n 120 "$STATE/session.log" 2>/dev/null | grep -Ei 'error|failed|invalid|segmentation' | tail -n 4 || true)"
+    if [ -n "$recent" ]; then
+        warn "possibili errori recenti in session.log:"
+        printf '%s\n' "$recent" | sed 's/^/       /'
+    else
+        ok "nessun errore recente evidente in session.log"
+    fi
+else
+    info "session.log non ancora creato (normale prima del primo login)"
+fi
+
+# ---------------------------------------------------------------------------
+printf '\n%sRiepilogo:%s %d ok, %d avvisi, %d errori\n' "$C_B" "$C_R" "$PASS" "$WARN" "$FAIL"
+if [ "$FAIL" -gt 0 ]; then
+    printf 'Esegui: labwc-doctor --fix    (oppure --fix-system per la sessione Wayland)\n' >&2
+    exit 1
+fi
+[ "$WARN" -gt 0 ] && printf "Ci sono avvisi da verificare, ma il desktop e' funzionale.\n"
+exit 0

@@ -1,0 +1,12 @@
+# Sorgenti e cache
+__pycache__/
+*.pyc
+*.tmp
+*.log
+
+# Immagini generate localmente (le preview sono versionate)
+wallpapers/
+!preview/
+
+# Lock LibreOffice
+.~lock.*

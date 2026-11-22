@@ -1,0 +1,282 @@
+LABWC-Q4OS — GUIDA RAPIDA E SCORCIATOIE
+=======================================
+Desktop Wayland moderno per Q4OS / Debian
+https://github.com/reverseloop-dev/labwc-q4os
+
+Questa guida e' sempre disponibile con:
+  • tasto destro sul desktop > "Labwc & Desktop" > "Aiuto e scorciatoie"
+  • Super + Shift + H
+  • comando: labwc-help
+
+
+1. TASTI RAPIDI
+---------------
+Super = tasto Windows / Logo / Command.
+
+  Super + Invio ......... Terminale (foot)
+  Super + D ............. Launcher Fuzzel
+  Super + Spazio ........ Launcher Fuzzel (alternativo)
+  Alt + F2 .............. Launcher Fuzzel (alternativo)
+  Super + E ............. File manager (pcmanfm)
+  Super + Q ............. Chiudi la finestra attiva
+  Alt + F4 .............. Chiudi la finestra attiva
+  Super + A ............. Massimizza / ripristina
+  Super + F ............. Schermo intero
+  Super + Freccia ....... Aggancia a sinistra / destra / alto / basso
+  Super + Tab ........... Finestra successiva
+  Super + Shift + Tab ... Finestra precedente
+  Alt + Tab ............. Finestra successiva
+  Super + 1..4 .......... Vai al desktop 1..4
+  Super + Shift + 1..4 .. Sposta la finestra sul desktop 1..4
+
+  Super + Shift + R ..... Ricarica menu, tema e Waybar
+  Super + Shift + T ..... Cambia tema (blu / rosso / verde)
+  Super + Shift + M ..... Aggiungi o rimuovi app dal menu
+  Super + Shift + H ..... Questa guida
+  Super + Shift + S ..... Screenshot area (grim + slurp)
+  Stampa (Print) ........ Screenshot area (grim + slurp)
+  Super + Stampa ........ Screenshot schermo intero
+  Super + L ............. Blocca lo schermo (swaylock)
+  Super + Ctrl + L ...... Menu sessione (wlogout)
+
+  Tasti multimediali .... Volume, mute, microfono, play/next/prev
+  Tasti luminosita' ..... Luminosita' schermo (brightnessctl)
+
+Mouse:
+  • Tasto destro sul desktop ....... menu completo labwc
+  • Tasto sinistro sul desktop ..... stesso menu (comodo)
+  • Tasto destro sul titolo ........ menu della finestra
+  • Rotellina sul desktop .......... cambia desktop
+  • Tasto destro su Waybar icona menu ..... editor del menu
+  • Tasto destro su Waybar icona sessione ..... blocca lo schermo
+
+
+2. FUZZEL (LAUNCHER)
+--------------------
+Fuzzel si apre con Super + D, Super + Spazio o Alt + F2.
+
+  • Scrivi il nome dell'app per filtrare.
+  • Freccia su/giu' per selezionare, Invio per aprire.
+  • Esc per chiudere.
+  • Fuzzel ha icone, bordi arrotondati e colori sincronizzati al tema.
+
+Modalita' dmenu (per script):
+  printf 'Voce 1\nVoce 2\n' | fuzzel --dmenu
+  fuzzel --dmenu < lista.txt
+  scelta="$(printf 'Si\nNo\n' | fuzzel --dmenu --prompt='Confermi? ')"
+
+Configurazione:  ~/.config/fuzzel/fuzzel.ini
+Dopo una modifica, Fuzzel la applica alla prossima apertura.
+
+
+3. MENU DEL TASTO DESTRO
+------------------------
+Il menu e' organizzato in:
+  ★ App preferite ....... scelte da te, sempre in cima
+  Categorie ............. Internet, Multimedia, Grafica, Ufficio,
+                          Sviluppo, Giochi, Sistema, Accessori...
+  Labwc & Desktop ....... strumenti, tema, aiuto, sessione
+
+Per aggiungere o rimuovere programmi:
+  tasto destro > "Labwc & Desktop" > "Aggiungi / rimuovi app nel menu"
+  oppure Super + Shift + M.
+
+L'editor legge i file .desktop da:
+  /usr/share/applications
+  /usr/local/share/applications
+  ~/.local/share/applications
+  esportazioni Flatpak
+
+Dopo ogni modifica il menu viene rigenerato e labwc ricaricato subito.
+Le preferite sono salvate in:
+  ~/.config/labwc/favorites.tsv
+
+NON modificare menu.xml a mano: viene rigenerato automaticamente.
+Se vuoi comunque ispezionarlo:
+  foot -e less ~/.config/labwc/menu.xml
+
+"Ricarica menu e desktop" (Super + Shift + R) rilegge il menu,
+riapplica le decorazioni e riavvia Waybar.
+
+
+4. TEMI E SFONDI
+----------------
+Tre temi completi, ognuno con sfondo coordinato e firma discreta
+"reverseloop-dev" in basso a destra:
+
+  1. Nordic Cobalt ....... blu profondo / ardesia (#1e293b, #3b82f6)
+  2. Muted Crimson ....... rosso tenue / bordeaux (#261c1e, #c0565b)
+  3. Sage Emerald ........ verde salvia / petrolio (#1b2624, #4d9375)
+
+Cambio tema:
+  tasto destro > "Labwc & Desktop" > "Cambia tema"
+  oppure Super + Shift + T
+  oppure: labwc-theme-switcher nordic-cobalt
+
+Il cambio e' immediato: bordi finestre, menu, Waybar, Fuzzel, Mako,
+wlogout e sfondo vengono aggiornati senza riavviare la sessione.
+
+Sfondi: ~/.local/share/labwc-q4os/wallpapers/
+Per rigenerarli: menu > Labwc & Desktop > Cambia tema > "Genera di nuovo
+gli sfondi" oppure il comando labwc-generate-wallpapers.
+
+
+5. FILE DI CONFIGURAZIONE
+-------------------------
+Labwc:
+  ~/.config/labwc/rc.xml ............ scorciatoie, mouse, desktop, temi
+  ~/.config/labwc/menu.xml .......... menu generato (non modificare)
+  ~/.config/labwc/favorites.tsv ..... app preferite del menu
+  ~/.config/labwc/autostart ......... avvio sessione
+  ~/.config/labwc/environment ....... variabili d'ambiente Wayland
+  ~/.config/labwc/themerc-override .. colori decorazioni (dal tema)
+  ~/.config/labwc/theme ............. tema attivo
+
+Waybar:
+  ~/.config/waybar/config.jsonc ..... moduli della barra
+  ~/.config/waybar/style.css ........ aspetto della barra
+
+Fuzzel:
+  ~/.config/fuzzel/fuzzel.ini ....... launcher
+
+Notifiche:
+  ~/.config/mako/config ............. notifiche
+
+Sessione:
+  ~/.config/wlogout/layout .......... voci del menu sessione
+  ~/.config/wlogout/style.css ....... aspetto del menu sessione
+
+Esempi pratici:
+  foot -e nano ~/.config/labwc/rc.xml
+  xmllint --noout ~/.config/labwc/rc.xml   # verifica sintassi XML
+  labwc --reconfigure                      # applica rc.xml e themerc-override
+
+  foot -e nano ~/.config/waybar/style.css
+  pkill waybar && waybar -c ~/.config/waybar/config.jsonc \
+                           -s ~/.config/waybar/style.css &
+  # oppure, piu' comodo: Super + Shift + R
+
+  foot -e nano ~/.config/fuzzel/fuzzel.ini   # vale dalla prossima apertura
+
+  foot -e nano ~/.config/mako/config
+  makoctl reload
+
+  foot -e nano ~/.config/labwc/autostart     # vale dal prossimo login
+  foot -e nano ~/.config/labwc/environment   # vale dal prossimo login
+
+Aggiungere una scorciatoia personalizzata in rc.xml:
+  <keybind key="W-b">
+    <action name="Execute" command="firefox" />
+  </keybind>
+Poi: labwc --reconfigure
+
+
+6. WAYBAR
+---------
+Moduli attivi: launcher, taskbar, orologio/calendario,
+area notifiche, audio, rete, batteria, CPU, RAM, pulsante sessione.
+
+  • Cambio desktop: Super + 1..4 oppure rotellina sul desktop
+  • Click su icona menu .............. apre Fuzzel
+  • Click destro su icona menu ....... editor menu
+  • Click su orologio ......... calendario
+  • Click su audio ............ pavucontrol
+  • Click su rete ............. nm-connection-editor
+  • Click su batteria ......... dettagli batteria
+  • Click su icona sessione .............. menu sessione
+  • Click destro su icona sessione ....... blocca schermo
+
+Se Waybar non parte:
+  cat ~/.local/state/labwc-q4os/session.log
+  waybar -c ~/.config/waybar/config.jsonc -s ~/.config/waybar/style.css
+  jq . ~/.config/waybar/config.jsonc   # verifica JSON
+
+
+7. SCREENSHOT E APPUNTI
+-----------------------
+  Stampa / Super+Shift+S .... area selezionata (grim + slurp)
+  Super+Stampa .............. schermo intero
+  Salvataggio ............... ~/Pictures/Screenshots
+  Copia negli appunti ...... automatica (wl-copy)
+
+Cronologia appunti (se cliphist e' installato):
+  cliphist list
+  cliphist list | fuzzel --dmenu
+  cliphist decode ID | wl-copy
+
+
+8. SESSIONE E LOG
+-----------------
+Scegli "Labwc" dal menu del display manager (SDDM/TDM) al login.
+La sessione Q4OS precedente (Trinity/Plasma) resta disponibile.
+Se TDM non elenca Labwc (TDM non supporta Wayland), installa SDDM:
+  sudo apt install sddm
+oppure avvia da TTY: dbus-run-session labwc
+
+Log di Waybar, Mako, agenti e sfondo:
+  ~/.local/state/labwc-q4os/session.log
+
+Backup delle configurazioni precedenti:
+  ~/.local/share/labwc-q4os/backups/
+
+Riavvia la sessione grafica:
+  labwc --exit        (dal menu sessione oppure da terminale)
+
+Ricarica senza uscire:
+  Super + Shift + R
+
+
+9. ZRAM — MEMORIA COMPRESSA
+---------------------------
+zram comprime la RAM e la usa come swap veloce. Si gestisce dal menu:
+  tasto destro > "Labwc & Desktop" > "ZRAM — memoria compressa"
+
+La finestra mostra in tempo reale:
+  • stato attivo / non attivo e avvio automatico;
+  • barra della RAM di sistema;
+  • barra dello swap su zram;
+  • rapporto di compressione e RAM occupata da zram;
+  • grafico dell'occupazione negli ultimi 3 minuti;
+  • algoritmo, dimensione, servizio e vm.swappiness.
+
+Pulsanti:
+  • "Attiva zram" ....... avvia e abilita zramswap all'avvio (pkexec)
+  • "Disattiva zram" .... ferma e disabilita zramswap (pkexec)
+  • "Aggiorna" .......... forza la lettura dei dati
+  • "Chiudi"
+
+Da terminale:
+  labwc-zram --status
+  labwc-zram --enable
+  labwc-zram --disable
+
+Configurazione: /etc/default/zramswap (ALGO=zstd, PERCENT=50).
+Con zram attivo e' consigliato vm.swappiness=100; senza zram vm.swappiness=10.
+Lo script di installazione imposta questi valori se accetti l'ottimizzazione.
+
+10. DIAGNOSTICA E RIPARAZIONE
+-----------------------------
+  labwc-doctor              controlla desktop e configurazione
+  labwc-doctor --fix        ripara i file utente mancanti
+  labwc-doctor --fix-system ripara anche la sessione Wayland (sudo)
+
+Controlla: comandi, XML/JSON, tema, sfondo, menu, Waybar, Fuzzel,
+Mako, helper, sessione nel display manager, XWayland, portali,
+processi attivi, zram, swappiness e log recente.
+Dal menu: "Labwc & Desktop" > "Diagnostica e ripara desktop".
+
+11. PROBLEMI COMUNI
+-------------------
+  • Il menu non cambia: usa "Ricarica menu e desktop" oppure
+    labwc --reconfigure.
+  • Waybar non appare: controlla il log e il JSON; poi Super+Shift+R.
+  • Un'app non compare nel menu: verifica che il suo .desktop abbia
+    Exec valido e che il programma sia installato.
+  • Tema sbagliato dopo il login: il file ~/.config/labwc/theme deve
+    contenere solo nordic-cobalt, muted-crimson o sage-emerald.
+  • Schermo nero dopo il login Wayland: verifica i driver Mesa e
+    riprova con un'altra sessione dal display manager.
+
+---------------------------------------
+labwc-q4os — reverseloop-dev
+Guida generata automaticamente. Buon lavoro!

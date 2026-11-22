@@ -1,0 +1,37 @@
+/* wlogout - labwc-q4os (colori generati dal tema attivo) */
+
+* {
+    background-image: none;
+    font-family: "Inter", "Noto Sans", sans-serif;
+    font-size: 14px;
+    transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+window {
+    background-color: rgba(@@BG_RGB@@, 0.96);
+}
+
+button {
+    color: #@@FG@@;
+    background-color: rgba(@@SURFACE_RGB@@, 0.94);
+    border: 1px solid #@@BORDER@@;
+    border-radius: 20px;
+    margin: 12px;
+    padding: 18px;
+}
+
+button:focus,
+button:hover {
+    background-color: #@@ACCENT@@;
+    border-color: #@@ACCENT_SOFT@@;
+    color: #@@BG@@;
+}
+
+label {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+#lock label { color: #@@ACCENT_SOFT@@; }
+#reboot label { color: #@@WARNING@@; }
+#shutdown label { color: #@@DANGER@@; }

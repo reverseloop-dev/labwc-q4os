@@ -1,0 +1,109 @@
+{
+    "layer": "top",
+    "position": "top",
+    "height": 40,
+    "spacing": 8,
+    "margin-top": 8,
+    "margin-left": 12,
+    "margin-right": 12,
+    "fixed-center": true,
+    "exclusive": true,
+    "modules-left": [
+        "custom/launcher",
+        "wlr/taskbar"
+    ],
+    "modules-center": [
+        "clock"
+    ],
+    "modules-right": [
+        "tray",
+        "pulseaudio",
+        "network",
+        "battery",
+        "cpu",
+        "memory",
+        "custom/power"
+    ],
+    "custom/launcher": {
+        "format": "\uf0c9",
+        "tooltip": true,
+        "tooltip-format": "Apri Fuzzel  ·  Super+D",
+        "on-click": "fuzzel",
+        "on-click-right": "labwc-menu-editor"
+    },
+    "wlr/taskbar": {
+        "format": "{icon}",
+        "icon-size": 18,
+        "icon-theme": "Adwaita",
+        "tooltip-format": "{title}",
+        "on-click": "activate",
+        "on-click-middle": "close",
+        "on-click-right": "fullscreen"
+    },
+    "clock": {
+        "format": "{:%a %d %b  %H:%M}",
+        "format-alt": "{:%d/%m/%Y  %H:%M:%S}",
+        "tooltip-format": "<tt><small>{calendar}</small></tt>",
+        "calendar": {
+            "mode": "month",
+            "mode-mon-col": 3,
+            "weeks-pos": "right",
+            "on-scroll": 1
+        },
+        "on-click": "zenity --calendar --title='Calendario' --date-format='%A %d %B %Y'",
+        "on-click-right": "zenity --calendar --title='Calendario'"
+    },
+    "tray": {
+        "icon-size": 18,
+        "spacing": 8
+    },
+    "pulseaudio": {
+        "format": "{icon}  {volume}%",
+        "format-muted": "\uf026  muto",
+        "format-icons": ["\uf026", "\uf027", "\uf028"],
+        "tooltip-format": "Audio: {desc} · {volume}%",
+        "on-click": "pavucontrol"
+    },
+    "network": {
+        "format-wifi": "\uf1eb  {essid}",
+        "format-ethernet": "\uf0ac  LAN",
+        "format-linked": "\uf0ac  {ifname}",
+        "format-disconnected": "\uf071  offline",
+        "tooltip-format-wifi": "{essid}\nSegnale: {signalStrength}%\nIP: {ipaddr}",
+        "tooltip-format-ethernet": "{ifname}\nIP: {ipaddr}",
+        "tooltip-format-disconnected": "Nessuna connessione",
+        "on-click": "nm-connection-editor"
+    },
+    "battery": {
+        "interval": 20,
+        "states": {
+            "warning": 25,
+            "critical": 10
+        },
+        "format": "{icon}  {capacity}%",
+        "format-charging": "\uf0e7  {capacity}%",
+        "format-plugged": "\uf1e6  {capacity}%",
+        "format-icons": {
+            "default": ["\uf244", "\uf243", "\uf242", "\uf241", "\uf240"]
+        },
+        "tooltip-format": "Batteria: {capacity}% · {time}",
+        "on-click": "zenity --info --title='Batteria' --text=\"$(upower -i $(upower -e | grep BAT) | grep -E 'state|percentage|time to empty')\""
+    },
+    "cpu": {
+        "interval": 3,
+        "format": "CPU  {usage}%",
+        "tooltip": false
+    },
+    "memory": {
+        "interval": 5,
+        "format": "RAM  {percentage}%",
+        "tooltip-format": "{used:0.1f} GiB usati su {total:0.1f} GiB"
+    },
+    "custom/power": {
+        "format": "\uf011",
+        "tooltip": true,
+        "tooltip-format": "Sessione: blocca, esci, riavvia, spegni",
+        "on-click": "wlogout",
+        "on-click-right": "swaylock -f"
+    }
+}

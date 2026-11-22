@@ -1,0 +1,164 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-theme-apply - applica un tema (colori, barra, launcher, notifiche)
+#  Uso: labwc-theme-apply [nordic-cobalt|muted-crimson|sage-emerald]
+#       labwc-theme-apply --list
+#       labwc-theme-apply --no-reload <tema>
+# =============================================================================
+set -euo pipefail
+
+SHARE="${LABWC_Q4OS_SHARE:-${XDG_DATA_HOME:-$HOME/.local/share}/labwc-q4os}"
+CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}"
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/labwc-q4os"
+THEMES_DIR="$SHARE/themes"
+TEMPLATES="$SHARE/templates"
+
+VALID_THEMES=(nordic-cobalt muted-crimson sage-emerald)
+
+NO_RELOAD=0
+QUIET=0
+THEME_ID=""
+
+for arg in "$@"; do
+    case "$arg" in
+        --no-reload) NO_RELOAD=1 ;;
+        --quiet) QUIET=1 ;;
+        --list)
+            printf '%s\n' "${VALID_THEMES[@]}"
+            exit 0
+            ;;
+        -h|--help)
+            sed -n '2,8p' "$0" | sed 's/^#  //'
+            exit 0
+            ;;
+        -*)
+            printf 'Opzione sconosciuta: %s\n' "$arg" >&2
+            exit 2
+            ;;
+        *)
+            THEME_ID="$arg"
+            ;;
+    esac
+done
+
+if [ -z "$THEME_ID" ]; then
+    if [ -r "$CONFIG/labwc/theme" ]; then
+        THEME_ID="$(tr -d '[:space:]' < "$CONFIG/labwc/theme")"
+    fi
+fi
+
+if [ -z "$THEME_ID" ]; then
+    THEME_ID="nordic-cobalt"
+fi
+
+valid=0
+for t in "${VALID_THEMES[@]}"; do
+    [ "$t" = "$THEME_ID" ] && valid=1
+done
+if [ "$valid" -ne 1 ]; then
+    printf 'Tema non valido: %s\nTemi disponibili: %s\n' "$THEME_ID" "${VALID_THEMES[*]}" >&2
+    exit 2
+fi
+
+THEME_FILE="$THEMES_DIR/$THEME_ID/theme.conf"
+[ -r "$THEME_FILE" ] || { printf 'Tema non trovato: %s\n' "$THEME_FILE" >&2; exit 1; }
+
+# shellcheck disable=SC1090
+. "$THEME_FILE"
+
+for required in BG SURFACE ACCENT FG BORDER WALLPAPER; do
+    if [ -z "${!required:-}" ]; then
+        printf 'Tema incompleto: manca %s in %s\n' "$required" "$THEME_FILE" >&2
+        exit 1
+    fi
+done
+
+mkdir -p "$CONFIG/labwc" "$CONFIG/waybar" "$CONFIG/fuzzel" "$CONFIG/mako" "$CONFIG/wlogout" "$STATE"
+
+render() {
+    local src="$1" dst="$2"
+    [ -r "$src" ] || { printf 'Template mancante: %s\n' "$src" >&2; return 1; }
+    mkdir -p "$(dirname "$dst")"
+    sed \
+        -e "s|@@THEME_ID@@|$THEME_ID|g" \
+        -e "s|@@THEME_NAME@@|$THEME_NAME|g" \
+        -e "s|@@BG@@|$BG|g" \
+        -e "s|@@BG_ALT@@|$BG_ALT|g" \
+        -e "s|@@SURFACE@@|$SURFACE|g" \
+        -e "s|@@SURFACE_ALT@@|$SURFACE_ALT|g" \
+        -e "s|@@SURFACE_HOVER@@|$SURFACE_HOVER|g" \
+        -e "s|@@ACCENT@@|$ACCENT|g" \
+        -e "s|@@ACCENT_SOFT@@|$ACCENT_SOFT|g" \
+        -e "s|@@ACCENT_DEEP@@|$ACCENT_DEEP|g" \
+        -e "s|@@FG@@|$FG|g" \
+        -e "s|@@FG_MUTED@@|$FG_MUTED|g" \
+        -e "s|@@BORDER@@|$BORDER|g" \
+        -e "s|@@DANGER@@|$DANGER|g" \
+        -e "s|@@DANGER_RGB@@|$DANGER_RGB|g" \
+        -e "s|@@WARNING@@|$WARNING|g" \
+        -e "s|@@SUCCESS@@|$SUCCESS|g" \
+        -e "s|@@BG_RGB@@|$BG_RGB|g" \
+        -e "s|@@SURFACE_RGB@@|$SURFACE_RGB|g" \
+        -e "s|@@ACCENT_RGB@@|$ACCENT_RGB|g" \
+        -e "s|@@FG_RGB@@|$FG_RGB|g" \
+        -e "s|@@BORDER_RGB@@|$BORDER_RGB|g" \
+        "$src" > "$dst.tmp"
+    mv "$dst.tmp" "$dst"
+}
+
+# --- file di configurazione -------------------------------------------------
+# La vecchia posizione ~/.config/labwc/themerc non viene letta da labwc.
+# Si usa themerc-override, che sovrascrive il tema base.
+if [ -f "$CONFIG/labwc/themerc" ] && grep -q 'labwc themerc -' "$CONFIG/labwc/themerc" 2>/dev/null; then
+    mv -f "$CONFIG/labwc/themerc" "$CONFIG/labwc/themerc.old" 2>/dev/null || true
+fi
+install -m 0644 "$THEMES_DIR/$THEME_ID/themerc" "$CONFIG/labwc/themerc-override"
+render "$TEMPLATES/waybar-style.css" "$CONFIG/waybar/style.css"
+render "$TEMPLATES/fuzzel.ini" "$CONFIG/fuzzel/fuzzel.ini"
+render "$TEMPLATES/mako-config" "$CONFIG/mako/config"
+render "$TEMPLATES/wlogout-style.css" "$CONFIG/wlogout/style.css"
+
+printf '%s\n' "$THEME_ID" > "$CONFIG/labwc/theme"
+
+WALLPAPER_PATH="$SHARE/wallpapers/$WALLPAPER"
+if [ -f "$WALLPAPER_PATH" ]; then
+    ln -sfn "$WALLPAPER_PATH" "$CONFIG/labwc/current-wallpaper.png"
+fi
+
+# --- ricarica a caldo -------------------------------------------------------
+runtime_reload() {
+    [ "$NO_RELOAD" -eq 1 ] && return 0
+    [ -n "${WAYLAND_DISPLAY:-}" ] || return 0
+    pgrep -x labwc >/dev/null 2>&1 || return 0
+
+    mkdir -p "$STATE"
+
+    if [ -f "$WALLPAPER_PATH" ] && command -v swaybg >/dev/null 2>&1; then
+        pkill -x swaybg >/dev/null 2>&1 || true
+        sleep 0.15
+        setsid -f swaybg -m fill -i "$WALLPAPER_PATH" >>"$STATE/session.log" 2>&1 || true
+    fi
+
+    labwc --reconfigure >/dev/null 2>&1 || true
+
+    if command -v waybar >/dev/null 2>&1; then
+        pkill -x waybar >/dev/null 2>&1 || true
+        sleep 0.25
+        setsid -f waybar -c "$CONFIG/waybar/config.jsonc" -s "$CONFIG/waybar/style.css" \
+            >>"$STATE/session.log" 2>&1 || true
+    fi
+
+    if pgrep -x mako >/dev/null 2>&1 && command -v makoctl >/dev/null 2>&1; then
+        makoctl reload >/dev/null 2>&1 || true
+    fi
+}
+
+runtime_reload
+
+if [ "$QUIET" -eq 0 ] && [ "$NO_RELOAD" -eq 0 ] && [ -n "${WAYLAND_DISPLAY:-}" ] && command -v notify-send >/dev/null 2>&1; then
+    notify-send -a "Labwc" -i "$WALLPAPER_PATH" "Tema attivo: $THEME_NAME" "Colori, Waybar, Fuzzel e sfondo aggiornati" || true
+fi
+
+if [ "$QUIET" -eq 0 ]; then
+    printf 'Tema applicato: %s (%s)\n' "$THEME_NAME" "$THEME_LABEL"
+fi

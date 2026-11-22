@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-screenshot - cattura area / schermo intero / output
+#  Uso: labwc-screenshot [region|full|output]
+# =============================================================================
+set -euo pipefail
+
+mode="${1:-region}"
+
+case "$mode" in
+    -h|--help)
+        printf 'Uso: labwc-screenshot [region|full|output]\n'
+        exit 0
+        ;;
+esac
+
+command -v grim >/dev/null 2>&1 || { printf 'grim non installato\n' >&2; exit 1; }
+
+if command -v xdg-user-dir >/dev/null 2>&1; then
+    dir="$(xdg-user-dir PICTURES 2>/dev/null || true)"
+else
+    dir=""
+fi
+if [ -z "$dir" ] || [ "$dir" = "$HOME" ]; then
+    dir="$HOME/Pictures"
+fi
+dir="$dir/Screenshots"
+mkdir -p "$dir"
+
+file="$dir/Screenshot_$(date +%Y-%m-%d_%H-%M-%S_%3N).png"
+
+case "$mode" in
+    region)
+        command -v slurp >/dev/null 2>&1 || { printf 'slurp non installato\n' >&2; exit 1; }
+        geometry="$(slurp)" || exit 0
+        [ -n "$geometry" ] || exit 0
+        grim -g "$geometry" "$file"
+        ;;
+    output)
+        command -v slurp >/dev/null 2>&1 || { printf 'slurp non installato\n' >&2; exit 1; }
+        output="$(slurp -o)" || exit 0
+        [ -n "$output" ] || exit 0
+        grim -o "$output" "$file"
+        ;;
+    full)
+        grim "$file"
+        ;;
+    *)
+        printf 'Modalita sconosciuta: %s (usa region, full o output)\n' "$mode" >&2
+        exit 2
+        ;;
+esac
+
+if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v wl-copy >/dev/null 2>&1; then
+    wl-copy < "$file" || true
+fi
+
+if command -v notify-send >/dev/null 2>&1; then
+    notify-send -a "Labwc" -i "$file" "Screenshot salvato" "$file" || true
+fi
+
+printf '%s\n' "$file"

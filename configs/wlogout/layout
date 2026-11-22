@@ -1,0 +1,32 @@
+[
+    {
+        "label": "lock",
+        "action": "swaylock -f",
+        "text": "Blocca",
+        "keybind": "l"
+    },
+    {
+        "label": "logout",
+        "action": "labwc --exit",
+        "text": "Esci",
+        "keybind": "e"
+    },
+    {
+        "label": "suspend",
+        "action": "systemctl suspend",
+        "text": "Sospendi",
+        "keybind": "s"
+    },
+    {
+        "label": "reboot",
+        "action": "systemctl reboot",
+        "text": "Riavvia",
+        "keybind": "r"
+    },
+    {
+        "label": "shutdown",
+        "action": "systemctl poweroff",
+        "text": "Spegni",
+        "keybind": "p"
+    }
+]

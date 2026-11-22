@@ -1,0 +1,820 @@
+#!/usr/bin/env python3
+"""
+labwc-zram - pannello grafico per zram (RAM compressa).
+
+Mostra in tempo reale:
+  * stato del servizio zramswap (attivo / disattivo / abilitato al boot)
+  * dimensione del dispositivo, algoritmo, dati compressi, memoria usata
+  * compressione, swap su zram, RAM di sistema e swappiness
+  * grafico storico dell'occupazione zram
+
+Permette di attivare/disattivare zram tramite pkexec e systemd.
+Può essere usato anche da terminale:
+  labwc-zram --status
+  labwc-zram --enable
+  labwc-zram --disable
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import shutil
+import subprocess
+import sys
+import threading
+from collections import deque
+from pathlib import Path
+
+HOME = Path.home()
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", HOME / ".config"))
+SHARE = Path(
+    os.environ.get(
+        "LABWC_Q4OS_SHARE",
+        Path(os.environ.get("XDG_DATA_HOME", HOME / ".local/share")) / "labwc-q4os",
+    )
+)
+SERVICE = "zramswap.service"
+ZRAM_DIR = Path("/sys/block/zram0")
+ZRAM_CONFIG = Path("/etc/default/zramswap")
+ZRAM_CONFIG_TEXT = (
+    "# Generato da labwc-q4os — https://github.com/reverseloop-dev/labwc-q4os\n"
+    "ALGO=zstd\n"
+    "PERCENT=50\n"
+    "PRIORITY=100\n"
+)
+
+
+# ---------------------------------------------------------------------------
+# Raccolta dati
+# ---------------------------------------------------------------------------
+def read_text(path: Path, default: str = "") -> str:
+    try:
+        return path.read_text(encoding="utf-8", errors="replace").strip()
+    except OSError:
+        return default
+
+
+def read_int(path: Path, default: int = 0) -> int:
+    value = read_text(path)
+    try:
+        return int(value.split()[0])
+    except (ValueError, IndexError):
+        return default
+
+
+def parse_theme() -> dict[str, str]:
+    theme = "nordic-cobalt"
+    try:
+        theme = (CONFIG / "labwc" / "theme").read_text(encoding="utf-8").strip() or theme
+    except OSError:
+        pass
+
+    colors = {
+        "BG": "070d1a",
+        "BG_ALT": "0f172a",
+        "SURFACE": "1e293b",
+        "SURFACE_ALT": "273449",
+        "ACCENT": "3b82f6",
+        "ACCENT_SOFT": "60a5fa",
+        "FG": "e2e8f0",
+        "FG_MUTED": "94a3b8",
+        "BORDER": "334155",
+        "DANGER": "f87171",
+        "WARNING": "fbbf24",
+    }
+    path = SHARE / "themes" / theme / "theme.conf"
+    if path.is_file():
+        try:
+            for raw in path.read_text(encoding="utf-8").splitlines():
+                line = raw.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if key in colors and value:
+                    colors[key] = value.lstrip("#")
+        except OSError:
+            pass
+    return colors
+
+
+def meminfo() -> tuple[int, int]:
+    total = available = 0
+    try:
+        for line in Path("/proc/meminfo").read_text(encoding="utf-8").splitlines():
+            key, _, rest = line.partition(":")
+            value = rest.strip().split()
+            if not value:
+                continue
+            try:
+                kib = int(value[0])
+            except ValueError:
+                continue
+            if key == "MemTotal":
+                total = kib
+            elif key == "MemAvailable":
+                available = kib
+    except OSError:
+        pass
+    return total, available
+
+
+def swap_info() -> tuple[int, int]:
+    """Restituisce (usato, totale) in byte per /dev/zram0."""
+    try:
+        lines = Path("/proc/swaps").read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return 0, 0
+    for line in lines[1:]:
+        fields = line.split()
+        if len(fields) >= 4 and fields[0] == "/dev/zram0":
+            try:
+                return int(fields[3]) * 1024, int(fields[2]) * 1024
+            except ValueError:
+                continue
+    return 0, 0
+
+
+def service_state() -> tuple[str, str, bool]:
+    """(active, enabled, systemd_disponibile)."""
+    systemctl = shutil.which("systemctl")
+    if not systemctl:
+        return "unknown", "unknown", False
+    try:
+        result = subprocess.run(
+            [systemctl, "show", SERVICE, "-p", "ActiveState", "-p", "UnitFileState", "--value"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+        values = [v.strip() for v in result.stdout.splitlines() if v.strip()]
+        active = values[0] if len(values) > 0 else "unknown"
+        enabled = values[1] if len(values) > 1 else "unknown"
+        return active, enabled, True
+    except (OSError, subprocess.SubprocessError):
+        return "unknown", "unknown", False
+
+
+def zram_info() -> dict:
+    total_ram, available_ram = meminfo()
+    swap_used, swap_total = swap_info()
+    active = ZRAM_DIR.is_dir()
+
+    data: dict = {
+        "active": active,
+        "device": "/dev/zram0" if active else "—",
+        "algorithm": "—",
+        "disksize": 0,
+        "orig": 0,
+        "compr": 0,
+        "mem_used": 0,
+        "swap_used": swap_used,
+        "swap_total": swap_total,
+        "ratio": 0.0,
+        "ram_total": total_ram * 1024,
+        "ram_available": available_ram * 1024,
+        "ram_used_pct": ((total_ram - available_ram) / total_ram * 100.0) if total_ram else 0.0,
+        "zram_used_pct": (swap_used / swap_total * 100.0) if swap_total else 0.0,
+        "swap_used_pct": (swap_used / swap_total * 100.0) if swap_total else 0.0,
+        "swappiness": read_int(Path("/proc/sys/vm/swappiness"), -1),
+        "vfs_cache_pressure": read_int(Path("/proc/sys/vm/vfs_cache_pressure"), -1),
+    }
+
+    if active:
+        disksize = read_int(ZRAM_DIR / "disksize")
+        data["disksize"] = disksize
+
+        algoritmi = read_text(ZRAM_DIR / "comp_algorithm")
+        for token in algoritmi.split():
+            if token.startswith("[") and token.endswith("]"):
+                data["algorithm"] = token[1:-1]
+                break
+        if data["algorithm"] == "—" and algoritmi:
+            data["algorithm"] = algoritmi.split()[0]
+
+        mm = ZRAM_DIR / "mm_stat"
+        if mm.is_file():
+            values = read_text(mm).split()
+            if len(values) >= 3:
+                try:
+                    data["orig"] = int(values[0])
+                    data["compr"] = int(values[1])
+                    data["mem_used"] = int(values[2])
+                except ValueError:
+                    pass
+        else:
+            zramctl = shutil.which("zramctl")
+            if zramctl:
+                try:
+                    result = subprocess.run(
+                        [zramctl, "--noheadings", "--bytes", "--output", "DATA,COMPR,MEM-USED", "/dev/zram0"],
+                        capture_output=True,
+                        text=True,
+                        timeout=2,
+                        check=False,
+                    )
+                    values = result.stdout.split()
+                    if len(values) >= 3:
+                        data["orig"], data["compr"], data["mem_used"] = map(int, values[:3])
+                except (OSError, subprocess.SubprocessError, ValueError):
+                    pass
+
+        if data["compr"] > 0:
+            data["ratio"] = data["orig"] / data["compr"]
+        if data["swap_total"] > 0:
+            data["zram_used_pct"] = min(100.0, data["swap_used"] / data["swap_total"] * 100.0)
+
+    active_state, enabled_state, systemd_ok = service_state()
+    data["service_active"] = active_state
+    data["service_enabled"] = enabled_state
+    data["systemd"] = systemd_ok
+    data["installed"] = shutil.which("zramctl") is not None and (
+        Path("/usr/sbin/zramswap").exists()
+        or Path("/usr/bin/zramswap").exists()
+        or Path("/usr/lib/systemd/system/zramswap.service").exists()
+        or Path("/lib/systemd/system/zramswap.service").exists()
+    )
+    return data
+
+
+def fmt_bytes(value: int) -> str:
+    units = ("B", "KiB", "MiB", "GiB", "TiB")
+    number = float(value)
+    for unit in units:
+        if number < 1024 or unit == units[-1]:
+            if unit == "B":
+                return f"{int(number)} {unit}"
+            return f"{number:.1f} {unit}"
+        number /= 1024
+    return f"{value} B"
+
+
+def status_text() -> str:
+    info = zram_info()
+    active = "attivo" if info["active"] else "non attivo"
+    enabled = info["service_enabled"]
+    enabled_it = {"enabled": "si", "disabled": "no", "unknown": "n/d"}.get(enabled, enabled)
+    ratio = f"{info['ratio']:.2f}x" if info["ratio"] else "n/d"
+    lines = [
+        "ZRAM — MEMORIA COMPRESSA",
+        "========================",
+        f"Stato:                     {active}",
+        f"Avvio automatico:          {enabled_it}",
+        f"Dispositivo:               {info['device']}",
+        f"Algoritmo:                 {info['algorithm']}",
+        f"Dimensione:                {fmt_bytes(info['disksize'])}",
+        f"Dati originali:            {fmt_bytes(info['orig'])}",
+        f"Dati compressi:            {fmt_bytes(info['compr'])}",
+        f"Memoria RAM usata da zram: {fmt_bytes(info['mem_used'])}",
+        f"Rapporto compressione:     {ratio}",
+        f"Swap su zram:              {fmt_bytes(info['swap_used'])} / {fmt_bytes(info['swap_total'])}",
+        f"RAM di sistema usata:      {info['ram_used_pct']:.0f}%",
+        f"vm.swappiness:             {info['swappiness']}",
+        f"vm.vfs_cache_pressure:     {info['vfs_cache_pressure']}",
+    ]
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Azioni privilegiate
+# ---------------------------------------------------------------------------
+def privileged() -> list[str] | None:
+    if os.geteuid() == 0:
+        return []
+    pkexec = shutil.which("pkexec")
+    if pkexec:
+        return [pkexec]
+    return None
+
+
+def run_action(enable: bool) -> tuple[bool, str]:
+    systemctl = shutil.which("systemctl")
+    if not systemctl:
+        return False, "systemctl non disponibile."
+    prefix = privileged()
+    if prefix is None:
+        return False, "pkexec non disponibile: installa polkit/pkexec."
+
+    unit_present = any(
+        Path(path).exists()
+        for path in (
+            "/usr/lib/systemd/system/zramswap.service",
+            "/lib/systemd/system/zramswap.service",
+            "/usr/sbin/zramswap",
+            "/usr/bin/zramswap",
+        )
+    )
+    if not unit_present:
+        return False, "zram-tools non installato: esegui di nuovo install.sh."
+
+    if enable and not ZRAM_CONFIG.exists():
+        try:
+            config_result = subprocess.run(
+                prefix + ["tee", str(ZRAM_CONFIG)],
+                input=ZRAM_CONFIG_TEXT,
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+            )
+            if config_result.returncode != 0:
+                return False, "impossibile creare /etc/default/zramswap."
+        except (OSError, subprocess.SubprocessError) as exc:
+            return False, f"Errore nella configurazione: {exc}"
+
+    command = (
+        [systemctl, "enable", "--now", SERVICE]
+        if enable
+        else [systemctl, "disable", "--now", SERVICE]
+    )
+    try:
+        result = subprocess.run(
+            prefix + command,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        return False, f"Errore di esecuzione: {exc}"
+
+    if result.returncode != 0:
+        message = (result.stderr or result.stdout or "operazione rifiutata").strip()
+        return False, message
+    return True, ""
+
+
+# ---------------------------------------------------------------------------
+# GUI GTK3
+# ---------------------------------------------------------------------------
+def run_gui() -> int:
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("Gdk", "3.0")
+        from gi.repository import Gdk, GLib, Gtk
+    except (ImportError, ValueError):
+        print(status_text())
+        print(
+            "\nGUI non disponibile: installa python3-gi e gir1.2-gtk-3.0.",
+            file=sys.stderr,
+        )
+        return 1
+
+    colors = parse_theme()
+    css = f"""
+    window {{
+        background-color: #{colors['BG']};
+        color: #{colors['FG']};
+    }}
+    .title {{
+        font-size: 25px;
+        font-weight: 700;
+        color: #{colors['FG']};
+    }}
+    .subtitle {{
+        color: #{colors['FG_MUTED']};
+        font-size: 12px;
+    }}
+    .card {{
+        background-color: #{colors['SURFACE']};
+        border: 1px solid #{colors['BORDER']};
+        border-radius: 14px;
+        padding: 12px;
+    }}
+    .card-title {{
+        color: #{colors['FG_MUTED']};
+        font-size: 11px;
+        font-weight: 600;
+    }}
+    .metric {{
+        color: #{colors['FG']};
+        font-size: 22px;
+        font-weight: 700;
+    }}
+    .metric-accent {{
+        color: #{colors['ACCENT_SOFT']};
+        font-size: 22px;
+        font-weight: 700;
+    }}
+    .pill-on {{
+        background-color: #{colors['ACCENT']};
+        color: #{colors['BG']};
+        border-radius: 999px;
+        padding: 3px 12px;
+        font-weight: 700;
+    }}
+    .pill-off {{
+        background-color: #{colors['SURFACE_ALT']};
+        color: #{colors['FG_MUTED']};
+        border-radius: 999px;
+        padding: 3px 12px;
+        font-weight: 700;
+    }}
+    progressbar trough {{
+        background-color: #{colors['BG_ALT']};
+        border-radius: 6px;
+        min-height: 9px;
+        border: none;
+    }}
+    progressbar progress {{
+        background-color: #{colors['ACCENT']};
+        border-radius: 6px;
+        min-height: 9px;
+    }}
+    button {{
+        background-color: #{colors['SURFACE_ALT']};
+        color: #{colors['FG']};
+        border: 1px solid #{colors['BORDER']};
+        border-radius: 10px;
+        padding: 8px 16px;
+        font-weight: 600;
+    }}
+    button:hover {{
+        border-color: #{colors['ACCENT']};
+    }}
+    button.suggested {{
+        background-color: #{colors['ACCENT']};
+        color: #{colors['BG']};
+        border-color: #{colors['ACCENT']};
+    }}
+    button.destructive {{
+        background-color: #{colors['DANGER']};
+        color: #{colors['BG']};
+        border-color: #{colors['DANGER']};
+    }}
+    button:disabled {{
+        opacity: 0.45;
+    }}
+    .footer {{
+        color: #{colors['FG_MUTED']};
+        font-size: 11px;
+    }}
+    .detail-key {{
+        color: #{colors['FG_MUTED']};
+        font-size: 11px;
+    }}
+    .detail-value {{
+        color: #{colors['FG']};
+        font-size: 12px;
+        font-weight: 600;
+    }}
+    """
+
+    def rgb(value: str) -> tuple[float, float, float]:
+        value = value.lstrip("#")
+        return tuple(int(value[i : i + 2], 16) / 255 for i in (0, 2, 4))  # type: ignore[return-value]
+
+    class Sparkline(Gtk.DrawingArea):
+        def __init__(self) -> None:
+            super().__init__()
+            self.history: deque[float] = deque(maxlen=90)
+            self.set_size_request(-1, 48)
+            self.connect("draw", self.draw)
+
+        def push(self, value: float) -> None:
+            self.history.append(max(0.0, min(100.0, value)))
+            self.queue_draw()
+
+        def draw(self, _widget, cr) -> bool:
+            width = self.get_allocated_width()
+            height = self.get_allocated_height()
+            cr.set_source_rgba(*rgb(colors["BG_ALT"]), 0.55)
+            cr.rectangle(0, 0, width, height)
+            cr.fill()
+
+            cr.set_line_width(1)
+            cr.set_source_rgba(*rgb(colors["BORDER"]), 0.55)
+            for part in (0.25, 0.5, 0.75):
+                y = height * part
+                cr.move_to(0, y)
+                cr.line_to(width, y)
+                cr.stroke()
+
+            if len(self.history) < 2:
+                return False
+
+            points = list(self.history)
+            step = width / max(1, len(points) - 1)
+            coords = [
+                (i * step, height - (value / 100.0) * (height - 6) - 3)
+                for i, value in enumerate(points)
+            ]
+
+            cr.move_to(coords[0][0], height)
+            for x, y in coords:
+                cr.line_to(x, y)
+            cr.line_to(coords[-1][0], height)
+            cr.close_path()
+            cr.set_source_rgba(*rgb(colors["ACCENT"]), 0.16)
+            cr.fill()
+
+            cr.move_to(*coords[0])
+            for x, y in coords[1:]:
+                cr.line_to(x, y)
+            cr.set_line_width(2.0)
+            cr.set_source_rgba(*rgb(colors["ACCENT_SOFT"]), 0.95)
+            cr.stroke()
+            return False
+
+    class ZramWindow(Gtk.Window):
+        def __init__(self) -> None:
+            super().__init__(title="ZRAM — Memoria compressa")
+            self.set_default_size(840, 620)
+            self.set_border_width(14)
+            self.set_icon_name("utilities-system-monitor")
+            self.set_position(Gtk.WindowPosition.CENTER)
+            self.connect("destroy", Gtk.main_quit)
+            self.busy = False
+
+            provider = Gtk.CssProvider()
+            provider.load_from_data(css.encode("utf-8"))
+            screen = Gdk.Screen.get_default()
+            if screen is not None:
+                Gtk.StyleContext.add_provider_for_screen(
+                    screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+                )
+
+            outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+            self.add(outer)
+
+            header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+            titles = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            title = Gtk.Label(label="ZRAM — memoria compressa", xalign=0)
+            title.get_style_context().add_class("title")
+            subtitle = Gtk.Label(
+                label="Stato, compressione e ottimizzazione della RAM in tempo reale",
+                xalign=0,
+            )
+            subtitle.get_style_context().add_class("subtitle")
+            titles.pack_start(title, False, False, 0)
+            titles.pack_start(subtitle, False, False, 0)
+            header.pack_start(titles, True, True, 0)
+
+            self.status = Gtk.Label(label="…")
+            self.status.get_style_context().add_class("pill-off")
+            header.pack_end(self.status, False, False, 0)
+            outer.pack_start(header, False, False, 0)
+
+            grid = Gtk.Grid(column_spacing=12, row_spacing=12, column_homogeneous=True)
+            outer.pack_start(grid, False, False, 0)
+
+            self.ram_value, self.ram_bar, self.ram_sub = self.metric_card(
+                grid, 0, 0, "RAM DI SISTEMA", "—", "—"
+            )
+            self.zram_value, self.zram_bar, self.zram_sub = self.metric_card(
+                grid, 1, 0, "SWAP SU ZRAM", "—", "—"
+            )
+            self.ratio_value, self.ratio_bar, self.ratio_sub = self.metric_card(
+                grid, 0, 1, "COMPRESSIONE", "—", "—"
+            )
+            self.mem_value, self.mem_bar, self.mem_sub = self.metric_card(
+                grid, 1, 1, "RAM USATA DA ZRAM", "—", "—"
+            )
+
+            spark_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+            spark_card.get_style_context().add_class("card")
+            spark_title = Gtk.Label(label="ANDAMENTO OCCUPAZIONE ZRAM (ultimi 3 minuti)", xalign=0)
+            spark_title.get_style_context().add_class("card-title")
+            self.sparkline = Sparkline()
+            spark_card.pack_start(spark_title, False, False, 0)
+            spark_card.pack_start(self.sparkline, False, False, 0)
+            outer.pack_start(spark_card, False, False, 0)
+
+            details = Gtk.Grid(column_spacing=18, row_spacing=8, column_homogeneous=True)
+            details.get_style_context().add_class("card")
+            outer.pack_start(details, False, False, 0)
+
+            self.details: dict[str, Gtk.Label] = {}
+            keys = [
+                ("device", "Dispositivo"),
+                ("algorithm", "Algoritmo"),
+                ("disksize", "Dimensione"),
+                ("mem_used", "RAM occupata"),
+                ("ratio", "Rapporto"),
+                ("swappiness", "vm.swappiness"),
+                ("service", "Servizio"),
+                ("enabled", "Avvio automatico"),
+            ]
+            for index, (key, label) in enumerate(keys):
+                row, col = divmod(index, 4)
+                key_label = Gtk.Label(label=label, xalign=0)
+                key_label.get_style_context().add_class("detail-key")
+                value_label = Gtk.Label(label="—", xalign=0)
+                value_label.get_style_context().add_class("detail-value")
+                box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+                box.pack_start(key_label, False, False, 0)
+                box.pack_start(value_label, False, False, 0)
+                details.attach(box, col, row * 2, 1, 1)
+                self.details[key] = value_label
+
+            buttons = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            buttons.set_halign(Gtk.Align.END)
+            self.enable_button = Gtk.Button(label="Attiva zram")
+            self.enable_button.get_style_context().add_class("suggested")
+            self.enable_button.connect("clicked", self.on_enable)
+            self.disable_button = Gtk.Button(label="Disattiva zram")
+            self.disable_button.get_style_context().add_class("destructive")
+            self.disable_button.connect("clicked", self.on_disable)
+            refresh_button = Gtk.Button(label="Aggiorna")
+            refresh_button.connect("clicked", lambda _b: self.refresh())
+            close_button = Gtk.Button(label="Chiudi")
+            close_button.connect("clicked", lambda _b: self.destroy())
+
+            buttons.pack_start(self.enable_button, False, False, 0)
+            buttons.pack_start(self.disable_button, False, False, 0)
+            buttons.pack_start(refresh_button, False, False, 0)
+            buttons.pack_start(close_button, False, False, 0)
+            outer.pack_end(buttons, False, False, 0)
+
+            footer = Gtk.Label(
+                label="Le operazioni di attivazione richiedono i privilegi di amministratore (pkexec).",
+                xalign=0,
+            )
+            footer.get_style_context().add_class("footer")
+            outer.pack_end(footer, False, False, 0)
+
+            self.refresh()
+            GLib.timeout_add_seconds(2, self.refresh)
+
+        def metric_card(self, grid, col, row, title, value, sub):
+            card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+            card.get_style_context().add_class("card")
+            title_label = Gtk.Label(label=title, xalign=0)
+            title_label.get_style_context().add_class("card-title")
+            value_label = Gtk.Label(label=value, xalign=0)
+            value_label.get_style_context().add_class("metric")
+            sub_label = Gtk.Label(label=sub, xalign=0)
+            sub_label.get_style_context().add_class("subtitle")
+            bar = Gtk.ProgressBar()
+            bar.set_show_text(False)
+            card.pack_start(title_label, False, False, 0)
+            card.pack_start(value_label, False, False, 0)
+            card.pack_start(sub_label, False, False, 0)
+            card.pack_start(bar, False, False, 0)
+            grid.attach(card, col, row, 1, 1)
+            return value_label, bar, sub_label
+
+        def set_pill(self, text: str, active: bool) -> None:
+            context = self.status.get_style_context()
+            context.remove_class("pill-on")
+            context.remove_class("pill-off")
+            context.add_class("pill-on" if active else "pill-off")
+            self.status.set_text(text)
+
+        def refresh(self) -> bool:
+            info = zram_info()
+            active = info["active"]
+            self.set_pill("● ATTIVO" if active else "○ NON ATTIVO", active)
+
+            ram_pct = info["ram_used_pct"]
+            ram_used = info["ram_total"] - info["ram_available"]
+            self.ram_value.set_text(f"{ram_pct:.0f}%")
+            self.ram_bar.set_fraction(min(1.0, ram_pct / 100.0))
+            self.ram_sub.set_text(f"{fmt_bytes(ram_used)} / {fmt_bytes(info['ram_total'])}")
+
+            if active:
+                zram_pct = info["zram_used_pct"]
+                self.zram_value.set_text(f"{zram_pct:.0f}%")
+                self.zram_bar.set_fraction(min(1.0, zram_pct / 100.0))
+                self.zram_sub.set_text(
+                    f"{fmt_bytes(info['swap_used'])} / {fmt_bytes(info['swap_total'])}"
+                )
+                self.ratio_value.set_text(f"{info['ratio']:.2f}x" if info["ratio"] else "n/d")
+                data_pct = (info["orig"] / info["disksize"] * 100.0) if info["disksize"] else 0.0
+                self.ratio_bar.set_fraction(min(1.0, data_pct / 100.0))
+                self.ratio_sub.set_text(
+                    f"{fmt_bytes(info['orig'])} → {fmt_bytes(info['compr'])}"
+                )
+                mem_pct = (info["mem_used"] / info["ram_total"] * 100.0) if info["ram_total"] else 0.0
+                self.mem_value.set_text(f"{mem_pct:.1f}% della RAM")
+                self.mem_bar.set_fraction(min(1.0, mem_pct / 100.0))
+                self.mem_sub.set_text(fmt_bytes(info["mem_used"]))
+            else:
+                for value, bar, sub, text in (
+                    (self.zram_value, self.zram_bar, self.zram_sub, "zram non attivo"),
+                    (self.ratio_value, self.ratio_bar, self.ratio_sub, "—"),
+                    (self.mem_value, self.mem_bar, self.mem_sub, "—"),
+                ):
+                    value.set_text("—")
+                    bar.set_fraction(0.0)
+                    sub.set_text(text)
+
+            self.sparkline.push(info["zram_used_pct"] if active else 0.0)
+            ratio = f"{info['ratio']:.2f}x" if info["ratio"] else "n/d"
+            self.details["device"].set_text(info["device"])
+            self.details["algorithm"].set_text(info["algorithm"])
+            self.details["disksize"].set_text(fmt_bytes(info["disksize"]))
+            self.details["mem_used"].set_text(fmt_bytes(info["mem_used"]))
+            self.details["ratio"].set_text(ratio)
+            self.details["swappiness"].set_text(str(info["swappiness"]))
+            service_label = {
+                "active": "attivo",
+                "inactive": "non attivo",
+                "failed": "errore",
+                "unknown": "n/d",
+            }.get(info["service_active"], info["service_active"])
+            enabled_label = {
+                "enabled": "si",
+                "disabled": "no",
+                "masked": "mascherato",
+                "unknown": "n/d",
+            }.get(info["service_enabled"], info["service_enabled"])
+            self.details["service"].set_text(service_label)
+            self.details["enabled"].set_text(enabled_label)
+
+            self.enable_button.set_sensitive(not active and not self.busy)
+            self.disable_button.set_sensitive(active and not self.busy)
+            return True
+
+        def confirm(self, title: str, message: str) -> bool:
+            dialog = Gtk.MessageDialog(
+                transient_for=self,
+                flags=0,
+                message_type=Gtk.MessageType.QUESTION,
+                buttons=Gtk.ButtonsType.OK_CANCEL,
+                text=title,
+            )
+            dialog.format_secondary_text(message)
+            response = dialog.run()
+            dialog.destroy()
+            return response == Gtk.ResponseType.OK
+
+        def do_action(self, enable: bool) -> None:
+            if self.busy:
+                return
+            if not self.confirm(
+                "Attivare zram?" if enable else "Disattivare zram?",
+                "Il servizio zramswap verrà "
+                + ("avviato e abilitato all'avvio." if enable else "fermato e disabilitato all'avvio."),
+            ):
+                return
+
+            self.busy = True
+            self.enable_button.set_sensitive(False)
+            self.disable_button.set_sensitive(False)
+            self.status.set_text("… operazione in corso")
+
+            def worker() -> None:
+                ok, error = run_action(enable)
+                GLib.idle_add(self.action_done, enable, ok, error)
+
+            threading.Thread(target=worker, daemon=True).start()
+
+        def action_done(self, enable: bool, ok: bool, error: str) -> bool:
+            self.busy = False
+            if not ok:
+                dialog = Gtk.MessageDialog(
+                    transient_for=self,
+                    flags=0,
+                    message_type=Gtk.MessageType.ERROR,
+                    buttons=Gtk.ButtonsType.CLOSE,
+                    text="Operazione non riuscita",
+                )
+                dialog.format_secondary_text(error)
+                dialog.run()
+                dialog.destroy()
+            self.refresh()
+            return False
+
+        def on_enable(self, _button) -> None:
+            self.do_action(True)
+
+        def on_disable(self, _button) -> None:
+            self.do_action(False)
+
+    Gtk.init([])
+    window = ZramWindow()
+    window.show_all()
+    Gtk.main()
+    return 0
+
+
+# ---------------------------------------------------------------------------
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Pannello zram per labwc-q4os")
+    parser.add_argument("--status", action="store_true", help="stampa lo stato e termina")
+    parser.add_argument("--gui", action="store_true", help="apre la finestra grafica (default)")
+    parser.add_argument("--enable", action="store_true", help="attiva e abilita zramswap")
+    parser.add_argument("--disable", action="store_true", help="ferma e disabilita zramswap")
+    args = parser.parse_args()
+
+    if args.status:
+        print(status_text())
+        return 0
+    if args.enable or args.disable:
+        ok, error = run_action(args.enable)
+        print(status_text())
+        if not ok:
+            print(f"\nErrore: {error}", file=sys.stderr)
+            return 1
+        return 0
+    return run_gui()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

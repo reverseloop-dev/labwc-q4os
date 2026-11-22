@@ -1,0 +1,181 @@
+/* ==========================================================================
+   Waybar - labwc-q4os
+   Colori generati dal tema attivo. Non modificare i token @@...@@:
+   vengono sostituiti da labwc-theme-apply.
+   ========================================================================== */
+
+* {
+    border: none;
+    border-radius: 0;
+    font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", "Font Awesome 6 Free",
+                 "Font Awesome 5 Free", "FontAwesome", "Inter", "Noto Sans", sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    min-height: 0;
+}
+
+window#waybar {
+    background: transparent;
+    color: #@@FG@@;
+}
+
+window#waybar.hidden {
+    opacity: 0.2;
+}
+
+.modules-left,
+.modules-center,
+.modules-right {
+    background: rgba(@@SURFACE_RGB@@, 0.86);
+    border: 1px solid rgba(@@BORDER_RGB@@, 0.85);
+    border-radius: 16px;
+    padding: 0 6px;
+}
+
+.modules-left {
+    padding-left: 8px;
+}
+
+.modules-right {
+    padding-right: 8px;
+}
+
+#custom-launcher {
+    color: #@@ACCENT_SOFT@@;
+    font-size: 15px;
+    padding: 0 10px 0 8px;
+}
+
+#custom-launcher:hover {
+    color: #@@FG@@;
+    background: rgba(@@ACCENT_RGB@@, 0.22);
+    border-radius: 10px;
+}
+
+#workspaces {
+    margin: 0 4px;
+}
+
+#workspaces button {
+    padding: 0 10px;
+    margin: 3px 2px;
+    border-radius: 10px;
+    color: #@@FG_MUTED@@;
+    background: transparent;
+    transition: all 0.18s ease;
+}
+
+#workspaces button:hover {
+    background: rgba(@@ACCENT_RGB@@, 0.22);
+    color: #@@FG@@;
+}
+
+#workspaces button.active {
+    background: #@@ACCENT@@;
+    color: #@@BG@@;
+    font-weight: 700;
+}
+
+#workspaces button.urgent {
+    background: #@@DANGER@@;
+    color: #@@BG@@;
+}
+
+#taskbar {
+    margin-left: 4px;
+}
+
+#taskbar button {
+    padding: 2px 7px;
+    margin: 2px 1px;
+    border-radius: 10px;
+    background: transparent;
+}
+
+#taskbar button:hover {
+    background: rgba(@@ACCENT_RGB@@, 0.20);
+}
+
+#taskbar button.active {
+    background: rgba(@@ACCENT_RGB@@, 0.34);
+}
+
+#clock {
+    color: #@@FG@@;
+    font-weight: 700;
+    padding: 0 14px;
+    letter-spacing: 0.4px;
+}
+
+#pulseaudio,
+#network,
+#battery,
+#cpu,
+#memory,
+#tray {
+    padding: 0 9px;
+    color: #@@FG@@;
+}
+
+#pulseaudio.muted,
+#network.disconnected {
+    color: #@@DANGER@@;
+}
+
+#battery.warning {
+    color: #@@WARNING@@;
+}
+
+#battery.critical:not(.charging) {
+    color: #@@DANGER@@;
+    animation: blink 1.2s steps(2, start) infinite;
+}
+
+#cpu {
+    color: #@@ACCENT_SOFT@@;
+}
+
+#memory {
+    color: #@@ACCENT_SOFT@@;
+}
+
+#custom-power {
+    color: #@@ACCENT_SOFT@@;
+    font-size: 15px;
+    padding: 0 12px 0 10px;
+}
+
+#custom-power:hover {
+    color: #@@DANGER@@;
+    background: rgba(@@DANGER_RGB@@, 0.16);
+    border-radius: 10px;
+}
+
+#tray {
+    margin-left: 2px;
+}
+
+#tray menu {
+    background: #@@SURFACE@@;
+    color: #@@FG@@;
+    border: 1px solid #@@ACCENT@@;
+    border-radius: 10px;
+}
+
+tooltip {
+    background: rgba(@@BG_RGB@@, 0.97);
+    border: 1px solid #@@ACCENT@@;
+    border-radius: 10px;
+}
+
+tooltip label {
+    color: #@@FG@@;
+    padding: 4px;
+}
+
+@keyframes blink {
+    to {
+        color: #@@BG@@;
+        background: #@@DANGER@@;
+    }
+}

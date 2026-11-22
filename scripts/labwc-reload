@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-reload - ricarica menu, decorazioni e Waybar senza riavviare la sessione
+# =============================================================================
+set -euo pipefail
+
+CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}"
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/labwc-q4os"
+mkdir -p "$STATE"
+
+if pgrep -x labwc >/dev/null 2>&1 && [ -n "${WAYLAND_DISPLAY:-}" ]; then
+    labwc --reconfigure >/dev/null 2>&1 || printf 'labwc --reconfigure ha restituito un errore\n' >&2
+fi
+
+if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v waybar >/dev/null 2>&1; then
+    pkill -x waybar >/dev/null 2>&1 || true
+    sleep 0.25
+    setsid -f waybar -c "$CONFIG/waybar/config.jsonc" -s "$CONFIG/waybar/style.css" \
+        >>"$STATE/session.log" 2>&1 || true
+fi
+
+if pgrep -x mako >/dev/null 2>&1 && command -v makoctl >/dev/null 2>&1; then
+    makoctl reload >/dev/null 2>&1 || true
+fi
+
+if command -v notify-send >/dev/null 2>&1 && [ -n "${WAYLAND_DISPLAY:-}" ]; then
+    notify-send -a "Labwc" "Desktop ricaricato" "Menu, temi e Waybar aggiornati" || true
+fi
+
+printf 'Menu e desktop ricaricati.\n'

@@ -1,0 +1,30 @@
+# Fuzzel - labwc-q4os (colori generati dal tema attivo)
+[main]
+font=Inter:size=12
+dpi-aware=no
+prompt=  Cerca  >
+icons-enabled=yes
+terminal=foot
+lines=12
+width=52
+horizontal-pad=22
+vertical-pad=16
+inner-pad=8
+layer=overlay
+anchor=center
+
+[colors]
+background=@@SURFACE@@f2
+text=@@FG@@ff
+prompt=@@ACCENT_SOFT@@ff
+placeholder=@@FG_MUTED@@ff
+input=@@FG@@ff
+match=@@ACCENT_SOFT@@ff
+selection=@@ACCENT@@ff
+selection-text=@@BG@@ff
+selection-match=@@FG@@ff
+border=@@ACCENT@@cc
+
+[border]
+width=2
+radius=16
