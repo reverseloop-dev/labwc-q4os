@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-desktop - seleziona un desktop 1-4 tramite wtype
+# =============================================================================
+set -uo pipefail
+
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/labwc-q4os"
+mkdir -p "$STATE"
+number="${1:-1}"
+
+case "$number" in
+    1|2|3|4) ;;
+    *)
+        printf 'Uso: labwc-desktop {1|2|3|4}\n' >&2
+        exit 2
+        ;;
+esac
+
+# Il desktop viene dichiarato solo dopo un cambio reale: Waybar non deve
+# mostrare un numero che l'utente non ha effettivamente selezionato.
+if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v wtype >/dev/null 2>&1; then
+    if wtype -M logo -P "$number" -p "$number" -m logo >/dev/null 2>&1; then
+        printf '%s\n' "$number" > "$STATE/desktop"
+        exit 0
+    fi
+fi
+
+if command -v notify-send >/dev/null 2>&1; then
+    notify-send -a "Labwc" "Desktop $number" "Usa Super+$number se il cambio automatico non è disponibile." >/dev/null 2>&1 || true
+fi
+exit 1

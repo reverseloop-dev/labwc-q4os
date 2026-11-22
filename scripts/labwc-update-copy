@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 #  labwc-update-copy - copia negli appunti il comando di aggiornamento
-#  Richiamato dal click sulla notifica Mako.
+#  Usato dal pannello aggiornamenti (bottone Copia comando).
 # =============================================================================
 set -uo pipefail
 

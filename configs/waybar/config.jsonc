@@ -10,6 +10,7 @@
     "exclusive": true,
     "modules-left": [
         "custom/launcher",
+        "custom/desktop",
         "wlr/taskbar"
     ],
     "modules-center": [
@@ -24,6 +25,15 @@
         "memory",
         "custom/power"
     ],
+    "custom/desktop": {
+        "exec": "sh -c 'exec $HOME/.local/bin/labwc-desktop-status'",
+        "interval": 2,
+        "format": "{}",
+        "tooltip": true,
+        "tooltip-format": "Desktop 1–4 · click per selezionare",
+        "on-click": "sh -c 'exec $HOME/.local/bin/labwc-desktop-menu'",
+        "on-click-right": "sh -c 'exec $HOME/.local/bin/labwc-desktop-menu'"
+    },
     "custom/launcher": {
         "format": "\uf0c9",
         "tooltip": true,

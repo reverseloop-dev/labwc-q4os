@@ -179,10 +179,16 @@ class AppManager:
         .app-comment {{ font-size: 11px; color: #{c['FG_MUTED']}; }}
         .category {{ color: #{c['ACCENT_SOFT']}; font-size: 11px; font-weight: 600; }}
         .favorite {{ color: #{c['ACCENT_SOFT']}; font-size: 15px; }}
-        button {{ background-color: #{c['SURFACE_ALT']}; color: #{c['FG']};
-                  border: 1px solid #{c['BORDER']}; border-radius: 9px;
-                  padding: 7px 14px; font-weight: 600; }}
-        button:hover {{ border-color: #{c['ACCENT']}; }}
+        button {{ background-image: none; background-color: #{c['SURFACE_ALT']};
+                  color: #{c['FG']}; border: 1px solid #{c['BORDER']};
+                  border-radius: 9px; padding: 7px 14px; font-weight: 600; }}
+        button label {{ color: #{c['FG']}; }}
+        button:hover {{ background-image: none; border-color: #{c['ACCENT']}; }}
+        checkbutton {{ color: #{c['FG']}; }}
+        checkbutton check {{ background-image: none; background-color: #{c['SURFACE_ALT']};
+                             border: 1px solid #{c['BORDER']}; }}
+        checkbutton check:checked {{ background-image: none; background-color: #{c['ACCENT']}; }}
+        combobox, combobox button {{ background-image: none; color: #{c['FG']}; }}
         .footer {{ color: #{c['FG_MUTED']}; font-size: 11px; }}
         menu {{ background-color: #{c['SURFACE']}; color: #{c['FG']};
                 border: 1px solid #{c['BORDER']}; padding: 4px; }}

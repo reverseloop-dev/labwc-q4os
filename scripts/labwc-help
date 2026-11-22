@@ -38,6 +38,13 @@ if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v zenity >/dev/null 2>&1; then
     fi
 fi
 
+if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v terminator >/dev/null 2>&1; then
+    if command -v less >/dev/null 2>&1; then
+        exec terminator -x less -R "$VIEW"
+    fi
+    exec terminator -x sh -c 'cat "$1"; printf "\nPremi Invio per chiudere..."; read -r _' sh "$VIEW"
+fi
+
 if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v foot >/dev/null 2>&1; then
     if command -v less >/dev/null 2>&1; then
         exec foot -T "Labwc — Aiuto e sistema" -e less -R "$VIEW"

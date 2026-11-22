@@ -86,7 +86,7 @@
 
     <!-- Launcher e terminale -->
     <keybind key="W-Return">
-      <action name="Execute" command="foot" />
+      <action name="Execute" command="terminator" />
     </keybind>
     <keybind key="W-d">
       <action name="Execute" command="fuzzel" />
@@ -140,10 +140,10 @@
     </keybind>
 
     <!-- Desktop virtuali -->
-    <keybind key="W-1"><action name="GoToDesktop" to="1" wrap="yes" /></keybind>
-    <keybind key="W-2"><action name="GoToDesktop" to="2" wrap="yes" /></keybind>
-    <keybind key="W-3"><action name="GoToDesktop" to="3" wrap="yes" /></keybind>
-    <keybind key="W-4"><action name="GoToDesktop" to="4" wrap="yes" /></keybind>
+    <keybind key="W-1"><action name="Execute" command="@@HOME@@/.local/bin/labwc-desktop-state 1" /><action name="GoToDesktop" to="1" wrap="yes" /></keybind>
+    <keybind key="W-2"><action name="Execute" command="@@HOME@@/.local/bin/labwc-desktop-state 2" /><action name="GoToDesktop" to="2" wrap="yes" /></keybind>
+    <keybind key="W-3"><action name="Execute" command="@@HOME@@/.local/bin/labwc-desktop-state 3" /><action name="GoToDesktop" to="3" wrap="yes" /></keybind>
+    <keybind key="W-4"><action name="Execute" command="@@HOME@@/.local/bin/labwc-desktop-state 4" /><action name="GoToDesktop" to="4" wrap="yes" /></keybind>
     <keybind key="W-S-1"><action name="SendToDesktop" to="1" follow="yes" /></keybind>
     <keybind key="W-S-2"><action name="SendToDesktop" to="2" follow="yes" /></keybind>
     <keybind key="W-S-3"><action name="SendToDesktop" to="3" follow="yes" /></keybind>
@@ -308,9 +308,11 @@
         <action name="ShowMenu" menu="root-menu" />
       </mousebind>
       <mousebind direction="Up" action="Scroll">
+        <action name="Execute" command="@@HOME@@/.local/bin/labwc-desktop-state prev" />
         <action name="GoToDesktop" to="left" wrap="yes" />
       </mousebind>
       <mousebind direction="Down" action="Scroll">
+        <action name="Execute" command="@@HOME@@/.local/bin/labwc-desktop-state next" />
         <action name="GoToDesktop" to="right" wrap="yes" />
       </mousebind>
     </context>

@@ -40,6 +40,20 @@ window#waybar.hidden {
     padding-right: 8px;
 }
 
+#custom-desktop {
+    color: #@@ACCENT_SOFT@@;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 0 10px;
+    letter-spacing: 0.5px;
+}
+
+#custom-desktop:hover {
+    color: #@@FG@@;
+    background: rgba(@@ACCENT_RGB@@, 0.18);
+    border-radius: 10px;
+}
+
 #custom-launcher {
     color: #@@ACCENT_SOFT@@;
     font-size: 15px;

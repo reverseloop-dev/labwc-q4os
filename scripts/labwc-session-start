@@ -84,12 +84,13 @@ if command -v cliphist >/dev/null 2>&1 && command -v wl-paste >/dev/null 2>&1; t
     fi
 fi
 
+# Stato iniziale desktop 1-4
+printf '1\n' > "$STATE/desktop"
+
 # Controllo aggiornamenti dello script (se abilitato)
 UPDATE_CHECK="$HOME/.local/bin/labwc-update-check"
 if [ -x "$UPDATE_CHECK" ]; then
-    enabled=1
-    [ -r "$CONFIG/labwc/update-check.enabled" ] && enabled="$(tr -d '[:space:]' < "$CONFIG/labwc/update-check.enabled")"
-    if [ "$enabled" != "0" ]; then
+    if "$UPDATE_CHECK" --is-enabled >/dev/null 2>&1; then
         setsid -f "$UPDATE_CHECK" --startup >>"$LOG" 2>&1 || true
         printf 'avviato: labwc-update-check\n'
     fi

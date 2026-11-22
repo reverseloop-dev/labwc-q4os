@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-desktop-status - indicatore 1-4 per Waybar
+# =============================================================================
+set -uo pipefail
+
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/labwc-q4os"
+current="$(cat "$STATE/desktop" 2>/dev/null || echo 1)"
+case "$current" in 1|2|3|4) ;; *) current=1 ;; esac
+
+output=""
+for n in 1 2 3 4; do
+    [ -n "$output" ] && output+="  "
+    if [ "$n" = "$current" ]; then
+        output+="[${n}]"
+    else
+        output+="${n}"
+    fi
+done
+printf '%s\n' "$output"

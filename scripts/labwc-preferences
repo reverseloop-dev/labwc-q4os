@@ -1,0 +1,310 @@
+#!/usr/bin/env python3
+"""
+labwc-preferences - preferenze grafiche della scrivania Labwc.
+
+Un'unica finestra per:
+  * cambiare tema (blu, rosso tenue, verde salvia);
+  * impostare la tastiera (it, us, it,us) e il layout di login;
+  * selezionare i desktop 1-4;
+  * aprire ZRAM, aggiornamenti, app nel menu, diagnostica e aiuto.
+"""
+
+from __future__ import annotations
+
+import os
+import shutil
+import subprocess
+import sys
+import threading
+from pathlib import Path
+
+HOME = Path.home()
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", HOME / ".config"))
+SHARE = Path(
+    os.environ.get(
+        "LABWC_Q4OS_SHARE",
+        Path(os.environ.get("XDG_DATA_HOME", HOME / ".local/share")) / "labwc-q4os",
+    )
+)
+BIN = HOME / ".local/bin"
+ENV_FILE = CONFIG / "labwc/environment"
+
+
+def colors() -> dict[str, str]:
+    theme = "nordic-cobalt"
+    try:
+        theme = (CONFIG / "labwc/theme").read_text(encoding="utf-8").strip() or theme
+    except OSError:
+        pass
+    result = {
+        "BG": "070d1a",
+        "SURFACE": "1e293b",
+        "SURFACE_ALT": "273449",
+        "ACCENT": "3b82f6",
+        "ACCENT_SOFT": "60a5fa",
+        "FG": "e2e8f0",
+        "FG_MUTED": "94a3b8",
+        "BORDER": "334155",
+    }
+    path = SHARE / "themes" / theme / "theme.conf"
+    if path.is_file():
+        try:
+            for raw in path.read_text(encoding="utf-8").splitlines():
+                line = raw.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'").lstrip("#")
+                if key in result and value:
+                    result[key] = value
+        except OSError:
+            pass
+    return result
+
+
+def env_value(key: str, default: str = "") -> str:
+    try:
+        for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
+            if line.startswith(key + "="):
+                return line.split("=", 1)[1].strip()
+    except OSError:
+        pass
+    return default
+
+
+class Preferences:
+    def __init__(self) -> None:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("Gdk", "3.0")
+        from gi.repository import Gdk, Gtk
+
+        self.Gtk = Gtk
+        c = colors()
+
+        provider = Gtk.CssProvider()
+        provider.load_from_data(self.css(c).encode("utf-8"))
+        screen = Gdk.Screen.get_default()
+        if screen is not None:
+            Gtk.StyleContext.add_provider_for_screen(
+                screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+            )
+
+        self.window = Gtk.Window(title="Preferenze della scrivania Labwc")
+        self.window.set_default_size(860, 700)
+        self.window.set_border_width(16)
+        self.window.set_position(Gtk.WindowPosition.CENTER)
+        self.window.set_icon_name("preferences-desktop")
+        self.window.connect("destroy", Gtk.main_quit)
+
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        self.window.add(outer)
+
+        title = Gtk.Label(label="Preferenze della scrivania Labwc", xalign=0)
+        title.get_style_context().add_class("title")
+        subtitle = Gtk.Label(
+            label="Tema, icone, tastiera, desktop e strumenti di Labwc",
+            xalign=0,
+        )
+        subtitle.get_style_context().add_class("subtitle")
+        outer.pack_start(title, False, False, 0)
+        outer.pack_start(subtitle, False, False, 0)
+
+        # Tema
+        theme_box = self.card("TEMA E COLORI", "Il cambio aggiorna finestre, Waybar, Fuzzel, icone e sfondo.")
+        themes = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        for theme_id, label, color in (
+            ("nordic-cobalt", "Blu — Nordic Cobalt", c["ACCENT"]),
+            ("muted-crimson", "Rosso — Muted Crimson", "c0565b"),
+            ("sage-emerald", "Verde — Sage Emerald", "4d9375"),
+        ):
+            button = Gtk.Button(label=label)
+            swatch = Gtk.Image.new_from_icon_name("color-select-symbolic", Gtk.IconSize.BUTTON)
+            button.set_image(swatch)
+            button.connect("clicked", lambda _b, tid=theme_id: self.apply_theme(tid))
+            themes.pack_start(button, True, True, 0)
+        theme_box.pack_start(themes, False, False, 0)
+        outer.pack_start(theme_box, False, False, 0)
+
+        # Tastiera
+        kb_box = self.card("TASTIERA E LOGIN", "Il layout di login viene applicato con localectl.")
+        kb_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.keyboard = Gtk.ComboBoxText()
+        for value in ("it", "us", "it,us"):
+            self.keyboard.append(value, value)
+        current = env_value("XKB_DEFAULT_LAYOUT", "it")
+        self.keyboard.set_active_id(current if current in ("it", "us", "it,us") else "it")
+        kb_row.pack_start(self.keyboard, False, False, 0)
+        kb_button = Gtk.Button(label="Applica tastiera")
+        kb_button.connect("clicked", self.on_keyboard)
+        kb_row.pack_start(kb_button, False, False, 0)
+        kb_box.pack_start(kb_row, False, False, 0)
+        outer.pack_start(kb_box, False, False, 0)
+
+        # Desktop
+        desk_box = self.card("DESKTOP 1–4", "Seleziona il desktop; Waybar mostra l'indicatore 1–4.")
+        desk_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        for n in range(1, 5):
+            b = Gtk.Button(label=str(n))
+            b.connect("clicked", lambda _b, num=n: self.desktop(num))
+            desk_row.pack_start(b, True, True, 0)
+        desk_box.pack_start(desk_row, False, False, 0)
+        outer.pack_start(desk_box, False, False, 0)
+
+        # Strumenti
+        tools = self.card("STRUMENTI", "Funzioni della scrivania e della sessione.")
+        tool_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        for label, command in (
+            ("ZRAM", BIN / "labwc-zram"),
+            ("Aggiornamenti", BIN / "labwc-update-gui"),
+            ("App nel menu", BIN / "labwc-app-manager"),
+            ("Aiuto", BIN / "labwc-help"),
+        ):
+            b = Gtk.Button(label=label)
+            b.connect("clicked", lambda _b, cmd=command: self.spawn(cmd))
+            tool_row.pack_start(b, True, True, 0)
+        tools.pack_start(tool_row, False, False, 0)
+        outer.pack_start(tools, False, False, 0)
+
+        self.status = Gtk.Label(label="", xalign=0)
+        self.status.get_style_context().add_class("status")
+        outer.pack_start(self.status, False, False, 0)
+
+        close = Gtk.Button(label="Chiudi")
+        close.set_halign(Gtk.Align.END)
+        close.connect("clicked", lambda _b: self.window.destroy())
+        outer.pack_end(close, False, False, 0)
+
+        self.window.show_all()
+
+    def css(self, c: dict[str, str]) -> str:
+        return f"""
+        window {{ background-color: #{c['BG']}; color: #{c['FG']}; }}
+        .title {{ font-size: 26px; font-weight: 700; }}
+        .subtitle {{ color: #{c['FG_MUTED']}; font-size: 12px; }}
+        .card {{ background-color: #{c['SURFACE']}; border: 1px solid #{c['BORDER']};
+                 border-radius: 14px; padding: 14px; }}
+        .card-title {{ color: #{c['ACCENT_SOFT']}; font-size: 11px;
+                       font-weight: 700; letter-spacing: 1px; }}
+        .card-hint {{ color: #{c['FG_MUTED']}; font-size: 11px; }}
+        .status {{ color: #{c['ACCENT_SOFT']}; font-size: 12px; font-weight: 600; }}
+        button {{ background-image: none; background-color: #{c['SURFACE_ALT']};
+                  color: #{c['FG']}; border: 1px solid #{c['BORDER']};
+                  border-radius: 9px; padding: 8px 14px; font-weight: 600; }}
+        button label {{ color: #{c['FG']}; }}
+        button:hover {{ background-image: none; border-color: #{c['ACCENT']}; }}
+        checkbutton {{ color: #{c['FG']}; }}
+        checkbutton check {{ background-image: none; background-color: #{c['SURFACE_ALT']};
+                             border: 1px solid #{c['BORDER']}; }}
+        checkbutton check:checked {{ background-image: none; background-color: #{c['ACCENT']}; }}
+        combobox, combobox button {{ background-image: none; color: #{c['FG']}; }}
+        """
+
+    def card(self, title: str, hint: str):
+        Gtk = self.Gtk
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        box.get_style_context().add_class("card")
+        t = Gtk.Label(label=title, xalign=0)
+        t.get_style_context().add_class("card-title")
+        h = Gtk.Label(label=hint, xalign=0)
+        h.set_line_wrap(True)
+        h.get_style_context().add_class("card-hint")
+        box.pack_start(t, False, False, 0)
+        box.pack_start(h, False, False, 0)
+        return box
+
+    def apply_theme(self, theme_id: str) -> None:
+        apply = BIN / "labwc-theme-apply"
+        if not apply.is_file():
+            self.status.set_text("labwc-theme-apply non trovato.")
+            return
+        self.status.set_text(f"Applicazione tema {theme_id}…")
+        try:
+            subprocess.run([str(apply), theme_id], capture_output=True, text=True, timeout=120, check=False)
+            self.status.set_text(f"Tema applicato: {theme_id}")
+        except (OSError, subprocess.SubprocessError) as exc:
+            self.status.set_text(f"Errore tema: {exc}")
+
+    def on_keyboard(self) -> None:
+        value = self.keyboard.get_active_id() or "it"
+        try:
+            lines = []
+            if ENV_FILE.exists():
+                lines = [
+                    line for line in ENV_FILE.read_text(encoding="utf-8").splitlines()
+                    if not line.startswith("XKB_DEFAULT_LAYOUT=")
+                    and not line.startswith("XKB_DEFAULT_OPTIONS=")
+                ]
+            lines.append(f"XKB_DEFAULT_LAYOUT={value}")
+            if "," in value:
+                lines.append("XKB_DEFAULT_OPTIONS=grp:alt_shift_toggle")
+            ENV_FILE.parent.mkdir(parents=True, exist_ok=True)
+            ENV_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        except OSError as exc:
+            self.status.set_text(f"Errore tastiera: {exc}")
+            return
+
+        primary = value.split(",", 1)[0]
+        self.status.set_text("Layout labwc aggiornato. Applico il login…")
+
+        def worker() -> None:
+            if shutil.which("pkexec") and shutil.which("localectl"):
+                subprocess.run(
+                    ["pkexec", "localectl", "set-keyboard-layout", primary],
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    check=False,
+                )
+            self.GLib_idle()
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def GLib_idle(self) -> None:
+        from gi.repository import GLib
+
+        GLib.idle_add(
+            lambda: self.status.set_text(
+                "Tastiera impostata. Riavvia la sessione per applicarla a labwc."
+            )
+            and False
+        )
+
+    def desktop(self, number: int) -> None:
+        script = BIN / "labwc-desktop"
+        if script.is_file():
+            subprocess.Popen([str(script), str(number)], start_new_session=True)
+            self.status.set_text(f"Desktop {number} selezionato.")
+        else:
+            self.status.set_text("labwc-desktop non trovato.")
+
+    def spawn(self, command: Path) -> None:
+        if not command.is_file():
+            self.status.set_text(f"Comando non trovato: {command.name}")
+            return
+        subprocess.Popen([str(command)], start_new_session=True)
+        self.status.set_text(f"Aperto: {command.name}")
+
+    def run(self) -> int:
+        self.Gtk.main()
+        return 0
+
+
+def main() -> int:
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("Gdk", "3.0")
+        from gi.repository import Gtk
+    except (ImportError, ValueError) as exc:
+        print(f"GTK3/PyGObject non disponibile: {exc}", file=sys.stderr)
+        return 1
+    Gtk.init([])
+    return Preferences().run()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

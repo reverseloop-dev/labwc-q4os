@@ -13,7 +13,7 @@ Questa guida e' sempre disponibile con:
 ---------------
 Super = tasto Windows / Logo / Command.
 
-  Super + Invio ......... Terminale (foot)
+  Super + Invio ......... Terminale (terminator)
   Super + D ............. Launcher Fuzzel
   Super + Spazio ........ Launcher Fuzzel (alternativo)
   Alt + F2 .............. Launcher Fuzzel (alternativo)
@@ -42,6 +42,10 @@ Super = tasto Windows / Logo / Command.
   Tasti multimediali .... Volume, mute, microfono, play/next/prev
   Tasti luminosita' ..... Luminosita' schermo (brightnessctl)
 
+Finestre:
+  • tre pulsanti classici ....... riduci a icona, ingrandisci, chiudi
+  • decorazioni ................. lato server labwc (GTK_CSD=0)
+
 Mouse:
   • Tasto destro sul desktop ....... menu completo labwc
   • Doppio clic sinistro sul desktop guida, scorciatoie e informazioni di sistema
@@ -67,6 +71,29 @@ Modalita' dmenu (per script):
 
 Configurazione:  ~/.config/fuzzel/fuzzel.ini
 Dopo una modifica, Fuzzel la applica alla prossima apertura.
+
+LINK DENTRO FUZZEL
+------------------
+Fuzzel mostra i collegamenti come normali voci .desktop. Per aggiungerne uno:
+  1. crea ~/.local/share/applications/mio-link.desktop
+  2. contenuto:
+       [Desktop Entry]
+       Type=Application
+       Name=Mio link
+       Comment=Sito web preferito
+       Exec=xdg-open https://example.com
+       Icon=web-browser
+       Terminal=false
+       Categories=Network;
+  3. esegui:
+       update-desktop-database ~/.local/share/applications
+  4. apri Fuzzel e cerca "Mio link".
+
+Per rimuoverlo:
+       rm ~/.local/share/applications/mio-link.desktop
+       update-desktop-database ~/.local/share/applications
+
+Lo stesso link compare anche nel menu del tasto destro nella categoria Internet.
 
 
 3. MENU DEL TASTO DESTRO
@@ -102,10 +129,23 @@ Le preferite sono salvate in:
 
 NON modificare menu.xml a mano: viene rigenerato automaticamente.
 Se vuoi comunque ispezionarlo:
-  foot -e less ~/.config/labwc/menu.xml
+  terminator -x less -R ~/.config/labwc/menu.xml
 
 "Ricarica menu e desktop" (Super + Shift + R) rilegge il menu,
 riapplica le decorazioni e riavvia Waybar.
+
+Preferenze della scrivania:
+  tasto destro > "Labwc & Desktop" > "Preferenze della scrivania Labwc"
+  • tema (blu / rosso / verde), icone e sfondo
+  • tastiera it / us / it,us
+  • desktop 1–4
+  • collegamenti a ZRAM, aggiornamenti, app e aiuto
+
+Desktop 1–4:
+  • indicatori in Waybar: [1] 2 3 4; click per selezionare
+  • Super + 1..4
+  • rotellina sul desktop
+  • menu Labwc & Desktop > Desktop 1–4
 
 
 4. TEMI E SFONDI
@@ -160,22 +200,22 @@ Sessione:
   ~/.config/wlogout/style.css ....... stile wlogout (opzionale)
 
 Esempi pratici:
-  foot -e nano ~/.config/labwc/rc.xml
+  terminator -x nano ~/.config/labwc/rc.xml
   xmllint --noout ~/.config/labwc/rc.xml   # verifica sintassi XML
   labwc --reconfigure                      # applica rc.xml e themerc-override
 
-  foot -e nano ~/.config/waybar/style.css
+  terminator -x nano ~/.config/waybar/style.css
   pkill waybar && waybar -c ~/.config/waybar/config.jsonc \
                            -s ~/.config/waybar/style.css &
   # oppure, piu' comodo: Super + Shift + R
 
-  foot -e nano ~/.config/fuzzel/fuzzel.ini   # vale dalla prossima apertura
+  terminator -x nano ~/.config/fuzzel/fuzzel.ini   # vale dalla prossima apertura
 
-  foot -e nano ~/.config/mako/config
+  terminator -x nano ~/.config/mako/config
   makoctl reload
 
-  foot -e nano ~/.config/labwc/autostart     # vale dal prossimo login
-  foot -e nano ~/.config/labwc/environment   # vale dal prossimo login
+  terminator -x nano ~/.config/labwc/autostart     # vale dal prossimo login
+  terminator -x nano ~/.config/labwc/environment   # vale dal prossimo login
 
 Aggiungere una scorciatoia personalizzata in rc.xml:
   <keybind key="W-b">
@@ -226,6 +266,8 @@ Scegli "Labwc" dal menu del display manager (SDDM/TDM) al login.
 La sessione Q4OS precedente (Trinity/Plasma) resta disponibile.
 Se TDM non elenca Labwc (TDM non supporta Wayland), installa SDDM:
   sudo apt install sddm
+Il tema SDDM "labwc-q4os" è moderno, colorato e mostra utente, sessione
+TDM/Labwc preselezionata, tastiera IT e pulsanti di spegnimento.
 oppure avvia da TTY: dbus-run-session labwc
 
 
@@ -260,10 +302,10 @@ Ricarica senza uscire:
   Super + Shift + R
 
 
-9. CONTROLLI DI SISTEMA — ZRAM
+9. CONTROLLI DI SISTEMA — ZRAM E AGGIORNAMENTI
 ---------------------------
 zram comprime la RAM e la usa come swap veloce. Si gestisce dal menu:
-  tasto destro > "Labwc & Desktop" > "Controlli di sistema (ZRAM, aggiornamenti)"
+  tasto destro > "Labwc & Desktop" > "ZRAM — memoria compressa"
 
 La finestra mostra in tempo reale:
   • stato attivo / non attivo e avvio automatico;
@@ -272,20 +314,6 @@ La finestra mostra in tempo reale:
   • rapporto di compressione e RAM occupata da zram;
   • grafico dell'occupazione negli ultimi 3 minuti;
   • algoritmo, dimensione, servizio e vm.swappiness.
-
-Aggiornamenti:
-  • check "Aggiornamenti" .. abilita/disabilita il controllo all'avvio
-  • "Controlla ora" ........ confronta la versione locale con GitHub
-  • se online c'e' una versione nuova, arriva una notifica popup
-  • cliccando la notifica il comando di aggiornamento viene copiato negli
-    appunti e un avviso ricorda di incollarlo nel terminale
-  • il controllo attende la rete e non installa nulla da solo
-
-Da terminale:
-  labwc-update-check --status
-  labwc-update-check --once
-  labwc-update-check --enable
-  labwc-update-check --disable
 
 Pulsanti:
   • "Attiva zram" ....... avvia e abilita zramswap all'avvio (pkexec)
@@ -301,6 +329,26 @@ Da terminale:
 Configurazione: /etc/default/zramswap (ALGO=zstd, PERCENT=50).
 Con zram attivo e' consigliato vm.swappiness=100; senza zram vm.swappiness=10.
 Lo script di installazione imposta questi valori se accetti l'ottimizzazione.
+
+AGGIORNAMENTI SCRIPT (pannello separato da ZRAM):
+  tasto destro > "Labwc & Desktop" > "Controlli aggiornamenti script labwc-q4os"
+  • l'utente normale puo' disattivare subito il controllo
+  • per riattivarlo serve la password di root (pkexec)
+  • intervallo predefinito 6 ore, modificabile da 1 a 24 ore
+  • "Controlla ora" confronta la versione locale con GitHub
+  • "Copia comando" copia il bootstrap negli appunti
+  • se online c'e' una versione nuova compare un popup persistente:
+      - "Aggiorna" apre Terminator col comando gia' compilato;
+        premi Invio per eseguire, Ctrl+C per annullare
+      - "Chiudi" chiude senza aggiornare
+  • il controllo attende la rete e non installa nulla da solo
+
+Da terminale:
+  labwc-update-check --status
+  labwc-update-check --once
+  labwc-update-check --enable    # chiede password root
+  labwc-update-check --disable   # disattivazione utente, senza password
+  labwc-update-check --set-interval 21600
 
 10. DIAGNOSTICA E RIPARAZIONE
 -----------------------------
@@ -324,7 +372,7 @@ Mostra:
   • link al repository;
   • sistema operativo, kernel, architettura, display manager;
   • sessione Wayland, tema attivo, uptime, zram, swappiness;
-  • versioni di labwc, Waybar, Fuzzel, Mako, foot e degli altri componenti;
+  • versioni di labwc, Waybar, Fuzzel, Mako, Terminator, foot e degli altri componenti;
   • stato dei processi labwc/Waybar/Mako/swaybg;
   • ultimi errori dal log di sessione.
 

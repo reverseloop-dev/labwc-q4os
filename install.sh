@@ -325,6 +325,7 @@ CORE_PKGS=(
     swaybg
     mako-notifier
     wl-clipboard
+    wtype
     grim
     slurp
     swaylock
@@ -336,6 +337,7 @@ CORE_PKGS=(
     brightnessctl
     foot
     foot-terminfo
+    terminator
     pcmanfm
     gvfs
     xwayland
@@ -347,6 +349,10 @@ CORE_PKGS=(
     python3-gi-cairo
     gir1.2-gtk-3.0
     libgtk-3-bin
+    qml6-module-qtquick
+    qml6-module-qtquick-controls
+    qml6-module-qtquick-layouts
+    qml6-module-qtquick-window
     pkexec
     zram-tools
     fonts-font-awesome
@@ -482,6 +488,8 @@ done
 backup_tree "$CONFIG/applications/labwc-zram.desktop" "config/applications/labwc-zram.desktop"
 backup_tree "$CONFIG/applications/labwc-doctor.desktop" "config/applications/labwc-doctor.desktop"
 backup_tree "$CONFIG/applications/labwc-app-manager.desktop" "config/applications/labwc-app-manager.desktop"
+backup_tree "$CONFIG/applications/labwc-update-gui.desktop" "config/applications/labwc-update-gui.desktop"
+backup_tree "$CONFIG/applications/labwc-preferences.desktop" "config/applications/labwc-preferences.desktop"
 backup_tree "$CONFIG/applications/labwc-sysinfo.desktop" "config/applications/labwc-sysinfo.desktop"
 
 configure_keyboard() {
@@ -563,6 +571,14 @@ for helper in \
     labwc-app-manager \
     labwc-update-check \
     labwc-update-copy \
+    labwc-update-popup \
+    labwc-update-run \
+    labwc-update-gui \
+    labwc-preferences \
+    labwc-desktop \
+    labwc-desktop-state \
+    labwc-desktop-status \
+    labwc-desktop-menu \
     labwc-power-menu \
     labwc-sysinfo \
     labwc-session-start
@@ -623,6 +639,28 @@ Terminal=false
 Categories=Documentation;
 Keywords=labwc;aiuto;scorciatoie;
 EOF
+cat > "$CONFIG/applications/labwc-update-gui.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Controlli aggiornamenti script labwc-q4os
+Comment=Controlla, abilita o disabilita gli avvisi di nuova versione
+Exec=$HOME/.local/bin/labwc-update-gui
+Icon=software-update-available
+Terminal=false
+Categories=Settings;System;
+Keywords=labwc;aggiornamenti;versione;update;
+EOF
+cat > "$CONFIG/applications/labwc-preferences.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Preferenze della scrivania Labwc
+Comment=Tema, icone, tastiera, desktop e strumenti Labwc
+Exec=$HOME/.local/bin/labwc-preferences
+Icon=preferences-desktop
+Terminal=false
+Categories=Settings;
+Keywords=labwc;preferenze;tema;tastiera;desktop;
+EOF
 cat > "$CONFIG/applications/labwc-app-manager.desktop" <<EOF
 [Desktop Entry]
 Type=Application
@@ -639,7 +677,7 @@ cat > "$CONFIG/applications/labwc-sysinfo.desktop" <<EOF
 Type=Application
 Name=Informazioni Labwc
 Comment=Versione script, applicazioni, stato sessione e link repository
-Exec=foot -H -e $HOME/.local/bin/labwc-sysinfo
+Exec=terminator -x $HOME/.local/bin/labwc-sysinfo
 Icon=help-about
 Terminal=false
 Categories=System;Documentation;
@@ -661,7 +699,7 @@ cat > "$CONFIG/applications/labwc-doctor.desktop" <<EOF
 Type=Application
 Name=Diagnostica Labwc
 Comment=Controlla e ripara configurazione, barra, menu e sessione Wayland
-Exec=foot -H -e $HOME/.local/bin/labwc-doctor --fix
+Exec=terminator -x $HOME/.local/bin/labwc-doctor --fix
 Icon=applications-system
 Terminal=false
 Categories=System;Settings;
@@ -673,6 +711,8 @@ chmod 0644 "$CONFIG/applications/labwc-theme-switcher.desktop" \
           "$CONFIG/applications/labwc-zram.desktop" \
           "$CONFIG/applications/labwc-doctor.desktop" \
           "$CONFIG/applications/labwc-app-manager.desktop" \
+          "$CONFIG/applications/labwc-update-gui.desktop" \
+          "$CONFIG/applications/labwc-preferences.desktop" \
           "$CONFIG/applications/labwc-sysinfo.desktop"
 
 # -----------------------------------------------------------------------------
@@ -698,6 +738,54 @@ ok "Menu pronto."
 # -----------------------------------------------------------------------------
 # Sessione Wayland nel display manager
 # -----------------------------------------------------------------------------
+install_sddm_theme() {
+    local theme_src="$REPO_DIR/configs/sddm/labwc-q4os"
+    local theme_dest="/usr/share/sddm/themes/labwc-q4os"
+    local state_file="/var/lib/sddm/state.conf"
+    local user_name="${USER:-$(id -un)}"
+
+    [ -d "$theme_src" ] || return 0
+
+    log "Installazione tema login SDDM moderno..."
+    sudo install -d -m 0755 /usr/share/sddm/themes "$theme_dest"
+    sudo cp -a "$theme_src/." "$theme_dest/"
+    sudo chmod -R a+rX "$theme_dest"
+    ok "Tema SDDM installato: $theme_dest"
+
+    sudo install -d -m 0755 /etc/sddm.conf.d
+    sudo tee /etc/sddm.conf.d/90-labwc-q4os.conf >/dev/null <<'EOF'
+# Generato da labwc-q4os — https://github.com/reverseloop-dev/labwc-q4os
+[General]
+DisplayServer=x11
+
+[Theme]
+Current=labwc-q4os
+
+[Users]
+RememberLastSession=true
+ReuseSession=true
+EOF
+
+    sudo install -d -m 0755 /var/lib/sddm
+    if [ ! -f "$state_file" ] || [ "$WANT_SDDM" -eq 1 ]; then
+        sudo tee "$state_file" >/dev/null <<EOF
+[Last]
+User=$user_name
+Session=labwc.desktop
+EOF
+        sudo chmod 0644 "$state_file"
+        ok "Sessione predefinita SDDM: Labwc"
+    elif [ "$DM_NAME" = "sddm" ]; then
+        if sudo grep -q '^Session=' "$state_file"; then
+            sudo sed -i 's|^Session=.*|Session=labwc.desktop|' "$state_file"
+        else
+            printf 'Session=labwc.desktop\n' | sudo tee -a "$state_file" >/dev/null
+        fi
+        sudo chmod 0644 "$state_file"
+        ok "Sessione SDDM predefinita aggiornata: Labwc"
+    fi
+}
+
 log "Registrazione sessione Labwc nel display manager..."
 session_tmp="$(mktemp)"
 cat > "$session_tmp" <<'EOF'
@@ -715,17 +803,28 @@ sudo install -m 0644 "$session_tmp" /usr/share/wayland-sessions/labwc.desktop
 rm -f "$session_tmp"
 ok "Sessione disponibile: /usr/share/wayland-sessions/labwc.desktop"
 
+install_sddm_theme
+
+# Helper root per l'attivazione del controllo aggiornamenti.
+log "Installazione helper aggiornamenti (richiede root per l'attivazione)..."
+sudo install -d -m 0755 /usr/local/libexec/labwc-q4os
+sudo install -m 0755 "$REPO_DIR/scripts/labwc-update-toggle" \
+    /usr/local/libexec/labwc-q4os/update-toggle
+sudo install -d -m 0755 /etc/labwc-q4os
+if [ ! -f /etc/labwc-q4os/update-check.enabled ]; then
+    printf '1\n' | sudo tee /etc/labwc-q4os/update-check.enabled >/dev/null
+    sudo chmod 0644 /etc/labwc-q4os/update-check.enabled
+fi
+if "$BIN/labwc-update-check" --is-enabled >/dev/null 2>&1; then
+    ok "Controllo aggiornamenti: attivo (disattivabile dall'utente, riattivazione con password root)."
+else
+    warn "Controllo aggiornamenti disattivato; riattivalo dal pannello con la password root."
+fi
+
 if [ "$WANT_SDDM" -eq 1 ]; then
     if command -v sddm >/dev/null 2>&1; then
         log "Configurazione di SDDM come display manager..."
-        sudo install -d -m 0755 /etc/sddm.conf.d /etc/X11
-        sudo tee /etc/sddm.conf.d/90-labwc-q4os.conf >/dev/null <<'EOF'
-# Generato da labwc-q4os — https://github.com/reverseloop-dev/labwc-q4os
-# Greeter su X11 (compatibile con i driver esistenti); le sessioni Wayland
-# vengono lette da /usr/share/wayland-sessions.
-[General]
-DisplayServer=x11
-EOF
+        sudo install -d -m 0755 /etc/X11
         if sudo systemctl enable sddm.service >/dev/null 2>&1; then
             if sudo ln -sf /usr/lib/systemd/system/sddm.service /etc/systemd/system/display-manager.service &&
                printf '/usr/bin/sddm\n' | sudo tee /etc/X11/default-display-manager >/dev/null; then
@@ -837,7 +936,7 @@ log "Verifica finale..."
 [ -f "$SHARE/VERSION" ] || die "VERSION mancante."
 [ -f "$SHARE/version-info" ] || die "version-info mancante."
 [ -r "${XDG_DATA_HOME:-$HOME/.local/share}/icons/labwc-q4os/index.theme" ] || die "icon theme labwc-q4os mancante."
-for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-doctor labwc-app-manager labwc-update-check labwc-update-copy labwc-power-menu labwc-sysinfo; do
+for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-doctor labwc-app-manager labwc-update-check labwc-update-copy labwc-update-popup labwc-update-run labwc-update-gui labwc-preferences labwc-desktop labwc-desktop-state labwc-desktop-status labwc-desktop-menu labwc-power-menu labwc-sysinfo; do
     [ -x "$BIN/$helper" ] || die "helper non eseguibile: $helper"
 done
 ok "Tutto in ordine."
@@ -874,7 +973,7 @@ ${C_BOLD}Prossimi passi${C_RESET}
 
 ${C_BOLD}Da ricordare${C_RESET}
   Super+D .............. Fuzzel (launcher)
-  Super+Invio .......... terminale foot
+  Super+Invio .......... terminale Terminator
   Tasto destro ......... menu completo + gestione app preferite
   Doppio clic sinistro . aiuto, scorciatoie e informazioni di sistema
   Tasto destro ......... ZRAM — memoria compressa (attiva/disattiva)

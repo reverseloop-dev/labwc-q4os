@@ -70,6 +70,36 @@ CATEGORY_ORDER = [
     "Altre applicazioni",
 ]
 
+# Voci di TDE/Trinity che aprirebbero impostazioni estranee a labwc.
+EXCLUDED_DESKTOP_IDS = {
+    "kcontrol",
+    "systemsettings",
+    "trinity-control-center",
+    "tde-systemsettings",
+    "desktop-settings",
+    "q4os-control-center",
+    "kcm_desktop",
+}
+EXCLUDED_NAMES = {
+    "preferenze della scrivania",
+    "desktop preferences",
+    "configure desktop",
+    "system settings",
+    "preferenze di sistema",
+    "trinity control center",
+    "centro di controllo",
+    "control center",
+}
+EXCLUDED_CATEGORIES = {"TDE", "Trinity"}
+EXCLUDED_COMMANDS = {
+    "kcontrol",
+    "tdecmshell",
+    "systemsettings",
+    "kcmshell5",
+    "kcmshell6",
+    "trinity-control-center",
+}
+
 THEMES = [
     ("nordic-cobalt", "Blu - Nordic Cobalt"),
     ("muted-crimson", "Rosso tenue - Muted Crimson"),
@@ -242,11 +272,30 @@ def load_apps(placements: dict[str, str] | None = None) -> list[App]:
             exec_line = clean_exec(data.get("Exec", ""))
             if not name or not exec_line:
                 continue
+            if any(key.upper().startswith(("X-TDE", "X-TRINITY")) for key in data):
+                continue
+            if "/opt/trinity/" in exec_line or "/opt/trinity/" in data.get("TryExec", ""):
+                continue
+            only_show_in = {item.strip() for item in data.get("OnlyShowIn", "").split(";") if item.strip()}
+            not_show_in = {item.strip() for item in data.get("NotShowIn", "").split(";") if item.strip()}
+            # Scarta solo le voci riservate a TDE/Trinity: le app GNOME/KDE
+            # funzionano comunque sotto labwc e devono restare nel menu.
+            if only_show_in & EXCLUDED_CATEGORIES and "LABWC" not in only_show_in:
+                continue
+            if "LABWC" in not_show_in:
+                continue
+            categories = {item.strip() for item in data.get("Categories", "").split(";") if item.strip()}
+            if categories & EXCLUDED_CATEGORIES:
+                continue
+            if (desktop_id in EXCLUDED_DESKTOP_IDS
+                    or name.casefold() in EXCLUDED_NAMES
+                    or os.path.basename(first_command(exec_line)) in EXCLUDED_COMMANDS):
+                continue
             if not executable_exists(exec_line):
                 continue
 
             if is_true(data.get("Terminal", "")):
-                command = f"foot -e sh -c {shlex.quote(exec_line)}"
+                command = f"terminator -x sh -c {shlex.quote(exec_line)}"
             else:
                 command = exec_line
 
@@ -387,7 +436,7 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     # Menu radice
     parts.append('  <menu id="root-menu" label="Labwc">\n')
     parts.append('    <separator label="reverseloop-dev" />\n')
-    parts.append(item("Terminale", "foot"))
+    parts.append(item("Terminale", "terminator"))
     parts.append(item("File manager", "pcmanfm"))
     parts.append(item("Cerca applicazioni (Fuzzel)", "fuzzel"))
     parts.append("    <separator />\n")
@@ -423,13 +472,14 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     desktop_body += item("Editor rapido del menu (Fuzzel)", helper("labwc-menu-editor"))
     desktop_body += item("Ricarica menu e desktop", helper("labwc-reload"))
     desktop_body += item("Aiuto, scorciatoie e sistema", helper("labwc-help"))
-    desktop_body += item("Informazioni di sistema", f"foot -H -e {helper('labwc-sysinfo')}")
+    desktop_body += item("Informazioni di sistema", f"terminator -x {helper('labwc-sysinfo')}")
     desktop_body += "    <separator />\n"
     desktop_body += item("Cattura schermo (area)", helper("labwc-screenshot", "region"))
     desktop_body += item("Cattura schermo (intero)", helper("labwc-screenshot", "full"))
-    desktop_body += item("Controlli di sistema (ZRAM, aggiornamenti)", helper("labwc-zram"))
-    desktop_body += item("Controlla aggiornamenti script", helper("labwc-update-check", "--force"))
-    desktop_body += item("Diagnostica e ripara desktop", f"foot -H -e {helper('labwc-doctor')} --fix")
+    desktop_body += item("ZRAM — memoria compressa", helper("labwc-zram"))
+    desktop_body += item("Controlli aggiornamenti script labwc-q4os", helper("labwc-update-gui"))
+    desktop_body += item("Preferenze della scrivania Labwc", helper("labwc-preferences"))
+    desktop_body += item("Diagnostica e ripara desktop", f"terminator -x {helper('labwc-doctor')} --fix")
     desktop_body += item("Blocca schermo", "swaylock -f")
     desktop_body += item("Menu sessione (blocca, esci, riavvia, spegni)", helper("labwc-power-menu"))
     desktop_body += "    <separator />\n"
@@ -441,6 +491,11 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     theme_body += "    <separator />\n"
     theme_body += item("Genera di nuovo gli sfondi", helper("labwc-generate-wallpapers"))
     desktop_body += submenu("theme-menu", "Cambia tema", theme_body)
+
+    desktops_body = ""
+    for n in range(1, 5):
+        desktops_body += item(f"Desktop {n}", helper("labwc-desktop", str(n)))
+    desktop_body += submenu("desktop-switcher-menu", "Desktop 1–4", desktops_body)
 
     parts.append(submenu("desktop-menu", "Labwc & Desktop", desktop_body))
 

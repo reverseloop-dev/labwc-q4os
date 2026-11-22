@@ -105,7 +105,8 @@ cmdver "Fuzzel" fuzzel
 cmdver "swaybg" swaybg
 cmdver "swaylock" swaylock
 cmdver "wlogout" wlogout
-cmdver "foot" foot
+cmdver "terminale" terminator
+cmdver "foot (fallback)" foot
 printf '%-22s %s\n' "Mako" "$(pkgver mako-notifier)"
 printf '%-22s %s\n' "python3-pil" "$(pkgver python3-pil)"
 printf '%-22s %s\n' "zram-tools" "$(pkgver zram-tools)"

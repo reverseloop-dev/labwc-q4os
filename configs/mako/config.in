@@ -24,4 +24,4 @@ background-color=#@@BG@@f7
 
 [app-name="labwc-q4os-update"]
 default-timeout=0
-on-button-left=exec @@HOME@@/.local/bin/labwc-update-copy
+on-button-left=exec @@HOME@@/.local/bin/labwc-update-run

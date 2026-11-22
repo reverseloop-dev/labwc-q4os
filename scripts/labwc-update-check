@@ -2,31 +2,74 @@
 # =============================================================================
 #  labwc-update-check - controllo aggiornamenti dello script labwc-q4os
 #
+#  Attivazione/disattivazione:
+#    - l'utente normale puo' sempre DISATTIVARE il controllo;
+#    - per ATTIVARLO serve la password di root (pkexec + helper root-owned).
+#
 #  Uso:
-#    labwc-update-check --startup    attende la rete, controlla e notifica
+#    labwc-update-check --startup    attende la rete e controlla periodicamente
 #    labwc-update-check --once       controlla subito (senza attesa)
 #    labwc-update-check --status     mostra lo stato in JSON
-#    labwc-update-check --enable|--disable
+#    labwc-update-check --is-enabled esce 0 se attivo, 1 se disattivo
+#    labwc-update-check --enable     attiva con autenticazione root
+#    labwc-update-check --disable    disattiva come utente normale
 # =============================================================================
 set -uo pipefail
 
 CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}"
 SHARE="${LABWC_Q4OS_SHARE:-${XDG_DATA_HOME:-$HOME/.local/share}/labwc-q4os}"
 STATE="${XDG_STATE_HOME:-$HOME/.local/state}/labwc-q4os"
-ENABLED_FILE="$CONFIG/labwc/update-check.enabled"
+SYSTEM_FLAG="/etc/labwc-q4os/update-check.enabled"
+USER_DISABLED="$CONFIG/labwc/update-check.disabled"
+LEGACY_FLAG="$CONFIG/labwc/update-check.enabled"
+INTERVAL_FILE="$CONFIG/labwc/update-check.interval"
 STATUS_FILE="$STATE/update-status.json"
+ROOT_HELPER="/usr/local/libexec/labwc-q4os/update-toggle"
 VERSION_URL="${LABWC_UPDATE_URL:-https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/VERSION}"
 REPO_URL="https://github.com/reverseloop-dev/labwc-q4os"
+DEFAULT_INTERVAL=21600
 
 mkdir -p "$STATE" "$CONFIG/labwc"
 
 enabled() {
-    [ ! -f "$ENABLED_FILE" ] && return 0
-    [ "$(tr -d '[:space:]' < "$ENABLED_FILE" 2>/dev/null)" != "0" ]
+    [ -r "$SYSTEM_FLAG" ] || return 1
+    [ "$(tr -d '[:space:]' < "$SYSTEM_FLAG" 2>/dev/null)" = "1" ] || return 1
+    [ ! -e "$USER_DISABLED" ] || return 1
+    # Migrazione dalla vecchia versione, che salvava lo stato solo qui.
+    if [ -r "$LEGACY_FLAG" ] && [ "$(tr -d '[:space:]' < "$LEGACY_FLAG" 2>/dev/null)" = "0" ]; then
+        printf '1\n' > "$USER_DISABLED" 2>/dev/null || true
+        return 1
+    fi
+    return 0
 }
 
-set_enabled() {
-    printf '%s\n' "$1" > "$ENABLED_FILE"
+disable_user() {
+    printf '1\n' > "$USER_DISABLED"
+    printf 'Controllo aggiornamenti disattivato.\n'
+}
+
+enable_root() {
+    if ! command -v pkexec >/dev/null 2>&1; then
+        printf 'pkexec non disponibile: impossibile chiedere la password di root.\n' >&2
+        return 1
+    fi
+    if [ ! -x "$ROOT_HELPER" ]; then
+        printf 'Helper root mancante: %s\n' "$ROOT_HELPER" >&2
+        printf 'Esegui di nuovo install.sh per installarlo.\n' >&2
+        return 1
+    fi
+    pkexec "$ROOT_HELPER" enable "${USER:-$(id -un)}"
+}
+
+interval_seconds() {
+    local value=21600
+    if [ -r "$INTERVAL_FILE" ]; then
+        value="$(tr -d '[:space:]' < "$INTERVAL_FILE")"
+    fi
+    [[ "$value" =~ ^[0-9]+$ ]] || value="$DEFAULT_INTERVAL"
+    [ "$value" -ge 300 ] || value=300
+    [ "$value" -le 604800 ] || value=604800
+    printf '%s' "$value"
 }
 
 local_version() {
@@ -55,38 +98,34 @@ version_newer() {
 
 status_json() {
     local installed="$1" online="$2" available="$3" checked="$4" notified="${5:-}"
-    printf '{"installed":"%s","online":"%s","available":%s,"last_check":"%s","notified":"%s","repo":"%s"}\n' \
-        "$installed" "$online" "$available" "$checked" "$notified" "$REPO_URL" > "$STATUS_FILE"
+    printf '{"installed":"%s","online":"%s","available":%s,"last_check":"%s","notified":"%s","repo":"%s","interval":%s,"enabled":%s}\n' \
+        "$installed" "$online" "$available" "$checked" "$notified" "$REPO_URL" \
+        "$(interval_seconds)" "$([ "$(enabled && echo 1 || echo 0)" = "1" ] && echo true || echo false)" > "$STATUS_FILE"
     cat "$STATUS_FILE"
 }
 
 notify_update() {
     local installed="$1" online="$2"
-    local message="Installata: $installed
-Disponibile: $online
 
-Aggiorna con:
-curl -fsSL https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh | bash"
-
-    if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v notify-send >/dev/null 2>&1; then
-        notify-send -a "labwc-q4os-update" -u normal -i software-update-available \
-            "Nuova versione di labwc-q4os disponibile" \
-            "Installata $installed → disponibile $online · clicca per copiare il comando di aggiornamento" \
+    # Popup persistente: resta aperto fino a "Aggiorna" o "Chiudi".
+    if [ -x "$HOME/.local/bin/labwc-update-popup" ] &&
+       command -v zenity >/dev/null 2>&1 &&
+       { [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${DISPLAY:-}" ]; }; then
+        setsid -f "$HOME/.local/bin/labwc-update-popup" "$installed" "$online" \
             >/dev/null 2>&1 || true
         return 0
     fi
-    if [ -n "${DISPLAY:-}" ] && command -v zenity >/dev/null 2>&1; then
-        if zenity --question --title="Labwc Q4OS — aggiornamento disponibile" \
-            --text="$message\n\nCopiare il comando di aggiornamento negli appunti?" \
-            --ok-label="Copia comando" --cancel-label="Chiudi" --width=560 2>/dev/null; then
-            if command -v wl-copy >/dev/null 2>&1; then
-                printf '%s' "curl -fsSL https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh | bash" | wl-copy || true
-                notify-send -a "Labwc Q4OS" "Comando copiato" "Incollalo nel terminale con Ctrl+Shift+V." 2>/dev/null || true
-            fi
-        fi
+
+    # Fallback Mako: click sulla notifica -> shell con comando pronto.
+    if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v notify-send >/dev/null 2>&1; then
+        notify-send -a "labwc-q4os-update" -u normal -i software-update-available \
+            "Nuova versione di labwc-q4os disponibile" \
+            "Installata $installed → disponibile $online · clicca per aprire il comando" \
+            >/dev/null 2>&1 || true
         return 0
     fi
-    printf '%s\n' "$message" >&2
+
+    printf 'Installata %s → disponibile %s\n' "$installed" "$online" >&2
 }
 
 check_once() {
@@ -104,7 +143,7 @@ check_once() {
     checked="$(date -Iseconds)"
 
     if [ -r "$STATUS_FILE" ]; then
-        notified="$(sed -n 's/.*"notified":"\\([^"]*\\)".*/\\1/p' "$STATUS_FILE" | head -n1)"
+        notified="$(sed -n 's/.*"notified":"\([^"]*\)".*/\1/p' "$STATUS_FILE" | head -n1)"
     fi
 
     if version_newer "$online" "$installed"; then
@@ -120,22 +159,51 @@ check_once() {
     return 0
 }
 
+startup_watch() {
+    local interval
+    while enabled; do
+        if online_version >/dev/null 2>&1; then
+            check_once 0
+            interval="$(interval_seconds)"
+            # Attesa a piccoli passi per reagire subito a una disattivazione.
+            local slept=0
+            while [ "$slept" -lt "$interval" ]; do
+                enabled || exit 0
+                sleep 60
+                slept=$((slept + 60))
+            done
+        else
+            sleep 300
+        fi
+    done
+}
+
 case "${1:---startup}" in
     --status)
         if [ -r "$STATUS_FILE" ]; then
             cat "$STATUS_FILE"
         else
-            printf '{"installed":"%s","online":"","available":false,"last_check":"","notified":"","repo":"%s"}\n' \
-                "$(local_version)" "$REPO_URL"
+            printf '{"installed":"%s","online":"","available":false,"last_check":"","notified":"","repo":"%s","interval":%s,"enabled":%s}\n' \
+                "$(local_version)" "$REPO_URL" "$(interval_seconds)" \
+                "$([ "$(enabled && echo 1 || echo 0)" = "1" ] && echo true || echo false)"
         fi
         ;;
+    --is-enabled)
+        enabled
+        ;;
     --enable)
-        set_enabled 1
-        printf 'Controllo aggiornamenti abilitato.\n'
+        enable_root
         ;;
     --disable)
-        set_enabled 0
-        printf 'Controllo aggiornamenti disabilitato.\n'
+        disable_user
+        ;;
+    --set-interval)
+        value="${2:-21600}"
+        [[ "$value" =~ ^[0-9]+$ ]] || { printf 'Intervallo non valido.\n' >&2; exit 2; }
+        [ "$value" -ge 300 ] || value=300
+        [ "$value" -le 604800 ] || value=604800
+        printf '%s\n' "$value" > "$INTERVAL_FILE"
+        printf 'Intervallo controllo aggiornamenti: %s secondi.\n' "$value"
         ;;
     --once)
         check_once 0
@@ -144,19 +212,10 @@ case "${1:---startup}" in
         check_once 1
         ;;
     --startup)
-        # Attende la rete e si ferma quando il controllo e' stato fatto.
-        # Se l'utente disabilita il controllo, il ciclo termina.
-        for _ in $(seq 1 288); do
-            enabled || exit 0
-            if online_version >/dev/null 2>&1; then
-                check_once 0
-                exit $?
-            fi
-            sleep 300
-        done
+        startup_watch
         ;;
     -h|--help)
-        sed -n '2,12p' "$0" | sed 's/^#  //'
+        sed -n '2,17p' "$0" | sed 's/^#  //'
         ;;
     *)
         printf 'Opzione sconosciuta: %s\n' "$1" >&2

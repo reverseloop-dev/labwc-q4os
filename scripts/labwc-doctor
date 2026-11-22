@@ -200,7 +200,7 @@ else
     bad "labwc non installato: esegui ./install.sh da Q4OS 6 / Debian 13"
 fi
 
-for cmd in waybar fuzzel foot python3 swaybg mako grim slurp swaylock wlogout lxpolkit pkexec; do
+for cmd in waybar fuzzel terminator foot python3 swaybg mako grim slurp swaylock lxpolkit pkexec; do
     if have "$cmd"; then
         ok "comando disponibile: $cmd"
     else
@@ -368,7 +368,9 @@ done
 # Script
 for helper in labwc-theme-apply labwc-theme-switcher labwc-menu-editor labwc-reload \
               labwc-help labwc-screenshot labwc-zram labwc-doctor labwc-app-manager \
-              labwc-update-copy labwc-power-menu labwc-sysinfo labwc-session-start; do
+              labwc-update-check labwc-update-copy labwc-update-popup labwc-update-run labwc-update-gui labwc-preferences \
+              labwc-desktop labwc-desktop-state labwc-desktop-status labwc-desktop-menu \
+              labwc-power-menu labwc-sysinfo labwc-session-start; do
     if [ -x "$BIN/$helper" ]; then
         ok "helper eseguibile: $helper"
     else
@@ -461,10 +463,10 @@ fi
 
 # Controllo aggiornamenti
 if [ -x "$BIN/labwc-update-check" ]; then
-    if [ -r "$CONFIG/labwc/update-check.enabled" ] && [ "$(tr -d '[:space:]' < "$CONFIG/labwc/update-check.enabled")" = "0" ]; then
-        info "controllo aggiornamenti disabilitato dall'utente"
+    if "$BIN/labwc-update-check" --is-enabled >/dev/null 2>&1; then
+        ok "controllo aggiornamenti attivo (disattivabile dall'utente)"
     else
-        ok "controllo aggiornamenti abilitato"
+        info "controllo aggiornamenti disattivato (riattivabile con password root)"
     fi
     if [ -r "$STATE/update-status.json" ]; then
         if grep -q '"available":true' "$STATE/update-status.json"; then

@@ -23,7 +23,7 @@ contestuale dinamico e ottimizzazione della memoria con zram.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.0.1**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.0.2**
 
 ---
 
@@ -38,7 +38,7 @@ manager, senza toccare Trinity, Plasma o le configurazioni esistenti.
 - **Waybar** moderna: taskbar, orologio/calendario, tray, audio,
   rete, batteria, CPU, RAM e menu sessione.
 - **Fuzzel** come launcher: icone, ricerca fuzzy, bordi arrotondati e colori
-  sincronizzati al tema.
+  sincronizzati al tema; terminale predefinito **Terminator**.
 - **Mako** per notifiche discrete, **swaybg** per lo sfondo, **swaylock**
   per bloccare lo schermo e **labwc-power-menu** per la sessione.
 - Tre temi completi e intercambiabili a caldo.
@@ -48,16 +48,26 @@ manager, senza toccare Trinity, Plasma o le configurazioni esistenti.
 - Menu del tasto destro con **App preferite** gestibili dall'utente.
 - **App nel menu Labwc**: gestore grafico con tasto destro per aggiungere ai
   preferiti, spostare in una categoria (es. Multimedia) o rimuovere.
+- **Login SDDM moderno e colorato** con sessione Labwc preselezionata,
+  selettore TDM/Labwc, tastiera italiana e pulsanti di spegnimento.
 - **Menu sessione affidabile** da Waybar: blocca, esci, sospendi, riavvia e
   spegni senza dipendere da wlogout.
 - **Doppio clic sinistro sul desktop**: guida, scorciatoie, versioni delle app,
   versione script, data di aggiornamento e link al repository.
 - Guida integrata in italiano con tasti rapidi e istruzioni di modifica file.
-- **Controlli di sistema**: ZRAM con indicatori live e attivazione/disattivazione,
-  più controllo aggiornamenti dello script attivabile/disattivabile dallo stesso
-  pannello.
+- **ZRAM — memoria compressa**: pannello con indicatori live e attivazione/
+  disattivazione.
+- **Controlli aggiornamenti script labwc-q4os**: pannello separato con
+  abilitazione, controllo manuale, copia comando e repository.
 - **Labwc Doctor**: controlli automatici e riparazione di configurazione,
   Waybar, menu, sessione, XWayland, portali, zram e log.
+- **Preferenze della scrivania Labwc**: tema, tastiera, desktop 1–4 e
+  strumenti in un'unica finestra.
+- **Desktop 1–4 visibili**: indicatore `[1] 2 3 4` in Waybar e selezione dal
+  pannello Preferenze o con `Super + 1…4`.
+- Finestre con i **tre pulsanti classici** (riduci a icona, ingrandisci,
+  chiudi) tramite decorazioni lato server labwc.
+- **Terminator** come terminale predefinito di labwc, Fuzzel e menu.
 - zram e swappiness configurabili durante l'installazione.
 
 ---
@@ -88,6 +98,46 @@ Ogni sfondo riporta la firma discreta `reverseloop-dev` in basso a destra.
 - Waybar: rimossi moduli workspace non disponibili nel pacchetto Debian;
   corretti colori `rgba` non validi.
 - Aggiunto SDDM opzionale per TDM, con ritorno a TDM documentato.
+- Pannello aggiornamenti separato da ZRAM, intervallo configurabile e
+  attivazione protetta dalla password di root.
+- Popup di aggiornamento persistente: **Aggiorna** apre Terminator col comando
+  pronto, **Chiudi** non installa nulla.
+- Terminale predefinito passato a **Terminator**.
+- Aggiunte Preferenze della scrivania, desktop 1–4 e i tre pulsanti finestra.
+- Il menu esclude le voci TDE/Trinity estranee a labwc.
+
+---
+
+## Login moderno SDDM
+
+Se il sistema usa **TDM**, l'installer propone di passare a **SDDM** (default
+sì; `--keep-tdm` per restare su TDM). Con SDDM viene installato il tema
+originale **`labwc-q4os`**:
+
+- sfondo aurora animato blu/viola/ciano;
+- card in vetro scuro con angoli arrotondati;
+- selettore **utente** e **sessione** (Trinity/TDE e Labwc);
+- campo password e pulsante Accedi;
+- orologio e data in italiano;
+- pulsanti Spegni, Riavvia, Sospendi;
+- indicazione **Tastiera: IT**;
+- sessione **Labwc preselezionata**;
+- firma discreta `reverseloop-dev`.
+
+![Login SDDM Labwc](preview/sddm-login.png)
+
+Il layout di login/console viene impostato a **it** con
+`localectl` e `/etc/default/keyboard`; labwc usa `XKB_DEFAULT_LAYOUT=it`.
+Per cambiare layout al login:
+
+```bash
+sudo localectl set-keyboard-layout it
+# oppure it,us
+```
+
+Se scegli di mantenere TDM, il tema SDDM viene comunque installato ma non
+usato: TDM non supporta le sessioni Wayland. In quel caso avvia
+`labwc` da TTY o reinstalla con `./install.sh --sddm`.
 
 ---
 
@@ -200,7 +250,7 @@ Al primo login partono automaticamente:
 
 | Combinazione | Azione |
 |---|---|
-| `Super + Invio` | Terminale Foot |
+| `Super + Invio` | Terminale Terminator |
 | `Super + D` / `Super + Spazio` / `Alt + F2` | Launcher Fuzzel |
 | `Super + E` | File manager (pcmanfm) |
 | `Super + Q` / `Alt + F4` | Chiudi finestra |
@@ -299,8 +349,9 @@ Il menu e' generato dinamicamente da `scripts/render-menu.py` leggendo i file
 1. **★ App preferite** — scelte dall'utente, in cima al menu.
 2. **Categorie** — Internet, Multimedia, Grafica, Ufficio, Sviluppo, Giochi,
    Istruzione, Scienza, Sistema, Impostazioni, Accessori, Altre applicazioni.
-3. **Labwc & Desktop** — gestione app/preferite, cambio tema, editor rapido
-   Fuzzel, ricarica, aiuto, screenshot, pannello zram, diagnostica, blocco
+3. **Labwc & Desktop** — preferenze della scrivania, desktop 1–4, gestione
+   app/preferite, cambio tema, editor rapido Fuzzel, ricarica, aiuto,
+   screenshot, pannello ZRAM, controlli aggiornamenti, diagnostica, blocco
    schermo e menu sessione.
 
 ### App nel menu, preferite e categorie
@@ -323,6 +374,24 @@ Qui il **tasto destro su una riga** permette di:
 
 Nella sezione **★ App preferite** del menu desktop è presente anche
 **“Rimuovi dai preferiti...”**, per eliminare una voce senza aprire l'editor.
+
+### Preferenze della scrivania e desktop
+
+Tasto destro → **Labwc & Desktop → Preferenze della scrivania Labwc** apre un unico
+pannello per:
+
+- scegliere il tema e quindi icone, Waybar, Fuzzel, sfondo;
+- impostare la tastiera `it`, `us` o `it,us`;
+- selezionare i desktop **1–4**;
+- aprire ZRAM, aggiornamenti, App nel menu e aiuto.
+
+La Waybar mostra inoltre l'indicatore **`[1] 2 3 4`**: click sull'indicatore per
+scegliere il desktop. I desktop restano selezionabili anche con `Super + 1…4` e
+con la rotellina sul desktop.
+
+Le finestre usano decorazioni lato server di labwc con i tre pulsanti classici
+**riduci a icona, ingrandisci, chiudi**; `GTK_CSD=0` evita che le app GTK
+sostituiscano la barra con decorazioni client-side.
 
 ![App nel menu Labwc](preview/app-manager.png)
 
@@ -416,8 +485,8 @@ sudo dpkg-reconfigure keyboard-configuration
 
 ## ZRAM — memoria compressa
 
-Pannello grafico: tasto destro → **Labwc & Desktop** → **Controlli di
-sistema (ZRAM, aggiornamenti)**, oppure `labwc-zram`.
+Pannello grafico: tasto destro → **Labwc & Desktop** → **ZRAM — memoria
+compressa**, oppure `labwc-zram`.
 
 Mostra in tempo reale:
 
@@ -426,9 +495,6 @@ Mostra in tempo reale:
 - rapporto di compressione e RAM realmente occupata da zram;
 - grafico dell'occupazione degli ultimi 3 minuti;
 - dispositivo, algoritmo (`zstd`), dimensione, `vm.swappiness`.
-
-Nello stesso pannello il check **Aggiornamenti** abilita/disabilita il controllo
-all'avvio, mentre **Controlla ora** verifica subito la versione online.
 
 Pulsanti **Attiva zram** e **Disattiva zram**: eseguono `systemctl
 enable/disable --now zramswap` tramite `pkexec` e l'agente polkit della
@@ -462,21 +528,35 @@ attende la connessione internet e confronta:
 - la versione installata in `~/.local/share/labwc-q4os/version-info`;
 - la versione online `VERSION` del repository GitHub.
 
-Se la versione online è più recente compare una **notifica popup** con
-installata/disponibile. **Cliccando la notifica**, il comando
+Se la versione online è più recente compare un **popup persistente** con
+installata/disponibile, che resta visibile finché l'utente non sceglie:
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh | bash
-```
+- **Aggiorna** → apre **Terminator** con il comando già compilato:
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh | bash
+  ```
+  il comando non parte da solo: premi Invio per eseguirlo o Ctrl+C per annullare;
+- **Chiudi** → chiude il popup senza aggiornare.
 
-viene copiato negli appunti e compare un avviso che ricorda di incollarlo nel
-terminale. Il controllo non installa nulla automaticamente: l'aggiornamento
-resta sempre un'azione esplicita dell'utente.
+Il controllo non installa nulla automaticamente: l'aggiornamento resta sempre
+un'azione esplicita dell'utente. Se Zenity non è disponibile, viene usata una
+notifica Mako persistente; il click apre lo stesso terminale precompilato.
 
-Il controllo è gestito dallo stesso pannello di ZRAM:
+![Popup di aggiornamento](preview/update-popup.png)
 
-- check **Aggiornamenti** → abilita/disabilita il controllo all'avvio;
+Il controllo ha un pannello dedicato:
+tasto destro → **Labwc & Desktop → Controlli aggiornamenti script labwc-q4os**
+(`labwc-update-gui`), separato da ZRAM.
+
+![Pannello aggiornamenti](preview/update-gui.png)
+
+- check **Controlla aggiornamenti all'avvio** → l'utente normale può
+  **disattivare** subito; per **riattivare** serve la password di root
+  (`pkexec` + helper installato root-owned);
+- intervallo predefinito **6 ore**, modificabile da 1 a 24 ore;
 - **Controlla ora** → verifica immediata;
+- **Copia comando** → copia il bootstrap negli appunti;
+- **Apri repository**;
 - stato ultimo controllo / nuova versione visibile nel pannello.
 
 Da terminale:
@@ -484,14 +564,17 @@ Da terminale:
 ```bash
 labwc-update-check --status
 labwc-update-check --once
-labwc-update-check --enable
-labwc-update-check --disable
+labwc-update-check --enable    # chiede la password di root
+labwc-update-check --disable   # disattivazione utente, senza password
+labwc-update-check --set-interval 21600
 ```
 
 Lo stato è salvato in:
 
 ```text
-~/.config/labwc/update-check.enabled
+/etc/labwc-q4os/update-check.enabled        # flag root
+~/.config/labwc/update-check.disabled       # disattivazione utente
+~/.config/labwc/update-check.interval       # intervallo in secondi
 ~/.local/state/labwc-q4os/update-status.json
 ```
 
@@ -576,6 +659,34 @@ printf 'Voce 1\nVoce 2\n' | fuzzel --dmenu
 scelta="$(printf 'Si\nNo\n' | fuzzel --dmenu --prompt='Confermi? ')"
 ```
 
+### Aggiungere o togliere un link in Fuzzel
+
+Fuzzel mostra i link come normali applicazioni `.desktop`. Per aggiungerne uno:
+
+```ini
+# ~/.local/share/applications/mio-link.desktop
+[Desktop Entry]
+Type=Application
+Name=Mio link
+Comment=Sito web preferito
+Exec=xdg-open https://example.com
+Icon=web-browser
+Terminal=false
+Categories=Network;
+```
+
+```bash
+update-desktop-database ~/.local/share/applications
+```
+
+Il link appare in Fuzzel e nella categoria **Internet** del menu desktop. Per
+rimuoverlo:
+
+```bash
+rm ~/.local/share/applications/mio-link.desktop
+update-desktop-database ~/.local/share/applications
+```
+
 ---
 
 ## Struttura del repository
@@ -595,6 +706,7 @@ labwc-q4os/
 │   ├── mako/config.in
 │   ├── wlogout/{layout,style.css.in}
 │   ├── gtk/settings.ini
+│   ├── sddm/labwc-q4os/{Main.qml,theme.conf,metadata.desktop}
 │   └── themes/<tema>/{theme.conf,themerc}
 ├── scripts/
 │   ├── generate-wallpapers.py     # sfondi con Pillow
@@ -609,6 +721,15 @@ labwc-q4os/
 │   ├── labwc-app-manager          # gestore app/preferite/categorie
 │   ├── labwc-update-check         # controllo versione online
 │   ├── labwc-update-copy          # copia comando di aggiornamento
+│   ├── labwc-update-popup         # popup persistente nuova versione
+│   ├── labwc-update-run           # terminale col comando precompilato
+│   ├── labwc-update-gui           # pannello aggiornamenti
+│   ├── labwc-update-toggle        # helper root per l'attivazione
+│   ├── labwc-preferences          # preferenze scrivania
+│   ├── labwc-desktop              # cambio desktop 1-4
+│   ├── labwc-desktop-state        # stato desktop per Waybar
+│   ├── labwc-desktop-status       # indicatore [1] 2 3 4
+│   ├── labwc-desktop-menu         # selettore desktop 1-4
 │   ├── labwc-power-menu           # menu sessione Fuzzel/Zenity
 │   ├── labwc-sysinfo              # versioni e informazioni sistema
 │   ├── labwc-doctor               # diagnostica e riparazione

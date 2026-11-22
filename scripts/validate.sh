@@ -28,8 +28,8 @@ done < <(find . -path ./.git -prune -o -type f \( -name '*.sh' -o -path './scrip
 # --- 2. sintassi Python ------------------------------------------------------
 check "sintassi Python"
 PYCACHE_DIR="$(mktemp -d)"
-if PYTHONPYCACHEPREFIX="$PYCACHE_DIR" python3 -m py_compile scripts/generate-wallpapers.py scripts/render-menu.py scripts/labwc-zram scripts/labwc-app-manager scripts/generate-icons.py; then
-    pass "generate-wallpapers.py, render-menu.py, labwc-zram, labwc-app-manager, generate-icons.py"
+if PYTHONPYCACHEPREFIX="$PYCACHE_DIR" python3 -m py_compile scripts/generate-wallpapers.py scripts/render-menu.py scripts/labwc-zram scripts/labwc-app-manager scripts/labwc-update-gui scripts/labwc-preferences scripts/generate-icons.py; then
+    pass "Python: sfondi, menu, zram, app manager, update GUI, preferences, icone"
 else
     bad "py_compile"
 fi
@@ -75,6 +75,9 @@ for f in install.sh bootstrap.sh scripts/labwc-theme-apply scripts/labwc-theme-s
          scripts/labwc-menu-editor scripts/labwc-reload scripts/labwc-generate-wallpapers \
          scripts/labwc-help scripts/labwc-screenshot scripts/labwc-zram scripts/labwc-doctor \
          scripts/labwc-app-manager scripts/labwc-update-check scripts/labwc-update-copy \
+         scripts/labwc-update-popup scripts/labwc-update-run scripts/labwc-update-toggle \
+         scripts/labwc-update-gui scripts/labwc-preferences \
+         scripts/labwc-desktop scripts/labwc-desktop-state scripts/labwc-desktop-status scripts/labwc-desktop-menu \
          scripts/labwc-power-menu scripts/labwc-sysinfo \
          scripts/labwc-session-start scripts/validate.sh scripts/generate-wallpapers.py \
          scripts/render-menu.py scripts/generate-icons.py; do
@@ -150,7 +153,10 @@ if command -v shellcheck >/dev/null 2>&1; then
         scripts/labwc-theme-apply scripts/labwc-theme-switcher scripts/labwc-menu-editor \
         scripts/labwc-reload scripts/labwc-generate-wallpapers scripts/labwc-help \
         scripts/labwc-screenshot scripts/labwc-doctor scripts/labwc-update-check \
-        scripts/labwc-update-copy scripts/labwc-power-menu scripts/labwc-sysinfo \
+        scripts/labwc-update-copy scripts/labwc-update-popup scripts/labwc-update-run \
+        scripts/labwc-update-toggle scripts/labwc-desktop scripts/labwc-desktop-state \
+        scripts/labwc-desktop-status scripts/labwc-desktop-menu \
+        scripts/labwc-power-menu scripts/labwc-sysinfo \
         scripts/labwc-session-start scripts/validate.sh; then
         pass "shellcheck"
     else

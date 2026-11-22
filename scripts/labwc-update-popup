@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-update-popup - avviso persistente di nuova versione
+#  Resta aperto finché l'utente non sceglie Aggiorna o Chiudi.
+# =============================================================================
+set -uo pipefail
+
+# Il popup usa GTK4/Zenity: su sistemi senza accelerazione GL il renderer
+# predefinito puo' mostrare una finestra nera. Il rendering software e'
+# sufficiente e rende il popup affidabile anche in sessioni remote/headless.
+export GSK_RENDERER="${GSK_RENDERER:-cairo}"
+
+installed="${1:-?}"
+online="${2:-?}"
+TEXT="È disponibile una nuova versione di labwc-q4os.
+
+Installata: $installed
+Disponibile: $online
+
+Aggiorna ora per aprire il terminale con il comando già pronto.
+Non verrà eseguito nulla senza la tua conferma (Invio)."
+
+if command -v zenity >/dev/null 2>&1 &&
+   { [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${DISPLAY:-}" ]; }; then
+    if zenity --question \
+        --title="Labwc Q4OS — aggiornamento disponibile" \
+        --text="$TEXT" \
+        --ok-label="Aggiorna" \
+        --cancel-label="Chiudi" \
+        --width=580 2>/dev/null; then
+        exec "$HOME/.local/bin/labwc-update-run"
+    fi
+    exit 0
+fi
+
+# Fallback senza Zenity: notifica persistente; il click apre la shell.
+if command -v notify-send >/dev/null 2>&1 && [ -n "${WAYLAND_DISPLAY:-}" ]; then
+    notify-send -a "labwc-q4os-update" -u normal -i software-update-available \
+        "Nuova versione di labwc-q4os: $online" \
+        "Installata $installed · clicca per aprire il comando di aggiornamento" \
+        >/dev/null 2>&1 || true
+    exit 0
+fi
+
+printf '%s\n' "$TEXT" >&2
+exit 0
