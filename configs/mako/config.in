@@ -13,7 +13,7 @@ height=160
 max-visible=4
 default-timeout=6000
 icons=1
-icon-path=/usr/share/icons/Adwaita
+icon-path=@@ICON_THEME_PATH@@
 max-icon-size=48
 anchor=top-right
 
@@ -21,3 +21,7 @@ anchor=top-right
 default-timeout=0
 border-color=#@@DANGER@@
 background-color=#@@BG@@f7
+
+[app-name="labwc-q4os-update"]
+default-timeout=0
+on-button-left=exec @@HOME@@/.local/bin/labwc-update-copy

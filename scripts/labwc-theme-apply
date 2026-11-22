@@ -73,7 +73,9 @@ for required in BG SURFACE ACCENT FG BORDER WALLPAPER; do
     fi
 done
 
-mkdir -p "$CONFIG/labwc" "$CONFIG/waybar" "$CONFIG/fuzzel" "$CONFIG/mako" "$CONFIG/wlogout" "$STATE"
+ICON_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/icons"
+ICON_THEME_PATH="$ICON_ROOT/labwc-q4os"
+mkdir -p "$CONFIG/labwc" "$CONFIG/waybar" "$CONFIG/fuzzel" "$CONFIG/mako" "$CONFIG/wlogout" "$STATE" "$ICON_ROOT"
 
 render() {
     local src="$1" dst="$2"
@@ -95,6 +97,8 @@ render() {
         -e "s|@@BORDER@@|$BORDER|g" \
         -e "s|@@DANGER@@|$DANGER|g" \
         -e "s|@@DANGER_RGB@@|$DANGER_RGB|g" \
+        -e "s|@@ICON_THEME_PATH@@|$ICON_ROOT/labwc-q4os|g" \
+        -e "s|@@HOME@@|$HOME|g" \
         -e "s|@@WARNING@@|$WARNING|g" \
         -e "s|@@SUCCESS@@|$SUCCESS|g" \
         -e "s|@@BG_RGB@@|$BG_RGB|g" \
@@ -119,6 +123,34 @@ render "$TEMPLATES/mako-config" "$CONFIG/mako/config"
 render "$TEMPLATES/wlogout-style.css" "$CONFIG/wlogout/style.css"
 
 printf '%s\n' "$THEME_ID" > "$CONFIG/labwc/theme"
+
+# Icone coordinate al tema (tema GTK "labwc-q4os")
+if [ -x "$SHARE/scripts/generate-icons.py" ]; then
+    python3 "$SHARE/scripts/generate-icons.py" \
+        --theme-conf "$THEMES_DIR/$THEME_ID/theme.conf" \
+        --output "$SHARE/icons" >/dev/null 2>&1 || true
+fi
+if [ -d "$SHARE/icons/$THEME_ID" ]; then
+    if [ -L "$ICON_THEME_PATH" ] || [ ! -e "$ICON_THEME_PATH" ]; then
+        ln -sfn "$SHARE/icons/$THEME_ID" "$ICON_THEME_PATH"
+    elif [ -f "$ICON_THEME_PATH/.labwc-q4os-theme" ]; then
+        rm -rf "$ICON_THEME_PATH"
+        ln -sfn "$SHARE/icons/$THEME_ID" "$ICON_THEME_PATH"
+    else
+        printf 'Icon theme path occupato: %s\n' "$ICON_THEME_PATH" >&2
+    fi
+fi
+
+for gtk_dir in "$CONFIG/gtk-3.0" "$CONFIG/gtk-4.0"; do
+    mkdir -p "$gtk_dir"
+    settings="$gtk_dir/settings.ini"
+    [ -f "$settings" ] || printf '[Settings]\n' > "$settings"
+    if grep -q '^gtk-icon-theme-name=' "$settings"; then
+        sed -i 's/^gtk-icon-theme-name=.*/gtk-icon-theme-name=labwc-q4os/' "$settings"
+    else
+        printf 'gtk-icon-theme-name=labwc-q4os\n' >> "$settings"
+    fi
+done
 
 WALLPAPER_PATH="$SHARE/wallpapers/$WALLPAPER"
 if [ -f "$WALLPAPER_PATH" ]; then

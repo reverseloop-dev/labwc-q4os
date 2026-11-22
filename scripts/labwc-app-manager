@@ -137,6 +137,7 @@ class AppManager:
         self.listbox = Gtk.ListBox()
         self.listbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
         self.listbox.connect("row-activated", self.on_row_activated)
+        self.listbox.connect("button-press-event", self.on_listbox_button_press)
         scroll.add(self.listbox)
         outer.pack_start(scroll, True, True, 0)
 
@@ -183,6 +184,11 @@ class AppManager:
                   padding: 7px 14px; font-weight: 600; }}
         button:hover {{ border-color: #{c['ACCENT']}; }}
         .footer {{ color: #{c['FG_MUTED']}; font-size: 11px; }}
+        menu {{ background-color: #{c['SURFACE']}; color: #{c['FG']};
+                border: 1px solid #{c['BORDER']}; padding: 4px; }}
+        menu menuitem {{ color: #{c['FG']}; padding: 5px 12px; }}
+        menu menuitem:hover {{ background-color: #{c['ACCENT']}; color: #{c['BG']}; }}
+        menu separator {{ background-color: #{c['BORDER']}; margin: 3px 0; }}
         """
 
     def run_render(self, *args: str) -> tuple[bool, str]:
@@ -241,6 +247,7 @@ class AppManager:
             self.add_row(app)
         self.counter.set_text(f"{len(apps)} app")
         self.apply_filter()
+        self.listbox.show_all()
 
     def add_row(self, app: dict) -> None:
         Gtk = self.Gtk
@@ -266,8 +273,8 @@ class AppManager:
             box.pack_end(star, False, False, 0)
 
         row.add(box)
-        row.connect("button-press-event", self.on_button_press)
         self.listbox.add(row)
+        row.show_all()
         self.rows.append(row)
 
     def on_search(self, entry) -> None:
@@ -285,10 +292,16 @@ class AppManager:
     def on_row_activated(self, _listbox, row) -> None:
         self.open_app(row.app_data)
 
-    def on_button_press(self, row, event) -> bool:
+    def on_listbox_button_press(self, listbox, event) -> bool:
         if event.button != 3:
             return False
-        self.popup(row.app_data, event)
+        row = listbox.get_row_at_y(int(event.y))
+        if row is None:
+            return False
+        app = getattr(row, "app_data", None)
+        if not app:
+            return False
+        self.popup(app, event)
         return True
 
     def popup(self, app: dict, event) -> None:

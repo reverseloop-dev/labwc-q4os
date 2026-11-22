@@ -299,6 +299,37 @@ case "$theme_id" in
         bad "tema non valido in ~/.config/labwc/theme: $theme_id" ;;
 esac
 
+xkb_layout=""
+if [ -r "$CONFIG/labwc/environment" ]; then
+    xkb_layout="$(sed -n 's/^XKB_DEFAULT_LAYOUT=//p' "$CONFIG/labwc/environment" | tail -n1)"
+fi
+if [ -n "$xkb_layout" ]; then
+    ok "layout tastiera labwc: $xkb_layout"
+    case "${LANG:-}${LC_ALL:-}" in
+        it*) [[ "$xkb_layout" == it* ]] || warn "locale italiano ma layout labwc '$xkb_layout' (atteso it)" ;;
+    esac
+else
+    warn "XKB_DEFAULT_LAYOUT assente in ~/.config/labwc/environment (labwc usa US)"
+fi
+if [ -r /etc/default/keyboard ]; then
+    system_layout="$(sed -n 's/^XKBLAYOUT="\?\([^" ]*\)"\?.*/\1/p' /etc/default/keyboard | head -n1)"
+    if [ -n "$system_layout" ]; then
+        ok "layout tastiera sistema/login: $system_layout"
+    fi
+fi
+
+icon_theme="${XDG_DATA_HOME:-$HOME/.local/share}/icons/labwc-q4os"
+if [ -L "$icon_theme" ] && [ -r "$icon_theme/index.theme" ] && [ -d "$icon_theme/scalable/apps" ]; then
+    ok "icone del tema: labwc-q4os -> $(readlink -f "$icon_theme")"
+else
+    warn "icone del tema mancanti o non collegate (usa --fix)"
+fi
+if grep -q '^gtk-icon-theme-name=labwc-q4os' "$CONFIG/gtk-3.0/settings.ini" 2>/dev/null; then
+    ok "GTK usa le icone labwc-q4os"
+else
+    warn "GTK non usa gtk-icon-theme-name=labwc-q4os"
+fi
+
 if [ -f "$SHARE/wallpapers/$theme_id.png" ]; then
     ok "sfondo del tema presente"
 else
@@ -337,7 +368,7 @@ done
 # Script
 for helper in labwc-theme-apply labwc-theme-switcher labwc-menu-editor labwc-reload \
               labwc-help labwc-screenshot labwc-zram labwc-doctor labwc-app-manager \
-              labwc-power-menu labwc-sysinfo labwc-session-start; do
+              labwc-update-copy labwc-power-menu labwc-sysinfo labwc-session-start; do
     if [ -x "$BIN/$helper" ]; then
         ok "helper eseguibile: $helper"
     else
@@ -426,6 +457,26 @@ if [ "$swap_val" != "?" ]; then
         fi
     fi
     [ "$cache_val" != "?" ] && info "vm.vfs_cache_pressure=$cache_val"
+fi
+
+# Controllo aggiornamenti
+if [ -x "$BIN/labwc-update-check" ]; then
+    if [ -r "$CONFIG/labwc/update-check.enabled" ] && [ "$(tr -d '[:space:]' < "$CONFIG/labwc/update-check.enabled")" = "0" ]; then
+        info "controllo aggiornamenti disabilitato dall'utente"
+    else
+        ok "controllo aggiornamenti abilitato"
+    fi
+    if [ -r "$STATE/update-status.json" ]; then
+        if grep -q '"available":true' "$STATE/update-status.json"; then
+            warn "e' disponibile una nuova versione di labwc-q4os"
+        else
+            ok "nessun aggiornamento disponibile dall'ultimo controllo"
+        fi
+    else
+        info "controllo aggiornamenti non ancora eseguito"
+    fi
+else
+    warn "labwc-update-check mancante"
 fi
 
 # Log recente

@@ -14,3 +14,6 @@ CLUTTER_BACKEND=wayland
 ELECTRON_OZONE_PLATFORM_HINT=auto
 XCURSOR_THEME=Adwaita
 XCURSOR_SIZE=24
+
+# Layout tastiera (sovrascritto dall'installer in base alla lingua)
+XKB_DEFAULT_LAYOUT=it

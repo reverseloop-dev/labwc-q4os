@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-update-copy - copia negli appunti il comando di aggiornamento
+#  Richiamato dal click sulla notifica Mako.
+# =============================================================================
+set -uo pipefail
+
+COMMAND="curl -fsSL https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh | bash"
+
+if command -v wl-copy >/dev/null 2>&1 && [ -n "${WAYLAND_DISPLAY:-}" ]; then
+    if printf '%s' "$COMMAND" | wl-copy; then
+        if command -v notify-send >/dev/null 2>&1; then
+            notify-send -a "Labwc Q4OS" -i edit-copy \
+                "Comando di aggiornamento copiato" \
+                "Incollalo nel terminale (Ctrl+Shift+V) e premi Invio." \
+                >/dev/null 2>&1 || true
+        fi
+        printf 'Comando copiato negli appunti:\n%s\n' "$COMMAND"
+        exit 0
+    fi
+fi
+
+if command -v notify-send >/dev/null 2>&1; then
+    notify-send -a "Labwc Q4OS" -u critical \
+        "Impossibile copiare il comando" \
+        "Apri il terminale ed esegui: $COMMAND" >/dev/null 2>&1 || true
+fi
+printf 'Comando di aggiornamento:\n%s\n' "$COMMAND" >&2
+exit 1

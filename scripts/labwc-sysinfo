@@ -44,6 +44,17 @@ cmdver() {
 theme="nordic-cobalt"
 [ -r "$CONFIG/labwc/theme" ] && theme="$(tr -d '[:space:]' < "$CONFIG/labwc/theme")"
 
+xkb_layout="n/d"
+if [ -r "$CONFIG/labwc/environment" ]; then
+    xkb_layout="$(sed -n 's/^XKB_DEFAULT_LAYOUT=//p' "$CONFIG/labwc/environment" | tail -n1)"
+    [ -n "$xkb_layout" ] || xkb_layout="n/d"
+fi
+system_layout="n/d"
+if [ -r /etc/default/keyboard ]; then
+    system_layout="$(sed -n 's/^XKBLAYOUT="\?\([^" ]*\)"\?.*/\1/p' /etc/default/keyboard | head -n1)"
+    [ -n "$system_layout" ] || system_layout="n/d"
+fi
+
 os_name="sconosciuto"
 if [ -r /etc/os-release ]; then
     # shellcheck disable=SC1091
@@ -70,6 +81,18 @@ printf 'Display manager ........ %s\n' "$dm"
 printf 'Sessione ............... %s / %s\n' "${XDG_SESSION_TYPE:-n/d}" "${XDG_CURRENT_DESKTOP:-n/d}"
 printf 'Wayland display ........ %s\n' "${WAYLAND_DISPLAY:-n/d}"
 printf 'Tema attivo ............ %s\n' "$theme"
+printf 'Tastiera labwc ......... %s\n' "$xkb_layout"
+printf 'Tastiera sistema ....... %s\n' "$system_layout"
+printf 'Icone .................. %s\n' "$(grep -s '^gtk-icon-theme-name=' "$CONFIG/gtk-3.0/settings.ini" | cut -d= -f2- || echo n/d)"
+if [ -r "$STATE/update-status.json" ]; then
+    if grep -q '"available":true' "$STATE/update-status.json"; then
+        printf 'Aggiornamento .......... %s\n' "$(sed -n 's/.*"online":"\([^"]*\)".*/\1/p' "$STATE/update-status.json")"
+    else
+        printf 'Aggiornamento .......... nessuno\n'
+    fi
+else
+    printf 'Aggiornamento .......... non controllato\n'
+fi
 printf 'Uptime ................. %s\n' "$(uptime -p 2>/dev/null || uptime 2>/dev/null || echo n/d)"
 printf 'ZRAM ................... %s\n' "$(if command -v zramctl >/dev/null 2>&1 && [ -n "$(zramctl 2>/dev/null)" ]; then echo attivo; else echo non attivo; fi)"
 printf 'vm.swappiness .......... %s\n' "$(cat /proc/sys/vm/swappiness 2>/dev/null || echo n/d)"

@@ -18,6 +18,7 @@ Può essere usato anche da terminale:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -36,6 +37,9 @@ SHARE = Path(
 )
 SERVICE = "zramswap.service"
 ZRAM_DIR = Path("/sys/block/zram0")
+UPDATE_CHECK = HOME / ".local" / "bin" / "labwc-update-check"
+UPDATE_ENABLED = CONFIG / "labwc" / "update-check.enabled"
+UPDATE_STATUS = Path(os.environ.get("XDG_STATE_HOME", HOME / ".local/state")) / "labwc-q4os" / "update-status.json"
 ZRAM_CONFIG = Path("/etc/default/zramswap")
 ZRAM_CONFIG_TEXT = (
     "# Generato da labwc-q4os — https://github.com/reverseloop-dev/labwc-q4os\n"
@@ -523,7 +527,7 @@ def run_gui() -> int:
 
     class ZramWindow(Gtk.Window):
         def __init__(self) -> None:
-            super().__init__(title="ZRAM — Memoria compressa")
+            super().__init__(title="Controlli di sistema — ZRAM e aggiornamenti")
             self.set_default_size(840, 620)
             self.set_border_width(14)
             self.set_icon_name("utilities-system-monitor")
@@ -544,10 +548,10 @@ def run_gui() -> int:
 
             header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
             titles = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-            title = Gtk.Label(label="ZRAM — memoria compressa", xalign=0)
+            title = Gtk.Label(label="Controlli di sistema", xalign=0)
             title.get_style_context().add_class("title")
             subtitle = Gtk.Label(
-                label="Stato, compressione e ottimizzazione della RAM in tempo reale",
+                label="ZRAM, memoria in tempo reale e aggiornamenti dello script",
                 xalign=0,
             )
             subtitle.get_style_context().add_class("subtitle")
@@ -558,6 +562,12 @@ def run_gui() -> int:
             self.status = Gtk.Label(label="…")
             self.status.get_style_context().add_class("pill-off")
             header.pack_end(self.status, False, False, 0)
+
+            self.update_toggle = Gtk.CheckButton(label="Aggiornamenti")
+            self.update_toggle.get_style_context().add_class("update-toggle")
+            self.update_toggle.set_active(self.updates_enabled())
+            self.update_toggle.connect("toggled", self.on_update_toggle)
+            header.pack_end(self.update_toggle, False, False, 0)
             outer.pack_start(header, False, False, 0)
 
             grid = Gtk.Grid(column_spacing=12, row_spacing=12, column_homogeneous=True)
@@ -622,24 +632,101 @@ def run_gui() -> int:
             self.disable_button.connect("clicked", self.on_disable)
             refresh_button = Gtk.Button(label="Aggiorna")
             refresh_button.connect("clicked", lambda _b: self.refresh())
+            self.update_button = Gtk.Button(label="Controlla ora")
+            self.update_button.connect("clicked", self.on_check_updates)
             close_button = Gtk.Button(label="Chiudi")
             close_button.connect("clicked", lambda _b: self.destroy())
 
             buttons.pack_start(self.enable_button, False, False, 0)
             buttons.pack_start(self.disable_button, False, False, 0)
             buttons.pack_start(refresh_button, False, False, 0)
+            buttons.pack_start(self.update_button, False, False, 0)
             buttons.pack_start(close_button, False, False, 0)
             outer.pack_end(buttons, False, False, 0)
 
+            footer_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
             footer = Gtk.Label(
                 label="Le operazioni di attivazione richiedono i privilegi di amministratore (pkexec).",
                 xalign=0,
             )
             footer.get_style_context().add_class("footer")
-            outer.pack_end(footer, False, False, 0)
+            self.update_status = Gtk.Label(label="", xalign=1)
+            self.update_status.get_style_context().add_class("footer")
+            footer_box.pack_start(footer, True, True, 0)
+            footer_box.pack_end(self.update_status, False, False, 0)
+            outer.pack_end(footer_box, False, False, 0)
 
             self.refresh()
             GLib.timeout_add_seconds(2, self.refresh)
+
+        def updates_enabled(self) -> bool:
+            try:
+                return UPDATE_ENABLED.read_text(encoding="utf-8").strip() != "0"
+            except OSError:
+                return True
+
+        def update_status_text(self) -> str:
+            try:
+                data = json.loads(UPDATE_STATUS.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                return "Aggiornamenti: n/d"
+            if data.get("available"):
+                return f"Aggiornamento disponibile: {data.get('online', '?')}"
+            if not data.get("online"):
+                return "Controllo non riuscito (rete?)"
+            if data.get("last_check"):
+                return f"Aggiornato · controllo: {data.get('last_check', '')[0:16]}"
+            return "Aggiornamenti: mai controllati"
+
+        def on_update_toggle(self, button) -> None:
+            try:
+                UPDATE_ENABLED.parent.mkdir(parents=True, exist_ok=True)
+                UPDATE_ENABLED.write_text("1\n" if button.get_active() else "0\n", encoding="utf-8")
+                if button.get_active() and UPDATE_CHECK.is_file():
+                    subprocess.Popen(
+                        [str(UPDATE_CHECK), "--startup"],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        start_new_session=True,
+                    )
+                elif not button.get_active():
+                    subprocess.run(
+                        ["pkill", "-f", "labwc-update-check --startup"],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        check=False,
+                    )
+                self.status.set_text("Controllo aggiornamenti " + ("attivo" if button.get_active() else "disattivato"))
+            except OSError as exc:
+                self.status.set_text(f"Errore impostazioni: {exc}")
+
+        def on_check_updates(self, _button) -> None:
+            if not UPDATE_CHECK.is_file():
+                self.status.set_text("labwc-update-check non trovato")
+                return
+            self.update_button.set_sensitive(False)
+            self.status.set_text("Controllo aggiornamenti in corso…")
+
+            def worker() -> None:
+                try:
+                    subprocess.run(
+                        [str(UPDATE_CHECK), "--force"],
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                        check=False,
+                    )
+                except (OSError, subprocess.SubprocessError):
+                    pass
+                GLib.idle_add(self.update_check_done)
+
+            threading.Thread(target=worker, daemon=True).start()
+
+        def update_check_done(self) -> bool:
+            self.update_button.set_sensitive(True)
+            self.update_status.set_text(self.update_status_text())
+            self.status.set_text("Controllo aggiornamenti completato")
+            return False
 
         def metric_card(self, grid, col, row, title, value, sub):
             card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
@@ -729,6 +816,7 @@ def run_gui() -> int:
 
             self.enable_button.set_sensitive(not active and not self.busy)
             self.disable_button.set_sensitive(active and not self.busy)
+            self.update_status.set_text(self.update_status_text())
             return True
 
         def confirm(self, title: str, message: str) -> bool:

@@ -427,7 +427,8 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     desktop_body += "    <separator />\n"
     desktop_body += item("Cattura schermo (area)", helper("labwc-screenshot", "region"))
     desktop_body += item("Cattura schermo (intero)", helper("labwc-screenshot", "full"))
-    desktop_body += item("ZRAM — memoria compressa", helper("labwc-zram"))
+    desktop_body += item("Controlli di sistema (ZRAM, aggiornamenti)", helper("labwc-zram"))
+    desktop_body += item("Controlla aggiornamenti script", helper("labwc-update-check", "--force"))
     desktop_body += item("Diagnostica e ripara desktop", f"foot -H -e {helper('labwc-doctor')} --fix")
     desktop_body += item("Blocca schermo", "swaylock -f")
     desktop_body += item("Menu sessione (blocca, esci, riavvia, spegni)", helper("labwc-power-menu"))

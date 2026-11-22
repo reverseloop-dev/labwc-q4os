@@ -38,6 +38,7 @@ SKIP_APT=0
 FORCE_OS=0
 WANT_SDDM=""
 SDDM_ENABLED=0
+XKB_LAYOUT=""
 
 usage() {
     cat <<'EOF'
@@ -52,6 +53,7 @@ Opzioni:
   --yes               Non chiedere conferma (zram, swappiness e SDDM su TDM;
                       tema corrente o blu)
   --zram / --no-zram  Attiva o disattiva zram senza prompt
+  --keyboard LAYOUT  Layout tastiera labwc/login (es. it, us, it,us)
   --swappiness N      Imposta vm.swappiness a N (0-200)
   --no-swappiness     Non modificare vm.swappiness
   --sddm              Installa e attiva SDDM se TDM non supporta Wayland
@@ -79,6 +81,10 @@ while [ "$#" -gt 0 ]; do
             [ "$#" -ge 2 ] || die "--swappiness richiede un numero"
             SWAPPINESS_VALUE="$2"; ENABLE_SWAPPINESS=1; shift 2 ;;
         --swappiness=*) SWAPPINESS_VALUE="${1#*=}"; ENABLE_SWAPPINESS=1; shift ;;
+        --keyboard)
+            [ "$#" -ge 2 ] || die "--keyboard richiede un valore"
+            XKB_LAYOUT="$2"; shift 2 ;;
+        --keyboard=*) XKB_LAYOUT="${1#*=}"; shift ;;
         --no-swappiness) ENABLE_SWAPPINESS=0; shift ;;
         --skip-apt) SKIP_APT=1; shift ;;
         --sddm) WANT_SDDM=1; shift ;;
@@ -150,6 +156,46 @@ if [ -e /etc/systemd/system/display-manager.service ]; then
     DM_NAME="$(basename "$(readlink -f /etc/systemd/system/display-manager.service)" .service)"
 elif [ -r /etc/X11/default-display-manager ]; then
     DM_NAME="$(basename "$(cat /etc/X11/default-display-manager 2>/dev/null)" )"
+fi
+
+detect_xkb_layout() {
+    local layout=""
+    if [ -r /etc/default/keyboard ]; then
+        layout="$(sed -n 's/^XKBLAYOUT="\?\([^" ]*\)"\?.*/\1/p' /etc/default/keyboard | head -n1)"
+    fi
+    if [ -z "$layout" ] && command -v localectl >/dev/null 2>&1; then
+        layout="$(localectl status 2>/dev/null | sed -n 's/.*X11 Layout: *//p' | head -n1)"
+    fi
+    if [ -z "$layout" ] || [ "$layout" = "us" ]; then
+        case "${LANG:-}${LC_ALL:-}" in
+            it*) layout="it" ;;
+            *) [ -z "$layout" ] && layout="us" ;;
+        esac
+    fi
+    printf '%s' "$layout"
+}
+
+DETECTED_LAYOUT="$(detect_xkb_layout)"
+DETECTED_LAYOUT="${DETECTED_LAYOUT:-us}"
+
+if [ -n "$XKB_LAYOUT" ]; then
+    XKB_LAYOUT="${XKB_LAYOUT,,}"
+else
+    XKB_LAYOUT="$DETECTED_LAYOUT"
+    if [ "$ASSUME_YES" -eq 0 ] && [ -r /dev/tty ]; then
+        XKB_LAYOUT="$(ask_input "Layout tastiera (it, us, it,us)" "$DETECTED_LAYOUT" '^[a-z]{2}(-[a-zA-Z0-9]+)?(,[a-z]{2}(-[a-zA-Z0-9]+)?)*$')"
+        XKB_LAYOUT="${XKB_LAYOUT,,}"
+    fi
+fi
+
+if ! [[ "$XKB_LAYOUT" =~ ^[a-z]{2}(-[a-zA-Z0-9]+)?(,[a-z]{2}(-[a-zA-Z0-9]+)?)*$ ]]; then
+    die "Layout tastiera non valido: $XKB_LAYOUT (esempi: it, us, it,us)"
+fi
+XKB_PRIMARY="${XKB_LAYOUT%%,*}"
+if [[ "$XKB_LAYOUT" == *","* ]]; then
+    XKB_OPTIONS="grp:alt_shift_toggle"
+else
+    XKB_OPTIONS=""
 fi
 
 if [ -r "$CONFIG/labwc/theme" ]; then
@@ -295,6 +341,7 @@ CORE_PKGS=(
     xwayland
     xauth
     xdg-desktop-portal
+    curl
     python3-pil
     python3-gi
     python3-gi-cairo
@@ -308,6 +355,8 @@ CORE_PKGS=(
     fonts-noto-core
     fonts-noto-color-emoji
     adwaita-icon-theme
+    hicolor-icon-theme
+    librsvg2-common
     xdg-desktop-portal-wlr
     xdg-user-dirs
     xdg-utils
@@ -435,11 +484,44 @@ backup_tree "$CONFIG/applications/labwc-doctor.desktop" "config/applications/lab
 backup_tree "$CONFIG/applications/labwc-app-manager.desktop" "config/applications/labwc-app-manager.desktop"
 backup_tree "$CONFIG/applications/labwc-sysinfo.desktop" "config/applications/labwc-sysinfo.desktop"
 
+configure_keyboard() {
+    local env_file="$CONFIG/labwc/environment" tmp
+    mkdir -p "$CONFIG/labwc"
+    tmp="$(mktemp)"
+    if [ -r "$env_file" ]; then
+        grep -v -E '^XKB_DEFAULT_(LAYOUT|OPTIONS)=' "$env_file" > "$tmp" || true
+    fi
+    printf 'XKB_DEFAULT_LAYOUT=%s\n' "$XKB_LAYOUT" >> "$tmp"
+    if [ -n "$XKB_OPTIONS" ]; then
+        printf 'XKB_DEFAULT_OPTIONS=%s\n' "$XKB_OPTIONS" >> "$tmp"
+    fi
+    install -m 0644 "$tmp" "$env_file"
+    rm -f "$tmp"
+
+    # Layout di login/console/X11: utile per TDM, SDDM e console.
+    mkdir -p "$BACKUP_DIR/system"
+    if [ -r /etc/default/keyboard ]; then
+        # shellcheck disable=SC2024
+        sudo cat /etc/default/keyboard > "$BACKUP_DIR/system/keyboard" 2>/dev/null || true
+    fi
+    if command -v localectl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
+        sudo localectl set-keyboard-layout "$XKB_PRIMARY" >/dev/null 2>&1 || true
+    fi
+    if [ -r /etc/default/keyboard ]; then
+        if sudo grep -q '^XKBLAYOUT=' /etc/default/keyboard; then
+            sudo sed -i "s|^XKBLAYOUT=.*|XKBLAYOUT=\"$XKB_PRIMARY\"|" /etc/default/keyboard
+        else
+            printf 'XKBLAYOUT="%s"\n' "$XKB_PRIMARY" | sudo tee -a /etc/default/keyboard >/dev/null
+        fi
+    fi
+    ok "Layout tastiera: $XKB_LAYOUT (login/console: $XKB_PRIMARY)"
+}
+
 # -----------------------------------------------------------------------------
 # Installazione file condivisi
 # -----------------------------------------------------------------------------
 log "Installazione temi, template e script in $SHARE..."
-mkdir -p "$SHARE/themes" "$SHARE/templates" "$SHARE/wallpapers" "$SHARE/scripts" "$BIN"
+mkdir -p "$SHARE/themes" "$SHARE/templates" "$SHARE/wallpapers" "$SHARE/scripts" "$SHARE/icons" "$BIN"
 cp -a "$REPO_DIR/configs/themes/." "$SHARE/themes/"
 install -m 0644 "$REPO_DIR/configs/waybar/style.css.in" "$SHARE/templates/waybar-style.css"
 install -m 0644 "$REPO_DIR/configs/fuzzel/fuzzel.ini.in" "$SHARE/templates/fuzzel.ini"
@@ -452,10 +534,16 @@ install -m 0644 "$REPO_DIR/configs/waybar/config.jsonc" "$SHARE/templates/waybar
 install -m 0644 "$REPO_DIR/configs/wlogout/layout" "$SHARE/templates/wlogout-layout"
 install -m 0644 "$REPO_DIR/configs/gtk/settings.ini" "$SHARE/templates/gtk-settings.ini"
 install -m 0755 "$REPO_DIR/scripts/generate-wallpapers.py" "$SHARE/scripts/generate-wallpapers.py"
+install -m 0755 "$REPO_DIR/scripts/generate-icons.py" "$SHARE/scripts/generate-icons.py"
 install -m 0755 "$REPO_DIR/scripts/render-menu.py" "$SHARE/scripts/render-menu.py"
 install -m 0755 "$REPO_DIR/scripts/labwc-theme-apply" "$SHARE/scripts/labwc-theme-apply"
 install -m 0755 "$REPO_DIR/scripts/labwc-sysinfo" "$SHARE/scripts/labwc-sysinfo"
 install -m 0644 "$REPO_DIR/scripts/help.txt" "$SHARE/help.txt"
+
+log "Generazione icone SVG coordinate ai tre temi..."
+python3 "$REPO_DIR/scripts/generate-icons.py" --all \
+    --themes-dir "$SHARE/themes" --output "$SHARE/icons" >/dev/null
+ok "Icone generate in $SHARE/icons"
 install -m 0644 "$REPO_DIR/VERSION" "$SHARE/VERSION"
 printf 'version=%s\ninstalled=%s\nrepo=%s\n' \
     "$(head -n1 "$REPO_DIR/VERSION" | tr -d '[:space:]')" \
@@ -473,6 +561,8 @@ for helper in \
     labwc-zram \
     labwc-doctor \
     labwc-app-manager \
+    labwc-update-check \
+    labwc-update-copy \
     labwc-power-menu \
     labwc-sysinfo \
     labwc-session-start
@@ -488,6 +578,7 @@ mkdir -p "$CONFIG/labwc" "$CONFIG/waybar" "$CONFIG/fuzzel" "$CONFIG/mako" "$CONF
          "$CONFIG/gtk-3.0" "$CONFIG/gtk-4.0" "$CONFIG/applications"
 
 install -m 0644 "$REPO_DIR/configs/labwc/environment" "$CONFIG/labwc/environment"
+configure_keyboard
 install -m 0755 "$REPO_DIR/configs/labwc/autostart" "$CONFIG/labwc/autostart"
 sed "s|@@HOME@@|$HOME|g" "$REPO_DIR/configs/labwc/rc.xml" > "$CONFIG/labwc/rc.xml.tmp"
 install -m 0644 "$CONFIG/labwc/rc.xml.tmp" "$CONFIG/labwc/rc.xml"
@@ -745,7 +836,8 @@ log "Verifica finale..."
 [ -f "$CONFIG/labwc/menu.xml" ] || die "menu.xml mancante."
 [ -f "$SHARE/VERSION" ] || die "VERSION mancante."
 [ -f "$SHARE/version-info" ] || die "version-info mancante."
-for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-doctor labwc-app-manager labwc-power-menu labwc-sysinfo; do
+[ -r "${XDG_DATA_HOME:-$HOME/.local/share}/icons/labwc-q4os/index.theme" ] || die "icon theme labwc-q4os mancante."
+for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-doctor labwc-app-manager labwc-update-check labwc-update-copy labwc-power-menu labwc-sysinfo; do
     [ -x "$BIN/$helper" ] || die "helper non eseguibile: $helper"
 done
 ok "Tutto in ordine."
@@ -762,6 +854,7 @@ cat <<EOF
 ${C_GREEN}${C_BOLD}Installazione completata.${C_RESET}
 
   Tema attivo ........ $(theme_label "$THEME")
+  Layout tastiera .... $XKB_LAYOUT (login: $XKB_PRIMARY)
   Display manager .... $([ "$SDDM_ENABLED" -eq 1 ] && echo "SDDM (attivo al prossimo riavvio)" || echo "invariato")
   Sfondi ............. $SHARE/wallpapers
   Menu ............... $CONFIG/labwc/menu.xml

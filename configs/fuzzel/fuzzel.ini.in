@@ -4,6 +4,7 @@ font=Inter:size=12
 dpi-aware=no
 prompt=  Cerca  >
 icons-enabled=yes
+icon-theme=labwc-q4os
 terminal=foot
 lines=12
 width=52

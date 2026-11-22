@@ -28,8 +28,8 @@ done < <(find . -path ./.git -prune -o -type f \( -name '*.sh' -o -path './scrip
 # --- 2. sintassi Python ------------------------------------------------------
 check "sintassi Python"
 PYCACHE_DIR="$(mktemp -d)"
-if PYTHONPYCACHEPREFIX="$PYCACHE_DIR" python3 -m py_compile scripts/generate-wallpapers.py scripts/render-menu.py scripts/labwc-zram scripts/labwc-app-manager; then
-    pass "generate-wallpapers.py, render-menu.py, labwc-zram, labwc-app-manager"
+if PYTHONPYCACHEPREFIX="$PYCACHE_DIR" python3 -m py_compile scripts/generate-wallpapers.py scripts/render-menu.py scripts/labwc-zram scripts/labwc-app-manager scripts/generate-icons.py; then
+    pass "generate-wallpapers.py, render-menu.py, labwc-zram, labwc-app-manager, generate-icons.py"
 else
     bad "py_compile"
 fi
@@ -50,6 +50,15 @@ else
     bad "labwc-power-menu --action (dry-run)"
 fi
 if [ -s VERSION ]; then pass "VERSION"; else bad "VERSION"; fi
+UPDTMP="$(mktemp -d)"
+mkdir -p "$UPDTMP/share"
+if HOME="$UPDTMP" LABWC_Q4OS_SHARE="$UPDTMP/share" \
+    bash scripts/labwc-update-check --status | jq -e '.repo' >/dev/null; then
+    pass "labwc-update-check --status"
+else
+    bad "labwc-update-check --status"
+fi
+rm -rf "$UPDTMP"
 
 # --- 3. JSON -----------------------------------------------------------------
 check "JSON (Waybar, wlogout)"
@@ -65,8 +74,10 @@ check "permessi eseguibili"
 for f in install.sh bootstrap.sh scripts/labwc-theme-apply scripts/labwc-theme-switcher \
          scripts/labwc-menu-editor scripts/labwc-reload scripts/labwc-generate-wallpapers \
          scripts/labwc-help scripts/labwc-screenshot scripts/labwc-zram scripts/labwc-doctor \
-         scripts/labwc-app-manager scripts/labwc-power-menu scripts/labwc-sysinfo \
-         scripts/labwc-session-start scripts/validate.sh scripts/generate-wallpapers.py scripts/render-menu.py; do
+         scripts/labwc-app-manager scripts/labwc-update-check scripts/labwc-update-copy \
+         scripts/labwc-power-menu scripts/labwc-sysinfo \
+         scripts/labwc-session-start scripts/validate.sh scripts/generate-wallpapers.py \
+         scripts/render-menu.py scripts/generate-icons.py; do
     if [ -x "$f" ]; then pass "$f"; else bad "$f non eseguibile"; fi
 done
 
@@ -80,6 +91,7 @@ cp configs/waybar/style.css.in "$TMP/share/templates/waybar-style.css"
 cp configs/fuzzel/fuzzel.ini.in "$TMP/share/templates/fuzzel.ini"
 cp configs/mako/config.in "$TMP/share/templates/mako-config"
 cp configs/wlogout/style.css.in "$TMP/share/templates/wlogout-style.css"
+install -m 0755 scripts/generate-icons.py "$TMP/share/scripts/generate-icons.py"
 
 for theme in nordic-cobalt muted-crimson sage-emerald; do
     if HOME="$TMP" LABWC_Q4OS_SHARE="$TMP/share" \
@@ -103,12 +115,22 @@ for theme in nordic-cobalt muted-crimson sage-emerald; do
     else
         bad "themerc-override mancante nel tema $theme"
     fi
+    if [ -r "$TMP/.local/share/icons/labwc-q4os/index.theme" ]; then
+        pass "icone del tema $theme"
+    else
+        bad "icone del tema $theme mancanti"
+    fi
 done
 
 if HOME="$TMP" python3 scripts/render-menu.py --render >/dev/null; then
     pass "menu.xml generato"
 else
     bad "menu.xml non generato"
+fi
+if xmllint --noout "$TMP/.local/share/icons/labwc-q4os/scalable/apps/utilities-terminal.svg"; then
+    pass "icona SVG valida"
+else
+    bad "icona SVG non valida"
 fi
 if xmllint --noout "$TMP/.config/labwc/menu.xml"; then
     pass "menu.xml XML valido"
@@ -127,8 +149,9 @@ if command -v shellcheck >/dev/null 2>&1; then
     if shellcheck -x -S warning install.sh bootstrap.sh scripts/lib.sh \
         scripts/labwc-theme-apply scripts/labwc-theme-switcher scripts/labwc-menu-editor \
         scripts/labwc-reload scripts/labwc-generate-wallpapers scripts/labwc-help \
-        scripts/labwc-screenshot scripts/labwc-doctor scripts/labwc-power-menu \
-        scripts/labwc-sysinfo scripts/labwc-session-start scripts/validate.sh; then
+        scripts/labwc-screenshot scripts/labwc-doctor scripts/labwc-update-check \
+        scripts/labwc-update-copy scripts/labwc-power-menu scripts/labwc-sysinfo \
+        scripts/labwc-session-start scripts/validate.sh; then
         pass "shellcheck"
     else
         bad "shellcheck"

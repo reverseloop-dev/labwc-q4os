@@ -90,3 +90,22 @@ ask_choice() {
 }
 
 have() { command -v "$1" >/dev/null 2>&1; }
+
+# Prompt libero con default e validazione regex opzionale.
+ask_input() {
+    local question="$1" default="$2" pattern="${3:-}" answer
+    if [ ! -r /dev/tty ]; then
+        printf '%s\n' "$default"
+        return
+    fi
+    while true; do
+        printf '%s%s%s [%s] ' "$C_BOLD" "$question" "$C_RESET" "$default" >/dev/tty
+        read -r answer </dev/tty || answer=""
+        answer="${answer:-$default}"
+        if [ -z "$pattern" ] || [[ "$answer" =~ $pattern ]]; then
+            printf '%s\n' "$answer"
+            return
+        fi
+        printf 'Valore non valido. Riprova.\n' >/dev/tty
+    done
+}

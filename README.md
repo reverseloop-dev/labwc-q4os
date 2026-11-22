@@ -23,7 +23,7 @@ contestuale dinamico e ottimizzazione della memoria con zram.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.0.0**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.0.1**
 
 ---
 
@@ -43,6 +43,8 @@ manager, senza toccare Trinity, Plasma o le configurazioni esistenti.
   per bloccare lo schermo e **labwc-power-menu** per la sessione.
 - Tre temi completi e intercambiabili a caldo.
 - Tre sfondi 2560×1440 generati con Pillow, senza download esterni.
+- **Icone SVG originali per ogni tema**, coordinate con la palette e applicate
+  a GTK, Waybar, Fuzzel, Mako e alle finestre degli strumenti.
 - Menu del tasto destro con **App preferite** gestibili dall'utente.
 - **App nel menu Labwc**: gestore grafico con tasto destro per aggiungere ai
   preferiti, spostare in una categoria (es. Multimedia) o rimuovere.
@@ -51,8 +53,9 @@ manager, senza toccare Trinity, Plasma o le configurazioni esistenti.
 - **Doppio clic sinistro sul desktop**: guida, scorciatoie, versioni delle app,
   versione script, data di aggiornamento e link al repository.
 - Guida integrata in italiano con tasti rapidi e istruzioni di modifica file.
-- **ZRAM — memoria compressa**: pannello grafico per attivare/disattivare zram
-  con indicatori live di RAM, swap, compressione e cronologia.
+- **Controlli di sistema**: ZRAM con indicatori live e attivazione/disattivazione,
+  più controllo aggiornamenti dello script attivabile/disattivabile dallo stesso
+  pannello.
 - **Labwc Doctor**: controlli automatici e riparazione di configurazione,
   Waybar, menu, sessione, XWayland, portali, zram e log.
 - zram e swappiness configurabili durante l'installazione.
@@ -139,6 +142,7 @@ cd labwc-q4os
 | `--theme nordic-cobalt` | Nome completo del tema |
 | `--yes` | Nessuna domanda: zram e swappiness attivi, tema corrente o blu |
 | `--zram` / `--no-zram` | Attiva/disattiva zram senza prompt |
+| `--keyboard LAYOUT` | Layout labwc/login: `it`, `us`, `it,us` (default rilevato) |
 | `--swappiness N` | Imposta `vm.swappiness` a `N` (0–200) |
 | `--no-swappiness` | Non modificare `vm.swappiness` |
 | `--sddm` | Installa e attiva SDDM se TDM non supporta Wayland |
@@ -261,6 +265,30 @@ labwc-generate-wallpapers
 
 Le immagini finiscono in `~/.local/share/labwc-q4os/wallpapers/`.
 
+### Icone coordinate al tema
+
+Ogni tema ha un set di icone SVG **originali**, moderne e stilizzate, disegnate
+localmente e colorate con la palette attiva: blu per Nordic Cobalt, rosso
+spento per Muted Crimson, verde salvia per Sage Emerald. Non vengono scaricate
+da repository esterni, quindi non ci sono dubbi di licenza o link che possano
+rompersi.
+
+Il set copre terminale, file manager, browser, impostazioni, audio, rete,
+batteria, sessione, screenshot, monitor, tema, ricerca, cartelle, documenti e
+categorie. Viene applicato a:
+
+- icone GTK (`gtk-icon-theme-name=labwc-q4os`);
+- taskbar di Waybar;
+- Fuzzel;
+- Mako;
+- finestre di ZRAM e App nel menu Labwc.
+
+Al cambio tema il symlink `~/.local/share/icons/labwc-q4os` punta al set del
+nuovo tema; Waybar viene riavviata e gli altri componenti usano le nuove icone
+alla successiva apertura.
+
+![Icone dei tre temi](preview/icons.png)
+
 ---
 
 ## Menu del tasto destro
@@ -297,6 +325,8 @@ Nella sezione **★ App preferite** del menu desktop è presente anche
 **“Rimuovi dai preferiti...”**, per eliminare una voce senza aprire l'editor.
 
 ![App nel menu Labwc](preview/app-manager.png)
+
+![Menu contestuale tasto destro](preview/app-manager-context.png)
 
 ### Aggiungere o rimuovere app
 
@@ -350,10 +380,44 @@ Il file sorgente è `~/.config/labwc/help.txt`.
 
 ---
 
+## Tastiera italiana e layout di login
+
+Durante l'installazione viene rilevato il layout del sistema e della lingua.
+Con locale italiano il default è **`it`**; è possibile scegliere anche
+`us` o `it,us` (Alt+Shift per passare da uno all'altro).
+
+```bash
+./install.sh --keyboard it
+./install.sh --keyboard it,us
+```
+
+Vengono configurati:
+
+- `~/.config/labwc/environment` → `XKB_DEFAULT_LAYOUT=it` (e opzioni di switch);
+- `/etc/default/keyboard` e `localectl` → layout del login/console (TDM, SDDM, TTY).
+
+Per modificare solo labwc:
+
+```text
+~/.config/labwc/environment
+  XKB_DEFAULT_LAYOUT=it
+  # XKB_DEFAULT_OPTIONS=grp:alt_shift_toggle   # solo per it,us
+```
+
+Poi `Super+Shift+R` o `labwc --reconfigure`. Per il login:
+
+```bash
+sudo localectl set-keyboard-layout it
+# oppure
+sudo dpkg-reconfigure keyboard-configuration
+```
+
+---
+
 ## ZRAM — memoria compressa
 
-Pannello grafico: tasto destro → **Labwc & Desktop** → **ZRAM — memoria
-compressa**, oppure `labwc-zram`.
+Pannello grafico: tasto destro → **Labwc & Desktop** → **Controlli di
+sistema (ZRAM, aggiornamenti)**, oppure `labwc-zram`.
 
 Mostra in tempo reale:
 
@@ -362,6 +426,9 @@ Mostra in tempo reale:
 - rapporto di compressione e RAM realmente occupata da zram;
 - grafico dell'occupazione degli ultimi 3 minuti;
 - dispositivo, algoritmo (`zstd`), dimensione, `vm.swappiness`.
+
+Nello stesso pannello il check **Aggiornamenti** abilita/disabilita il controllo
+all'avvio, mentre **Controlla ora** verifica subito la versione online.
 
 Pulsanti **Attiva zram** e **Disattiva zram**: eseguono `systemctl
 enable/disable --now zramswap` tramite `pkexec` e l'agente polkit della
@@ -384,6 +451,49 @@ scegli di non attivare subito zram.
 > Nota: il pannello è stato verificato in ambiente Debian 13 con Python
 > PyGObject/GTK3. Se GTK non è disponibile, `labwc-zram --status` resta
 > utilizzabile e l'installer segnala la dipendenza mancante.
+
+---
+
+## Controllo aggiornamenti
+
+All'avvio di labwc, **se il controllo è abilitato**, `labwc-update-check`
+attende la connessione internet e confronta:
+
+- la versione installata in `~/.local/share/labwc-q4os/version-info`;
+- la versione online `VERSION` del repository GitHub.
+
+Se la versione online è più recente compare una **notifica popup** con
+installata/disponibile. **Cliccando la notifica**, il comando
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh | bash
+```
+
+viene copiato negli appunti e compare un avviso che ricorda di incollarlo nel
+terminale. Il controllo non installa nulla automaticamente: l'aggiornamento
+resta sempre un'azione esplicita dell'utente.
+
+Il controllo è gestito dallo stesso pannello di ZRAM:
+
+- check **Aggiornamenti** → abilita/disabilita il controllo all'avvio;
+- **Controlla ora** → verifica immediata;
+- stato ultimo controllo / nuova versione visibile nel pannello.
+
+Da terminale:
+
+```bash
+labwc-update-check --status
+labwc-update-check --once
+labwc-update-check --enable
+labwc-update-check --disable
+```
+
+Lo stato è salvato in:
+
+```text
+~/.config/labwc/update-check.enabled
+~/.local/state/labwc-q4os/update-status.json
+```
 
 ---
 
@@ -488,6 +598,7 @@ labwc-q4os/
 │   └── themes/<tema>/{theme.conf,themerc}
 ├── scripts/
 │   ├── generate-wallpapers.py     # sfondi con Pillow
+│   ├── generate-icons.py          # icone SVG per i tre temi
 │   ├── render-menu.py             # menu.xml dinamico
 │   ├── labwc-theme-apply          # applica un tema
 │   ├── labwc-theme-switcher       # selettore tema
@@ -496,6 +607,8 @@ labwc-q4os/
 │   ├── labwc-screenshot           # grim + slurp
 │   ├── labwc-zram                 # pannello GTK zram
 │   ├── labwc-app-manager          # gestore app/preferite/categorie
+│   ├── labwc-update-check         # controllo versione online
+│   ├── labwc-update-copy          # copia comando di aggiornamento
 │   ├── labwc-power-menu           # menu sessione Fuzzel/Zenity
 │   ├── labwc-sysinfo              # versioni e informazioni sistema
 │   ├── labwc-doctor               # diagnostica e riparazione
@@ -504,7 +617,7 @@ labwc-q4os/
 │   ├── labwc-generate-wallpapers
 │   ├── help.txt                   # guida italiana
 │   └── validate.sh                # controlli statici e smoke test
-├── preview/                       # anteprime sfondi e ZRAM
+├── preview/                       # anteprime sfondi, icone, GUI
 ├── LICENSE
 └── README.md
 ```
@@ -548,6 +661,8 @@ Dati e strumenti:
 ~/.local/share/labwc-q4os/{themes,templates,wallpapers,scripts}
 ~/.local/bin/labwc-*
 ~/.local/state/labwc-q4os/session.log
+~/.local/state/labwc-q4os/update-status.json
+~/.config/labwc/update-check.enabled
 ~/.local/share/labwc-q4os/backups/<data>/
 ```
 

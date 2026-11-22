@@ -1,0 +1,165 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-update-check - controllo aggiornamenti dello script labwc-q4os
+#
+#  Uso:
+#    labwc-update-check --startup    attende la rete, controlla e notifica
+#    labwc-update-check --once       controlla subito (senza attesa)
+#    labwc-update-check --status     mostra lo stato in JSON
+#    labwc-update-check --enable|--disable
+# =============================================================================
+set -uo pipefail
+
+CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}"
+SHARE="${LABWC_Q4OS_SHARE:-${XDG_DATA_HOME:-$HOME/.local/share}/labwc-q4os}"
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/labwc-q4os"
+ENABLED_FILE="$CONFIG/labwc/update-check.enabled"
+STATUS_FILE="$STATE/update-status.json"
+VERSION_URL="${LABWC_UPDATE_URL:-https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/VERSION}"
+REPO_URL="https://github.com/reverseloop-dev/labwc-q4os"
+
+mkdir -p "$STATE" "$CONFIG/labwc"
+
+enabled() {
+    [ ! -f "$ENABLED_FILE" ] && return 0
+    [ "$(tr -d '[:space:]' < "$ENABLED_FILE" 2>/dev/null)" != "0" ]
+}
+
+set_enabled() {
+    printf '%s\n' "$1" > "$ENABLED_FILE"
+}
+
+local_version() {
+    local version=""
+    if [ -r "$SHARE/version-info" ]; then
+        version="$(sed -n 's/^version=//p' "$SHARE/version-info" | head -n1)"
+    fi
+    [ -n "$version" ] || version="$(head -n1 "$SHARE/VERSION" 2>/dev/null | tr -d '[:space:]')"
+    [ -n "$version" ] || version="dev"
+    printf '%s' "${version#v}"
+}
+
+online_version() {
+    command -v curl >/dev/null 2>&1 || return 1
+    curl -fsSL --max-time 10 "$VERSION_URL" 2>/dev/null | head -n1 | tr -d '[:space:]'
+}
+
+version_newer() {
+    local online="$1" installed="$2"
+    [ -n "$online" ] && [ -n "$installed" ] || return 1
+    [ "$online" = "$installed" ] && return 1
+    local first
+    first="$(printf '%s\n%s\n' "$installed" "$online" | sort -V | head -n1)"
+    [ "$first" = "$installed" ]
+}
+
+status_json() {
+    local installed="$1" online="$2" available="$3" checked="$4" notified="${5:-}"
+    printf '{"installed":"%s","online":"%s","available":%s,"last_check":"%s","notified":"%s","repo":"%s"}\n' \
+        "$installed" "$online" "$available" "$checked" "$notified" "$REPO_URL" > "$STATUS_FILE"
+    cat "$STATUS_FILE"
+}
+
+notify_update() {
+    local installed="$1" online="$2"
+    local message="Installata: $installed
+Disponibile: $online
+
+Aggiorna con:
+curl -fsSL https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh | bash"
+
+    if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v notify-send >/dev/null 2>&1; then
+        notify-send -a "labwc-q4os-update" -u normal -i software-update-available \
+            "Nuova versione di labwc-q4os disponibile" \
+            "Installata $installed → disponibile $online · clicca per copiare il comando di aggiornamento" \
+            >/dev/null 2>&1 || true
+        return 0
+    fi
+    if [ -n "${DISPLAY:-}" ] && command -v zenity >/dev/null 2>&1; then
+        if zenity --question --title="Labwc Q4OS — aggiornamento disponibile" \
+            --text="$message\n\nCopiare il comando di aggiornamento negli appunti?" \
+            --ok-label="Copia comando" --cancel-label="Chiudi" --width=560 2>/dev/null; then
+            if command -v wl-copy >/dev/null 2>&1; then
+                printf '%s' "curl -fsSL https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh | bash" | wl-copy || true
+                notify-send -a "Labwc Q4OS" "Comando copiato" "Incollalo nel terminale con Ctrl+Shift+V." 2>/dev/null || true
+            fi
+        fi
+        return 0
+    fi
+    printf '%s\n' "$message" >&2
+}
+
+check_once() {
+    local force="${1:-0}" installed online checked notified=""
+    installed="$(local_version)"
+    if [ "$installed" = "dev" ]; then
+        status_json "$installed" "" false "$(date -Iseconds)" "" >/dev/null
+        return 0
+    fi
+    online="$(online_version)" || {
+        status_json "$installed" "" false "$(date -Iseconds)" "" >/dev/null
+        return 1
+    }
+    online="${online#v}"
+    checked="$(date -Iseconds)"
+
+    if [ -r "$STATUS_FILE" ]; then
+        notified="$(sed -n 's/.*"notified":"\\([^"]*\\)".*/\\1/p' "$STATUS_FILE" | head -n1)"
+    fi
+
+    if version_newer "$online" "$installed"; then
+        status_json "$installed" "$online" true "$checked" "$notified" >/dev/null
+        if [ "$force" = "1" ] || [ "$notified" != "$online" ]; then
+            notify_update "$installed" "$online"
+            status_json "$installed" "$online" true "$checked" "$online" >/dev/null
+        fi
+        return 0
+    fi
+
+    status_json "$installed" "$online" false "$checked" "" >/dev/null
+    return 0
+}
+
+case "${1:---startup}" in
+    --status)
+        if [ -r "$STATUS_FILE" ]; then
+            cat "$STATUS_FILE"
+        else
+            printf '{"installed":"%s","online":"","available":false,"last_check":"","notified":"","repo":"%s"}\n' \
+                "$(local_version)" "$REPO_URL"
+        fi
+        ;;
+    --enable)
+        set_enabled 1
+        printf 'Controllo aggiornamenti abilitato.\n'
+        ;;
+    --disable)
+        set_enabled 0
+        printf 'Controllo aggiornamenti disabilitato.\n'
+        ;;
+    --once)
+        check_once 0
+        ;;
+    --force)
+        check_once 1
+        ;;
+    --startup)
+        # Attende la rete e si ferma quando il controllo e' stato fatto.
+        # Se l'utente disabilita il controllo, il ciclo termina.
+        for _ in $(seq 1 288); do
+            enabled || exit 0
+            if online_version >/dev/null 2>&1; then
+                check_once 0
+                exit $?
+            fi
+            sleep 300
+        done
+        ;;
+    -h|--help)
+        sed -n '2,12p' "$0" | sed 's/^#  //'
+        ;;
+    *)
+        printf 'Opzione sconosciuta: %s\n' "$1" >&2
+        exit 2
+        ;;
+esac

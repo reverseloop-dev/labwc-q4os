@@ -34,7 +34,7 @@
     "wlr/taskbar": {
         "format": "{icon}",
         "icon-size": 18,
-        "icon-theme": "Adwaita",
+        "icon-theme": "labwc-q4os",
         "tooltip-format": "{title}",
         "on-click": "activate",
         "on-click-middle": "close",
