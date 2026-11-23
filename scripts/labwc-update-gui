@@ -134,6 +134,7 @@ class UpdateWindow:
 
         self.toggle_busy = False
         self.upgrade_dialog = None
+        self.upgrade_checking = False
         self.window = Gtk.Window(title="Aggiornamenti labwc-q4os")
         self.window.set_default_size(680, 560)
         self.window.set_border_width(16)
@@ -207,9 +208,9 @@ class UpdateWindow:
         outer.pack_start(buttons, False, False, 0)
 
         footer = Gtk.Label(
-            label="Aggiorna ora apre il terminale con il comando di "
-                  "aggiornamento: l'installer rifà le domande e applica le tue "
-                  "scelte. In alternativa copia il comando.",
+            label="Aggiorna ora controlla prima la versione: se è già installata "
+                  "te lo dice; se è nuova puoi copiare il comando o aprirlo nel "
+                  "terminale, dove l'installer rifà le domande.",
             xalign=0,
         )
         footer.set_line_wrap(True)
@@ -219,19 +220,125 @@ class UpdateWindow:
         self.window.show_all()
 
     def on_upgrade(self, _button) -> None:
-        # Aggiornamento interattivo: terminale con il bootstrap, così
-        # l'installer rifà le domande (tema, shell, touch, ecc.).
-        if UPDATE_RUN.is_file():
-            subprocess.Popen([str(UPDATE_RUN)], start_new_session=True)
-            self.status_text.set_text(
-                "Aggiornamento avviato nel terminale: rispondi alle domande."
+        # Sempre preceduto dal controllo: prima verifica, poi propone come
+        # installare (copia comando o terminale) solo se c'e' una nuova versione.
+        if self.upgrade_checking:
+            return
+        self.upgrade_checking = True
+        self.upgrade_button.set_sensitive(False)
+        self.status_text.set_text("Controllo aggiornamenti prima di procedere…")
+
+        def worker() -> None:
+            try:
+                subprocess.run(
+                    [str(UPDATE_CHECK), "--force"],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=False,
+                )
+            except (OSError, subprocess.SubprocessError):
+                pass
+            data = self.read_status()
+            self.GLib.idle_add(self.after_update_check, data)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def read_status(self) -> dict:
+        try:
+            return json.loads(STATUS.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+
+    def after_update_check(self, data: dict) -> bool:
+        self.upgrade_checking = False
+        self.upgrade_button.set_sensitive(True)
+        installed = str(data.get("installed") or "?")
+        online = str(data.get("online") or "")
+        if not online:
+            self.status_text.set_text("Controllo non riuscito: rete non disponibile?")
+            self.show_info(
+                "Controllo non riuscito",
+                "Non è stato possibile leggere la versione online.\n"
+                "Controlla la connessione e riprova.",
             )
-            return
-        dialog = getattr(self, "upgrade_dialog", None)
-        if dialog is not None:
-            dialog.window.present()
-            return
-        self.upgrade_dialog = UpgradeDialog(self.upgrade_closed)
+            return False
+        if not data.get("available"):
+            self.status_text.set_text(self.status_text_value())
+            if online == installed:
+                text = (
+                    f"La versione {installed} è già installata ed è uguale a "
+                    "quella di sistema.\nNon serve aggiornare."
+                )
+            else:
+                text = (
+                    f"Nessun aggiornamento disponibile.\n"
+                    f"Installata: {installed}\nOnline: {online}"
+                )
+            self.show_info("Nessun aggiornamento", text)
+            return False
+        self.status_text.set_text(f"Nuova versione disponibile: {online}")
+        self.show_install_choice(installed, online)
+        return False
+
+    def show_info(self, title: str, text: str) -> None:
+        Gtk = self.Gtk
+        dialog = Gtk.MessageDialog(
+            transient_for=self.window,
+            modal=True,
+            message_type=Gtk.MessageType.INFO,
+            buttons=Gtk.ButtonsType.CLOSE,
+            text=title,
+        )
+        dialog.format_secondary_text(text)
+        dialog.run()
+        dialog.destroy()
+
+    def show_install_choice(self, installed: str, online: str) -> None:
+        Gtk = self.Gtk
+        dialog = Gtk.Dialog(
+            title="Nuova versione disponibile",
+            transient_for=self.window,
+            modal=True,
+        )
+        dialog.set_default_size(560, 240)
+        dialog.set_border_width(16)
+        box = dialog.get_content_area()
+        heading = Gtk.Label(xalign=0)
+        heading.set_markup(
+            f"<b>Nuova versione {online}</b> disponibile (installata {installed})."
+        )
+        heading.set_line_wrap(True)
+        detail = Gtk.Label(
+            label="Scegli come aggiornare: il terminale esegue il comando e "
+                  "l'installer rifà le domande; oppure copia il comando e "
+                  "incollalo tu.",
+            xalign=0,
+        )
+        detail.set_line_wrap(True)
+        detail.get_style_context().add_class("subtitle")
+        box.pack_start(heading, False, False, 0)
+        box.pack_start(detail, False, False, 0)
+
+        dialog.add_button("Annulla", Gtk.ResponseType.CANCEL)
+        copy_button = dialog.add_button("Copia comando", Gtk.ResponseType.APPLY)
+        term_button = dialog.add_button("Apri nel terminale", Gtk.ResponseType.OK)
+        copy_button.get_style_context().add_class("suggested")
+        term_button.get_style_context().add_class("suggested")
+        dialog.show_all()
+        response = dialog.run()
+        dialog.destroy()
+        if response == Gtk.ResponseType.OK:
+            if UPDATE_RUN.is_file():
+                subprocess.Popen([str(UPDATE_RUN)], start_new_session=True)
+                self.status_text.set_text(
+                    "Aggiornamento avviato nel terminale: rispondi alle domande."
+                )
+            else:
+                self.status_text.set_text("labwc-update-run non trovato.")
+        elif response == Gtk.ResponseType.APPLY:
+            self.on_copy(None)
+
 
     def start_upgrade(self) -> bool:
         self.on_upgrade(None)

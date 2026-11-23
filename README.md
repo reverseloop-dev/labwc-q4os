@@ -35,7 +35,7 @@ non impone una sostituzione.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.6.0**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.7.0**
 
 ---
 
@@ -748,8 +748,10 @@ tasto destro → **Labwc & Desktop → Controlli aggiornamenti script labwc-q4os
   **disattivare** subito; per **riattivare** serve la password di root
   (`pkexec` + helper installato root-owned);
 - intervallo predefinito **6 ore**, modificabile da 1 a 24 ore;
-- **Aggiorna ora** → apre il terminale ed esegue il bootstrap: l'installer
-  rifà le domande e applica le scelte;
+- **Aggiorna ora** → prima esegue un controllo versione; se la versione
+  installata è uguale a quella online mostra un avviso “già installata”, se è
+  nuova chiede se copiare il comando o aprirlo nel terminale (dove l'installer
+  rifà le domande);
 - **Controlla ora** → verifica immediata;
 - **Copia comando** → copia il bootstrap negli appunti;
 - **Apri repository**;

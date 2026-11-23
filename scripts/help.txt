@@ -358,8 +358,9 @@ AGGIORNAMENTI SCRIPT (pannello separato da ZRAM):
   • per riattivarlo serve la password di root (pkexec)
   • intervallo predefinito 6 ore, modificabile da 1 a 24 ore
   • "Controlla ora" confronta la versione locale con GitHub
-  • "Aggiorna ora" apre il terminale con il comando curl: l'installer
-    rifa' le domande (tema, shell, touch, LookSwitcher, SDDM)
+  • "Aggiorna ora" controlla prima la versione: se e' uguale avvisa che e'
+    gia' installata; se e' nuova chiede copia comando o apertura nel terminale
+    (dove l'installer rifa' le domande)
   • "Copia comando" copia il bootstrap negli appunti
   • se online c'e' una versione nuova compare un popup che si chiude
     dopo 15 secondi con tre pulsanti:
