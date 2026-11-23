@@ -437,6 +437,11 @@ Mostra:
     contenere solo nordic-cobalt, muted-crimson o sage-emerald.
   • Schermo nero dopo il login Wayland: verifica i driver Mesa e
     riprova con un'altra sessione dal display manager.
+  • Login Plasma/Breeze e labwc senza barra o con menu minimo: l'installer
+    scrive /etc/sddm.conf.d/99-labwc-q4os.conf e usa il wrapper
+    /usr/local/libexec/labwc-q4os/labwc-session, che ripara la configurazione.
+    Log: ~/.local/state/labwc-q4os/session.log
+    Dopo l'installazione: sudo systemctl restart sddm
 
 ---------------------------------------
 labwc-q4os — reverseloop-dev

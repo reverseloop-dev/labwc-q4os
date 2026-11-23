@@ -182,6 +182,26 @@ elif [ -r /etc/X11/default-display-manager ]; then
     DM_NAME="$(basename "$(cat /etc/X11/default-display-manager 2>/dev/null)" )"
 fi
 
+# Login gestito da SDDM con tema Plasma/Breeze (tipico di Q4OS Plasma)?
+# In quel caso va forzato il nostro tema e la sessione Labwc, altrimenti
+# labwc puo' avviarsi senza configurazione (schermo nero, menu minimo).
+PLASMA_LOGIN=0
+if command -v sddm >/dev/null 2>&1 &&
+    { [ -f /usr/share/wayland-sessions/plasma.desktop ] ||
+      [ -f /usr/share/xsessions/plasma.desktop ] ||
+      [ -d /usr/share/plasma ]; }; then
+    current_login_theme=""
+    for sddm_conf in /etc/sddm.conf /etc/sddm.conf.d/*.conf; do
+        [ -r "$sddm_conf" ] || continue
+        value="$(sed -n 's/^[[:space:]]*Current=//p' "$sddm_conf" | tail -n1)"
+        [ -n "$value" ] && current_login_theme="$value"
+    done
+    case "$current_login_theme" in
+        labwc-q4os) ;;
+        *) PLASMA_LOGIN=1 ;;
+    esac
+fi
+
 detect_xkb_layout() {
     local layout=""
     if [ -r /etc/default/keyboard ]; then
@@ -1153,8 +1173,15 @@ install_sddm_theme() {
     fi
 
     sudo install -d -m 0755 /etc/sddm.conf.d
-    sudo tee /etc/sddm.conf.d/90-labwc-q4os.conf >/dev/null <<'EOF'
+    # 99- vince sui drop-in di Plasma (kde_settings.conf, 90-...) e sul tema
+    # Breeze gia' selezionato. DisplayServer=x11 e' quello supportato dal tema.
+    sudo rm -f /etc/sddm.conf.d/90-labwc-q4os.conf
+    if [ "$PLASMA_LOGIN" -eq 1 ]; then
+        warn "Login SDDM/Plasma rilevato: forzo tema labwc-q4os e sessione Labwc."
+    fi
+    sudo tee /etc/sddm.conf.d/99-labwc-q4os.conf >/dev/null <<'EOF'
 # Generato da labwc-q4os — https://github.com/reverseloop-dev/labwc-q4os
+# Deve restare l'ultimo drop-in: vince sui temi Plasma/Breeze.
 [General]
 DisplayServer=x11
 
@@ -1162,9 +1189,11 @@ DisplayServer=x11
 Current=labwc-q4os
 
 [Users]
+DefaultSession=labwc.desktop
 RememberLastSession=true
 ReuseSession=true
 EOF
+    sudo chmod 0644 /etc/sddm.conf.d/99-labwc-q4os.conf
 
     sudo install -d -m 0755 /var/lib/sddm
     if [ ! -f "$state_file" ] || [ "$WANT_SDDM" -eq 1 ]; then
@@ -1187,13 +1216,17 @@ EOF
 }
 
 log "Registrazione sessione Labwc nel display manager..."
+# Wrapper di sessione: garantisce HOME/config anche con login Plasma/SDDM.
+sudo install -d -m 0755 /usr/local/libexec/labwc-q4os
+sudo install -m 0755 "$REPO_DIR/scripts/labwc-session-launch" \
+    /usr/local/libexec/labwc-q4os/labwc-session
 session_tmp="$(mktemp)"
 cat > "$session_tmp" <<'EOF'
 [Desktop Entry]
 Name=Labwc
 Comment=Desktop Wayland moderno (labwc-q4os by reverseloop-dev)
-Exec=labwc
-TryExec=labwc
+Exec=/usr/local/libexec/labwc-q4os/labwc-session
+TryExec=/usr/local/libexec/labwc-q4os/labwc-session
 Type=Application
 DesktopNames=labwc
 Keywords=wayland;labwc;q4os;
@@ -1377,6 +1410,9 @@ log "Verifica finale..."
 [ -r "${XDG_DATA_HOME:-$HOME/.local/share}/icons/labwc-q4os/index.theme" ] || die "icon theme labwc-q4os mancante."
 [ -x /usr/local/libexec/labwc-q4os/update-apply ] || die "helper aggiornamento GUI mancante."
 [ -x /usr/local/libexec/labwc-q4os/login-theme-apply ] || die "helper tema login mancante."
+[ -x /usr/local/libexec/labwc-q4os/labwc-session ] || die "wrapper sessione labwc mancante."
+grep -q 'Exec=/usr/local/libexec/labwc-q4os/labwc-session' /usr/share/wayland-sessions/labwc.desktop ||
+    die "file sessione labwc non punta al wrapper."
 [ -f "$APPDATA/labwc-preferences.desktop" ] || die "voci .desktop mancanti in $APPDATA."
 for variant in nordic-cobalt muted-crimson sage-emerald; do
     [ -f "/usr/share/labwc-q4os/login-themes/$variant/Main.qml" ] ||

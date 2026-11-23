@@ -35,7 +35,7 @@ non impone una sostituzione.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.4.0**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.4.1**
 
 ---
 
@@ -106,6 +106,8 @@ Ogni sfondo riporta la firma discreta `reverseloop-dev` in basso a destra.
 
 - **LookSwitcher per Trinity** (opzionale, solo sessione Trinity): selettore
   temi Q4OS; labwc resta sui suoi tre temi.
+- **Login Plasma/Breeze gestito**: drop-in `99-labwc-q4os.conf` e wrapper di
+  sessione che garantiscono tema, sessione e configurazione labwc.
 - Scelta della shell: **Waybar + Fuzzel** (default, leggerissima) o
   **Noctalia v5** (shell integrata, repo APT ufficiale di terze parti), con
   fallback automatico e `--shell waybar|noctalia`.
@@ -196,9 +198,25 @@ sudo localectl set-keyboard-layout it
 # oppure it,us
 ```
 
+### Se il login era Plasma o Breeze
+
+Se SDDM era configurato dal desktop **Plasma** (tema Breeze o greeter Wayland),
+l'installer lo rileva e scrive `/etc/sddm.conf.d/99-labwc-q4os.conf`: essendo
+l'ultimo drop-in, prevale sui file di Plasma e forza tema `labwc-q4os`,
+`DisplayServer=x11` e sessione `labwc.desktop`.
+
+La sessione Labwc usa anche un piccolo wrapper
+`/usr/local/libexec/labwc-q4os/labwc-session`: imposta `HOME` e le variabili
+XDG corrette, ripara la configurazione se manca (`labwc-doctor --fix`) e scrive
+l'esito in `~/.local/state/labwc-q4os/session.log`. Serve a evitare lo schermo
+nero con menu minimo quando il login non è quello installato dal progetto.
+
+Se dopo l'installazione il login mostra ancora Plasma:
 ```bash
-sudo localectl set-keyboard-layout it
-# oppure it,us
+sudo systemctl restart sddm
+# controllo dei file:
+grep -R "Current=" /etc/sddm.conf /etc/sddm.conf.d 2>/dev/null
+cat /usr/share/wayland-sessions/labwc.desktop
 ```
 
 Se scegli di mantenere TDM, il tema SDDM viene comunque installato ma non
@@ -914,6 +932,7 @@ labwc-q4os/
 │   ├── labwc-power-menu           # menu sessione Fuzzel/Zenity
 │   ├── labwc-sysinfo              # versioni e informazioni sistema
 │   ├── labwc-touchscreen          # rileva /dev/input/eventX del touchscreen
+│   ├── labwc-session-launch      # wrapper sessione (login Plasma/SDDM)
 │   ├── labwc-doctor               # diagnostica e riparazione
 │   ├── labwc-session-start        # autostart sessione
 │   ├── labwc-help                 # visualizzatore guida

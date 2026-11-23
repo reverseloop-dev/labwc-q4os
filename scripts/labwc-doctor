@@ -185,13 +185,15 @@ if [ "$FIX" -eq 1 ]; then
 
     if [ "$FIX_SYSTEM" -eq 1 ] && have sudo; then
         if [ ! -f /usr/share/wayland-sessions/labwc.desktop ]; then
+            session_exec="/usr/local/libexec/labwc-q4os/labwc-session"
+            [ -x "$session_exec" ] || session_exec="labwc"
             session_tmp="$(mktemp)"
-            cat > "$session_tmp" <<'EOF'
+            cat > "$session_tmp" <<EOF
 [Desktop Entry]
 Name=Labwc
 Comment=Desktop Wayland moderno (labwc-q4os by reverseloop-dev)
-Exec=labwc
-TryExec=labwc
+Exec=$session_exec
+TryExec=$session_exec
 Type=Application
 DesktopNames=labwc
 Keywords=wayland;labwc;q4os;
@@ -468,10 +470,16 @@ done
 # Sessione nel display manager
 if [ -r /usr/share/wayland-sessions/labwc.desktop ]; then
     ok "sessione Wayland registrata"
-    if grep -q '^Exec=labwc' /usr/share/wayland-sessions/labwc.desktop; then
-        ok "sessione Wayland punta a labwc"
+    if grep -q '^Exec=/usr/local/libexec/labwc-q4os/labwc-session' /usr/share/wayland-sessions/labwc.desktop; then
+        if [ -x /usr/local/libexec/labwc-q4os/labwc-session ]; then
+            ok "sessione Wayland usa il wrapper labwc"
+        else
+            bad "wrapper sessione mancante: /usr/local/libexec/labwc-q4os/labwc-session"
+        fi
+    elif grep -q '^Exec=labwc' /usr/share/wayland-sessions/labwc.desktop; then
+        ok "sessione Wayland punta a labwc (senza wrapper)"
     else
-        bad "sessione Wayland senza Exec=labwc"
+        bad "sessione Wayland senza Exec valido"
     fi
 else
     bad "sessione Wayland mancante: /usr/share/wayland-sessions/labwc.desktop (usa --fix-system)"

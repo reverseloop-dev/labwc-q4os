@@ -168,6 +168,23 @@ fi
 sleep 1
 rm -rf "$SESS_TMP"
 
+# Wrapper di sessione: con configurazione minima deve dichiararsi pronta.
+WRAP_TMP="$(mktemp -d)"
+mkdir -p "$WRAP_TMP/.config/labwc"
+printf '<labwc_config/>\n' > "$WRAP_TMP/.config/labwc/rc.xml"
+printf '<openbox_menu/>\n' > "$WRAP_TMP/.config/labwc/menu.xml"
+printf '#!/bin/sh\n' > "$WRAP_TMP/.config/labwc/autostart"
+chmod 0755 "$WRAP_TMP/.config/labwc/autostart"
+if HOME="$WRAP_TMP" XDG_CONFIG_HOME="$WRAP_TMP/.config" \
+    XDG_DATA_HOME="$WRAP_TMP/.local/share" \
+    XDG_STATE_HOME="$WRAP_TMP/.local/state" \
+    bash scripts/labwc-session-launch --check | grep -q 'sessione pronta'; then
+    pass "labwc-session-launch --check con configurazione completa"
+else
+    bad "labwc-session-launch --check"
+fi
+rm -rf "$WRAP_TMP"
+
 # --- 3. JSON -----------------------------------------------------------------
 check "JSON (Waybar, wlogout)"
 if jq empty configs/waybar/config.jsonc; then pass "waybar/config.jsonc"; else bad "waybar/config.jsonc"; fi
@@ -185,7 +202,7 @@ for f in install.sh bootstrap.sh scripts/labwc-theme-apply scripts/labwc-theme-s
          scripts/labwc-app-manager scripts/labwc-update-check scripts/labwc-update-copy \
          scripts/labwc-update-popup scripts/labwc-update-run scripts/labwc-update-toggle \
          scripts/labwc-update-apply scripts/labwc-update-gui scripts/labwc-preferences \
-         scripts/labwc-login-theme scripts/labwc-login-theme-apply \
+         scripts/labwc-login-theme scripts/labwc-login-theme-apply scripts/labwc-session-launch \
          scripts/labwc-fuzzel-apps \
          scripts/labwc-desktop scripts/labwc-desktop-state scripts/labwc-desktop-status scripts/labwc-desktop-menu \
          scripts/labwc-power-menu scripts/labwc-sysinfo \
@@ -283,7 +300,7 @@ if command -v shellcheck >/dev/null 2>&1; then
         scripts/labwc-screenshot scripts/labwc-doctor scripts/labwc-update-check \
         scripts/labwc-update-copy scripts/labwc-update-popup scripts/labwc-update-run \
         scripts/labwc-update-toggle scripts/labwc-update-apply \
-        scripts/labwc-login-theme-apply \
+        scripts/labwc-login-theme-apply scripts/labwc-session-launch \
         scripts/labwc-desktop scripts/labwc-desktop-state \
         scripts/labwc-desktop-status scripts/labwc-desktop-menu \
         scripts/labwc-power-menu scripts/labwc-sysinfo \

@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-session-launch - avvia labwc-q4os in modo affidabile
+#
+#  Usato dal file di sessione /usr/share/wayland-sessions/labwc.desktop.
+#  Serve quando il login e' gestito da SDDM/Plasma: garantisce HOME e XDG
+#  corretti, ripara la configurazione se manca e scrive un log di avvio.
+#  Senza questo wrapper, con un login Plasma/SDDM "estraneo", labwc puo'
+#  partire con la configurazione sbagliata (schermo nero, menu minimo).
+#
+#  Uso: labwc-session-launch [--check]
+# =============================================================================
+set -uo pipefail
+
+user_name="$(id -un)"
+user_home="$(getent passwd "$user_name" | cut -d: -f6)"
+[ -n "$user_home" ] && [ -d "$user_home" ] || user_home="$HOME"
+
+export HOME="$user_home"
+export USER="$user_name"
+export LOGNAME="$user_name"
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+export XDG_SESSION_TYPE=wayland
+export XDG_CURRENT_DESKTOP=labwc
+export XDG_SESSION_DESKTOP=labwc
+
+STATE="$XDG_STATE_HOME/labwc-q4os"
+LOG="$STATE/session.log"
+mkdir -p "$STATE" 2>/dev/null || true
+printf '\n===== labwc-session-launch %s (HOME=%s) =====\n' \
+    "$(date '+%Y-%m-%d %H:%M:%S')" "$HOME" >>"$LOG" 2>&1
+
+# Configurazione minima: se manca, ripara prima di avviare il compositor.
+config_ok=1
+for file in rc.xml menu.xml autostart; do
+    [ -r "$XDG_CONFIG_HOME/labwc/$file" ] || config_ok=0
+done
+[ -x "$XDG_CONFIG_HOME/labwc/autostart" ] || config_ok=0
+
+if [ "$config_ok" -eq 0 ]; then
+    printf 'configurazione labwc incompleta: eseguo labwc-doctor --fix\n' >>"$LOG"
+    doctor="$HOME/.local/bin/labwc-doctor"
+    if [ -x "$doctor" ]; then
+        timeout 60 "$doctor" --fix >>"$LOG" 2>&1 ||
+            printf 'labwc-doctor --fix non riuscito\n' >>"$LOG"
+    else
+        printf 'labwc-doctor mancante: sessione non configurata\n' >>"$LOG"
+    fi
+fi
+
+if [ "${1:-}" = "--check" ]; then
+    if [ "$config_ok" -eq 1 ]; then
+        printf 'sessione pronta: %s\n' "$HOME"
+        exit 0
+    fi
+    printf 'sessione incompleta: %s\n' "$HOME"
+    exit 1
+fi
+
+if ! command -v labwc >/dev/null 2>&1; then
+    printf 'labwc non trovato nel PATH\n' >>"$LOG"
+    exit 1
+fi
+
+# Porta nell'ambiente systemd utente le variabili Wayland, se possibile.
+if command -v dbus-update-activation-environment >/dev/null 2>&1; then
+    dbus-update-activation-environment --systemd \
+        WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE \
+        XDG_SESSION_DESKTOP XDG_RUNTIME_DIR >/dev/null 2>&1 || true
+fi
+
+printf 'exec labwc\n' >>"$LOG"
+exec labwc
