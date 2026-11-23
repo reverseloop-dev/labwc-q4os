@@ -37,6 +37,28 @@ start_once() {
     fi
 }
 
+# Shell scelta dall'installer (marker ~/.config/labwc/shell): waybar di default.
+shell_mode="waybar"
+if [ -r "$CONFIG/labwc/shell" ]; then
+    shell_mode="$(tr -d '[:space:]' < "$CONFIG/labwc/shell")"
+fi
+use_noctalia=0
+if [ "$shell_mode" = "noctalia" ]; then
+    if command -v noctalia >/dev/null 2>&1; then
+        use_noctalia=1
+    else
+        printf 'shell: marker noctalia ma comando mancante, uso Waybar+Mako+swaybg\n'
+    fi
+fi
+
+if [ "$use_noctalia" -eq 1 ]; then
+    # Noctalia fornisce barra, launcher, notifiche e sfondo: niente waybar/mako/swaybg.
+    pkill -x waybar >/dev/null 2>&1 || true
+    pkill -x mako >/dev/null 2>&1 || true
+    pkill -x swaybg >/dev/null 2>&1 || true
+    start_once noctalia noctalia
+fi
+
 # Sfondo coordinato al tema corrente
 theme="nordic-cobalt"
 [ -r "$CONFIG/labwc/theme" ] && theme="$(tr -d '[:space:]' < "$CONFIG/labwc/theme")"
@@ -44,22 +66,39 @@ wallpaper="$SHARE/wallpapers/$theme.png"
 if [ ! -f "$wallpaper" ]; then
     wallpaper="$SHARE/wallpapers/nordic-cobalt.png"
 fi
-if [ -f "$wallpaper" ] && command -v swaybg >/dev/null 2>&1; then
+if [ "$use_noctalia" -eq 0 ] && [ -f "$wallpaper" ] && command -v swaybg >/dev/null 2>&1; then
     pkill -x swaybg >/dev/null 2>&1 || true
     sleep 0.15
     setsid -f swaybg -m fill -i "$wallpaper"
     printf 'sfondo: %s\n' "$wallpaper"
 fi
 
+# Noctalia disegna il proprio sfondo: allinea il tema e la palette wallpaper.
+# In background: il login non deve attendere che la shell sia pronta.
+if [ "$use_noctalia" -eq 1 ] && [ -f "$wallpaper" ]; then
+    (
+        attempt=0
+        while [ "$attempt" -lt 8 ]; do
+            if timeout 2 noctalia msg wallpaper-set "$wallpaper"; then
+                printf 'shell: sfondo Noctalia impostato\n'
+                break
+            fi
+            attempt=$((attempt + 1))
+            sleep 0.5
+        done
+        [ "$attempt" -lt 8 ] || printf 'shell: wallpaper-set Noctalia non riuscito\n'
+    ) >>"$LOG" 2>&1 &
+fi
+
 # Barra e notifiche
-if command -v waybar >/dev/null 2>&1; then
+if [ "$use_noctalia" -eq 0 ] && command -v waybar >/dev/null 2>&1; then
     pkill -x waybar >/dev/null 2>&1 || true
     sleep 0.25
     setsid -f waybar -c "$CONFIG/waybar/config.jsonc" -s "$CONFIG/waybar/style.css"
     printf 'avviato: waybar\n'
 fi
 
-if command -v mako >/dev/null 2>&1; then
+if [ "$use_noctalia" -eq 0 ] && command -v mako >/dev/null 2>&1; then
     start_once mako mako -c "$CONFIG/mako/config"
 fi
 
@@ -81,6 +120,39 @@ if command -v cliphist >/dev/null 2>&1 && command -v wl-paste >/dev/null 2>&1; t
     fi
     if ! pgrep -f "wl-paste --type image --watch cliphist store" >/dev/null 2>&1; then
         setsid -f wl-paste --type image --watch cliphist store || true
+    fi
+fi
+
+# Touchscreen: tastiera su schermo e gesti (attivati dall'installer)
+if [ -f "$CONFIG/labwc/touchscreen.enabled" ]; then
+    touch_event="$("$HOME/.local/bin/labwc-touchscreen" 2>/dev/null | head -n1 || true)"
+    if command -v wvkbd-mobintl >/dev/null 2>&1; then
+        start_once wvkbd-mobintl wvkbd-mobintl --hidden -L 280
+        sleep 0.2
+        pgrep -x wvkbd-mobintl >/dev/null 2>&1 ||
+            printf 'touch: wvkbd non partito (protocollo virtual-keyboard assente?)\n'
+    else
+        printf 'touch: wvkbd-mobintl non installato\n'
+    fi
+    if command -v lisgd >/dev/null 2>&1 && [ -n "$touch_event" ]; then
+        if ! pgrep -x lisgd >/dev/null 2>&1; then
+            # lisgd >=0.3 vuole 6 campi: dita,gesto,bordo,distanza,modo,comando.
+            # DU = dal basso verso l'alto, partendo dal bordo inferiore (B),
+            # actmode R (al rilascio); SIGRTMIN (34) e' un toggle.
+            # -r 30 / -m 1200 allargano la tolleranza del gesto.
+            setsid -f lisgd -d "$touch_event" -r 30 -m 1200 \
+                -g "1,DU,B,*,R,pkill -34 -x wvkbd-mobintl"
+            sleep 0.3
+            if pgrep -x lisgd >/dev/null 2>&1; then
+                printf 'touch: lisgd su %s (swipe dal bordo inferiore per la tastiera)\n' "$touch_event"
+            else
+                printf 'touch: lisgd non partito (utente nel gruppo input? serve un nuovo login)\n'
+            fi
+        fi
+    elif [ -z "$touch_event" ]; then
+        printf 'touch: nessun touchscreen rilevato\n'
+    else
+        printf 'touch: lisgd non installato\n'
     fi
 fi
 

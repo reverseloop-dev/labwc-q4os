@@ -6,6 +6,7 @@
 set -uo pipefail
 
 CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}"
+APPDATA="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 SHARE="${LABWC_Q4OS_SHARE:-${XDG_DATA_HOME:-$HOME/.local/share}/labwc-q4os}"
 STATE="${XDG_STATE_HOME:-$HOME/.local/state}/labwc-q4os"
 BIN="$HOME/.local/bin"
@@ -53,6 +54,10 @@ info() { [ "$QUIET" -eq 1 ] || printf '%s[info]%s %s\n' "$C_DIM" "$C_R" "$*"; }
 fixed(){ [ "$QUIET" -eq 1 ] || printf '%s[fix ]%s %s\n' "$C_OK" "$C_R" "$*"; }
 
 have() { command -v "$1" >/dev/null 2>&1; }
+
+# Shell scelta dall'installer (marker ~/.config/labwc/shell): waybar di default.
+shell_mode=""
+[ -r "$CONFIG/labwc/shell" ] && shell_mode="$(tr -d '[:space:]' < "$CONFIG/labwc/shell")"
 
 valid_xml() {
     python3 - "$1" <<'PY' >/dev/null 2>&1
@@ -110,7 +115,7 @@ ensure_theme() {
     APPLY="$BIN/labwc-theme-apply"
     [ -x "$APPLY" ] || APPLY="$SHARE/scripts/labwc-theme-apply"
     if [ -x "$APPLY" ]; then
-        "$APPLY" "$theme" --no-reload --quiet >/dev/null 2>&1 || return 1
+        LABWC_Q4OS_SKIP_LOGIN=1 "$APPLY" "$theme" --no-reload --quiet >/dev/null 2>&1 || return 1
         fixed "file del tema rigenerati"
     fi
 }
@@ -129,6 +134,26 @@ ensure_wallpaper() {
     fi
 }
 
+ensure_touchscreen() {
+    [ -f "$CONFIG/labwc/touchscreen.enabled" ] || return 0
+    if [ -r "$CONFIG/labwc/rc.xml" ] && ! grep -q '<size>13</size>' "$CONFIG/labwc/rc.xml"; then
+        sed -i 's|<size>10</size>|<size>13</size>|g' "$CONFIG/labwc/rc.xml"
+        fixed "font touch ripristinato in rc.xml"
+    fi
+    if [ -r "$CONFIG/labwc/environment" ] &&
+       ! grep -q '^QT_SCALE_FACTOR=' "$CONFIG/labwc/environment"; then
+        sed -i '/^QT_AUTO_SCREEN_SCALE_FACTOR=/d;/^GDK_SCALE=/d;/^MOZ_USE_XINPUT2=/d' \
+            "$CONFIG/labwc/environment"
+        {
+            printf 'QT_AUTO_SCREEN_SCALE_FACTOR=0\n'
+            printf 'QT_SCALE_FACTOR=1.25\n'
+            printf 'GDK_SCALE=1\n'
+            printf 'MOZ_USE_XINPUT2=1\n'
+        } >> "$CONFIG/labwc/environment"
+        fixed "variabili touch ripristinate in environment"
+    fi
+}
+
 # ---------------------------------------------------------------------------
 # Riparazioni (prima dei controlli)
 # ---------------------------------------------------------------------------
@@ -136,9 +161,14 @@ if [ "$FIX" -eq 1 ]; then
     info "Riparazione configurazione utente..."
     mkdir -p "$CONFIG/labwc" "$CONFIG/waybar" "$CONFIG/fuzzel" "$CONFIG/mako" \
              "$CONFIG/wlogout" "$CONFIG/gtk-3.0" "$CONFIG/gtk-4.0" \
-             "$CONFIG/applications" "$SHARE/wallpapers" "$STATE"
+             "$APPDATA" "$SHARE/wallpapers" "$STATE"
 
     restore_from_template rc.xml "$CONFIG/labwc/rc.xml" 0644 || true
+    if [ "$shell_mode" = "noctalia" ] && have noctalia && [ -r "$CONFIG/labwc/rc.xml" ]; then
+        # Super+D sul launcher Noctalia (stesso sed mirato dell'installer).
+        sed -i '/<keybind key="W-d">/,/<\/keybind>/ s|command="fuzzel"|command="noctalia msg panel-toggle launcher"|' \
+            "$CONFIG/labwc/rc.xml"
+    fi
     restore_from_template environment "$CONFIG/labwc/environment" 0644 || true
     restore_from_template autostart "$CONFIG/labwc/autostart" 0755 || true
     restore_from_template help.txt "$CONFIG/labwc/help.txt" 0644 || true
@@ -147,9 +177,10 @@ if [ "$FIX" -eq 1 ]; then
     restore_from_template gtk-settings.ini "$CONFIG/gtk-3.0/settings.ini" 0644 || true
     restore_from_template gtk-settings.ini "$CONFIG/gtk-4.0/settings.ini" 0644 || true
 
+    ensure_touchscreen || true
+    ensure_wallpaper || true
     ensure_theme || true
     ensure_menu || true
-    ensure_wallpaper || true
     chmod 0755 "$CONFIG/labwc/autostart" 2>/dev/null || true
 
     if [ "$FIX_SYSTEM" -eq 1 ] && have sudo; then
@@ -299,6 +330,43 @@ case "$theme_id" in
         bad "tema non valido in ~/.config/labwc/theme: $theme_id" ;;
 esac
 
+# Touchscreen
+if [ -f "$CONFIG/labwc/touchscreen.enabled" ]; then
+    for touch_cmd in wvkbd-mobintl lisgd; do
+        if have "$touch_cmd"; then
+            ok "touch: $touch_cmd presente"
+        else
+            bad "touch: $touch_cmd mancante (reinstalla con --touch)"
+        fi
+    done
+    if id -nG "${USER:-$(id -un)}" | tr ' ' '\n' | grep -qx input; then
+        ok "touch: utente nel gruppo input"
+    else
+        bad "touch: utente non nel gruppo input (serve un nuovo login)"
+    fi
+fi
+
+# Shell desktop (marker ~/.config/labwc/shell)
+case "$shell_mode" in
+    noctalia)
+        if have noctalia; then
+            ok "shell: Noctalia v5"
+        else
+            bad "shell: marker noctalia ma comando mancante (fallback Waybar+Fuzzel; reinstalla con --shell noctalia)"
+        fi
+        ;;
+    waybar|"")
+        if have waybar && have fuzzel; then
+            ok "shell: Waybar + Fuzzel"
+        else
+            bad "shell: Waybar/Fuzzel mancanti (reinstalla con ./install.sh)"
+        fi
+        ;;
+    *)
+        warn "shell: marker non valido '$shell_mode' (atteso waybar|noctalia), uso Waybar + Fuzzel"
+        ;;
+esac
+
 xkb_layout=""
 if [ -r "$CONFIG/labwc/environment" ]; then
     xkb_layout="$(sed -n 's/^XKB_DEFAULT_LAYOUT=//p' "$CONFIG/labwc/environment" | tail -n1)"
@@ -370,11 +438,30 @@ for helper in labwc-theme-apply labwc-theme-switcher labwc-menu-editor labwc-rel
               labwc-help labwc-screenshot labwc-zram labwc-doctor labwc-app-manager \
               labwc-update-check labwc-update-copy labwc-update-popup labwc-update-run labwc-update-gui labwc-preferences \
               labwc-desktop labwc-desktop-state labwc-desktop-status labwc-desktop-menu \
-              labwc-power-menu labwc-sysinfo labwc-session-start; do
+              labwc-power-menu labwc-sysinfo labwc-touchscreen labwc-login-theme labwc-fuzzel-apps labwc-session-start; do
     if [ -x "$BIN/$helper" ]; then
         ok "helper eseguibile: $helper"
     else
         bad "helper mancante/non eseguibile: $helper"
+    fi
+done
+
+# Helper root per l'aggiornamento dalla GUI
+if [ -x /usr/local/libexec/labwc-q4os/update-apply ]; then
+    ok "helper root: update-apply"
+else
+    bad "helper root mancante: /usr/local/libexec/labwc-q4os/update-apply (riesegui install.sh)"
+fi
+if [ -x /usr/local/libexec/labwc-q4os/login-theme-apply ]; then
+    ok "helper root: login-theme-apply"
+else
+    bad "helper login mancante: /usr/local/libexec/labwc-q4os/login-theme-apply (riesegui install.sh)"
+fi
+for login_theme in nordic-cobalt muted-crimson sage-emerald; do
+    if [ -r "/usr/share/labwc-q4os/login-themes/$login_theme/Main.qml" ]; then
+        ok "tema login presente: $login_theme"
+    else
+        bad "tema login mancante: $login_theme"
     fi
 done
 
@@ -422,7 +509,12 @@ fi
 
 # Processi della sessione
 if [ -n "${WAYLAND_DISPLAY:-}" ]; then
-    for proc in waybar mako swaybg; do
+    if [ "$shell_mode" = "noctalia" ] && have noctalia; then
+        session_procs="noctalia"
+    else
+        session_procs="waybar mako swaybg"
+    fi
+    for proc in $session_procs; do
         if pgrep -x "$proc" >/dev/null 2>&1; then
             ok "processo attivo: $proc"
         else

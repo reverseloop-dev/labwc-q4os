@@ -14,7 +14,7 @@ Questa guida e' sempre disponibile con:
 Super = tasto Windows / Logo / Command.
 
   Super + Invio ......... Terminale (terminator)
-  Super + D ............. Launcher Fuzzel
+  Super + D ............. Launcher: Noctalia (se attivo) o Fuzzel
   Super + Spazio ........ Launcher Fuzzel (alternativo)
   Alt + F2 .............. Launcher Fuzzel (alternativo)
   Super + E ............. File manager (pcmanfm)
@@ -113,6 +113,17 @@ Fuzzel non supporta un menu contestuale per singola voce. Per l'equivalente
 del tasto destro su un'app: apri "App nel menu Labwc", cerca l'app e fai
 tasto destro sulla riga per aggiungerla ai preferiti, spostarla in categoria
 (es. Multimedia) o rimuoverla.
+
+APP IN FUZZEL (aggiungi/rimuovi con icona):
+  tasto destro > "Labwc & Desktop" > "App in Fuzzel"
+  • aggiungi: nome, comando (con sfoglia file), commento e icona
+  • icona: scegli dal set installato oppure un file PNG/SVG
+  • rimuovi: solo le voci create dall'utente in ~/.local/share/applications
+  • le applicazioni di sistema non vengono mai eliminate
+  equivalente da terminale:
+    labwc-fuzzel-apps --list
+    labwc-fuzzel-apps --add "Nome" --exec /percorso/app --icon icona
+    labwc-fuzzel-apps --remove nome.desktop
 
 Rimozione rapida di una preferita:
   tasto destro sul desktop > "★ App preferite" > "Rimuovi dai preferiti..."
@@ -264,10 +275,21 @@ Cronologia appunti (se cliphist e' installato):
 -----------------
 Scegli "Labwc" dal menu del display manager (SDDM/TDM) al login.
 La sessione Q4OS precedente (Trinity/Plasma) resta disponibile.
+Trinity = interfaccia classica stile Windows, familiare; labwc = Wayland
+minimale, massima reattivita' e poche distrazioni.
 Se TDM non elenca Labwc (TDM non supporta Wayland), installa SDDM:
   sudo apt install sddm
-Il tema SDDM "labwc-q4os" è moderno, colorato e mostra utente, sessione
-TDM/Labwc preselezionata, tastiera IT e pulsanti di spegnimento.
+Il login SDDM di labwc-q4os offre tre schermate con layout diversi:
+  • Aurora Card  (blu)    card centrale con aurora animata
+  • Split Studio (rosso)  pannello laterale con orologio grande
+  • Bottom Dock  (verde)  barra di accesso in basso
+Tutte mostrano utente, sessione TDM/Labwc preselezionata, tastiera IT e
+pulsanti di spegnimento.
+Cambio login:
+  tasto destro > Labwc & Desktop > Schermata di login
+  oppure: labwc-login-theme
+Nelle Preferenze lo switch "Login con gli stessi colori dello sfondo" fa
+seguire al login il tema del desktop (blu, rosso o verde).
 oppure avvia da TTY: dbus-run-session labwc
 
 
@@ -336,11 +358,14 @@ AGGIORNAMENTI SCRIPT (pannello separato da ZRAM):
   • per riattivarlo serve la password di root (pkexec)
   • intervallo predefinito 6 ore, modificabile da 1 a 24 ore
   • "Controlla ora" confronta la versione locale con GitHub
+  • "Aggiorna ora" aggiorna dalla GUI: password root in finestra,
+    barra di avanzamento e log nel riquadro nero
   • "Copia comando" copia il bootstrap negli appunti
-  • se online c'e' una versione nuova compare un popup persistente:
-      - "Aggiorna" apre Terminator col comando gia' compilato;
-        premi Invio per eseguire, Ctrl+C per annullare
+  • se online c'e' una versione nuova compare un popup che si chiude
+    dopo 15 secondi con tre pulsanti:
       - "Chiudi" chiude senza aggiornare
+      - "Copia stringa shell" copia il comando di aggiornamento
+      - "Apri app per aggiornare" apre il pannello con la GUI pronta
   • il controllo attende la rete e non installa nulla da solo
 
 Da terminale:
@@ -349,6 +374,27 @@ Da terminale:
   labwc-update-check --enable    # chiede password root
   labwc-update-check --disable   # disattivazione utente, senza password
   labwc-update-check --set-interval 21600
+
+TOUCHSCREEN (solo se attivato durante l'installazione):
+  • swipe dal bordo inferiore verso l'alto: mostra/nasconde la tastiera wvkbd
+  • per i gesti l'utente deve essere nel gruppo input (serve un nuovo login)
+  • scaling applicazioni Qt a 1.25; font e pulsanti delle finestre piu' grandi
+
+SHELL DESKTOP (scelta in installazione con --shell):
+  • Waybar + Fuzzel (default): componenti separati, leggerissimi su CPU/RAM/GPU;
+    Super+D, Super+Spazio e Alt+F2 aprono Fuzzel
+  • Noctalia v5: shell unica (barra, launcher, notifiche, centro di controllo,
+    sfondo, lock) nativa OpenGL ES, piu' moderna ma piu' pesante su RAM/GPU;
+    installata dal repository APT di terze parti pkg.noctalia.dev (Debian/Q4OS
+    amd64/arm64). Super+D apre il launcher Noctalia; Waybar/Mako/swaybg non
+    vengono avviati. La palette segue lo sfondo del tema.
+  Per cambiare: riesegui l'installer con --shell waybar oppure --shell noctalia.
+
+LOOKSWITCHER PER TRINITY (solo Trinity):
+  • se Trinity e' installato, l'installer chiede se aggiungere LookSwitcher,
+    il selettore di temi del desktop Q4OS Trinity
+  • riguarda SOLO la sessione Trinity: labwc e i suoi tre temi non cambiano
+  • flag: --lookswitcher / --no-lookswitcher; saltato con --skip-apt
 
 10. DIAGNOSTICA E RIPARAZIONE
 -----------------------------

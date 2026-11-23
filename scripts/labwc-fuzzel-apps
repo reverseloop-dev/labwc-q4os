@@ -1,0 +1,795 @@
+#!/usr/bin/env python3
+"""
+labwc-fuzzel-apps - aggiunge e rimuove le app utente mostrate da Fuzzel.
+
+Le app di sistema (XDG_DATA_DIRS) sono solo visualizzate, in grigio: non
+vengono mai eliminate. La rimozione tocca solo file .desktop regolari
+dentro $XDG_DATA_HOME/applications (mai symlink, mai cartelle di sistema).
+
+CLI senza display:
+    --help                          aiuto (nessun import di GTK)
+    --list                          un oggetto JSON per riga (utente + sistema)
+    --add NOME --exec CMD [...]     crea la voce, stampa il percorso
+    --remove BASENAME               rimuove solo dalla cartella utente
+
+Senza argomenti apre la finestra GTK3.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+import unicodedata
+from pathlib import Path
+
+HOME = Path.home()
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", HOME / ".config"))
+SHARE = Path(
+    os.environ.get(
+        "LABWC_Q4OS_SHARE",
+        Path(os.environ.get("XDG_DATA_HOME", HOME / ".local/share")) / "labwc-q4os",
+    )
+)
+MARKER = "X-Labwc-Q4OS-User=true"
+SLUG_RE = re.compile(r"[^a-z0-9._-]+")
+# field code freedesktop in coda al comando: preservati, mai quotati
+TAIL_CODES_RE = re.compile(r"((?:[ \t]+%(?:[fFuUdDnNickvm]|%))+)[ \t]*$")
+RESERVED = " \t\"'`$\\|&;<>()*?[]#~"
+
+
+def colors() -> dict[str, str]:
+    theme = "nordic-cobalt"
+    try:
+        theme = (CONFIG / "labwc/theme").read_text(encoding="utf-8").strip() or theme
+    except OSError:
+        pass
+    result = {
+        "BG": "070d1a",
+        "SURFACE": "1e293b",
+        "SURFACE_ALT": "273449",
+        "ACCENT": "3b82f6",
+        "ACCENT_SOFT": "60a5fa",
+        "FG": "e2e8f0",
+        "FG_MUTED": "94a3b8",
+        "BORDER": "334155",
+    }
+    path = SHARE / "themes" / theme / "theme.conf"
+    if path.is_file():
+        try:
+            for raw in path.read_text(encoding="utf-8").splitlines():
+                line = raw.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'").lstrip("#")
+                if key in result and value:
+                    result[key] = value
+        except OSError:
+            pass
+    return result
+
+
+def user_app_dir() -> Path:
+    base = Path(os.environ.get("XDG_DATA_HOME", HOME / ".local/share"))
+    directory = base / "applications"
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory
+
+
+def system_app_dirs() -> list[Path]:
+    raw = os.environ.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share")
+    user_dir = user_app_dir()
+    dirs: list[Path] = []
+    seen: set[str] = set()
+    for part in raw.split(":"):
+        part = part.strip()
+        if not part:
+            continue
+        directory = Path(part).expanduser() / "applications"
+        key = str(directory)
+        # la cartella utente non è mai una cartella di sistema
+        if key in seen or directory == user_dir:
+            continue
+        seen.add(key)
+        dirs.append(directory)
+    return dirs
+
+
+def system_basenames() -> set[str]:
+    names: set[str] = set()
+    for directory in system_app_dirs():
+        if not directory.is_dir():
+            continue
+        try:
+            for path in directory.glob("*.desktop"):
+                names.add(path.name)
+        except OSError:
+            continue
+    return names
+
+
+def parse_desktop(path: Path) -> dict[str, str]:
+    data: dict[str, str] = {}
+    in_entry = False
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return data
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            in_entry = line == "[Desktop Entry]"
+            continue
+        if not in_entry or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        # la prima occorrenza vince (le successive sono traduzioni/overrides)
+        if key not in data:
+            data[key] = value.strip()
+    return data
+
+
+def localized(data: dict[str, str], key: str) -> str:
+    for suffix in ("[it_IT]", "[it]", ""):
+        value = data.get(f"{key}{suffix}", "")
+        if value:
+            return value
+    return ""
+
+
+def is_true(value: str) -> bool:
+    return value.strip().lower() in ("1", "true", "yes")
+
+
+def make_entry(path: Path, user: bool) -> dict:
+    data = parse_desktop(path)
+    removable = user and path.is_file() and not path.is_symlink()
+    return {
+        "name": localized(data, "Name") or path.stem,
+        "comment": localized(data, "Comment"),
+        "exec": data.get("Exec", ""),
+        "icon": data.get("Icon", ""),
+        "nodisplay": is_true(data.get("NoDisplay", "")),
+        "terminal": is_true(data.get("Terminal", "")),
+        "file": str(path),
+        "file_name": path.name,
+        "user": user,
+        "removable": removable,
+    }
+
+
+def list_entries() -> list[dict]:
+    """Elenco unito, deduplicato per basename: la cartella utente vince."""
+    entries: list[dict] = []
+    seen: set[str] = set()
+    for path in sorted(user_app_dir().glob("*.desktop")):
+        if path.name in seen or not path.is_file():
+            continue
+        seen.add(path.name)
+        entries.append(make_entry(path, user=True))
+    for directory in system_app_dirs():
+        if not directory.is_dir():
+            continue
+        try:
+            paths = sorted(directory.glob("*.desktop"))
+        except OSError:
+            continue
+        for path in paths:
+            if path.name in seen or not path.is_file():
+                continue
+            seen.add(path.name)
+            entries.append(make_entry(path, user=False))
+    return entries
+
+
+def slugify(name: str) -> str:
+    text = unicodedata.normalize("NFKD", name)
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = SLUG_RE.sub("-", text.casefold())
+    text = re.sub(r"-{2,}", "-", text).strip("-.")
+    return text
+
+
+def choose_slug(name: str, user_dir: Path, system_names: set[str]) -> str:
+    base = slugify(name)
+    if not base:
+        raise ValueError("Il nome non produce un identificativo valido per il file .desktop.")
+    slug = base
+    number = 2
+    while True:
+        target = user_dir / f"{slug}.desktop"
+        if target.exists() or target.is_symlink():
+            raise ValueError(
+                f"Esiste già un'app utente con questo nome ({slug}.desktop): "
+                "scegli un nome diverso, non sovrascrivo le app esistenti."
+            )
+        if f"{slug}.desktop" not in system_names:
+            return slug
+        # non oscuro involontariamente un'app di sistema: suffisso -2, -3, ...
+        if number > 999:
+            raise ValueError("Troppi nomi simili già presenti: scegli un nome diverso.")
+        slug = f"{base}-{number}"
+        number += 1
+
+
+def desktop_quote(value: str) -> str:
+    value = (
+        value.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("`", "\\`")
+        .replace("$", "\\$")
+    )
+    return f'"{value}"'
+
+
+def quote_token(token: str) -> str:
+    if not token or any(ch in token for ch in RESERVED):
+        return desktop_quote(token)
+    return token
+
+
+def sanitize_exec(command: str) -> str:
+    """Quota in sicurezza senza mai eseguire nulla; preserva %U, %F, %%."""
+    command = command.strip()
+    if not command:
+        raise ValueError("Il comando è obbligatorio.")
+    if any(ch in command for ch in "\n\r\x00"):
+        raise ValueError("Il comando contiene caratteri di riga non validi.")
+    codes = ""
+    body = command
+    match = TAIL_CODES_RE.search(command)
+    if match:
+        codes = " " + " ".join(match.group(1).split())
+        body = command[: match.start()].rstrip()
+    if not body:
+        raise ValueError("Il comando è obbligatorio.")
+    if '"' in body or "'" in body:
+        try:
+            parts = shlex.split(body)
+        except ValueError as exc:
+            raise ValueError(f"Quoting non bilanciato nel comando: {exc}") from exc
+        if not parts:
+            raise ValueError("Il comando è obbligatorio.")
+        return " ".join(quote_token(part) for part in parts) + codes
+    if not re.search(r"[ \t]", body):
+        return quote_token(body) + codes
+    tokens = body.split()
+    # percorso assoluto con spazi: il prefisso più lungo che è un file reale
+    for count in range(len(tokens), 0, -1):
+        candidate = " ".join(tokens[:count])
+        if candidate.startswith("/") and os.path.isfile(candidate):
+            rest = tokens[count:]
+            out = desktop_quote(candidate)
+            if rest:
+                out += " " + " ".join(quote_token(token) for token in rest)
+            return out + codes
+    if body.startswith("/"):
+        # es. /opt/My App/run.sh -> "/opt/My App/run.sh"
+        return desktop_quote(body) + codes
+    return " ".join(quote_token(token) for token in tokens) + codes
+
+
+def clean_field(label: str, value: str) -> str:
+    value = value.strip()
+    if any(ch in value for ch in "\n\r\x00"):
+        raise ValueError(f"Il campo {label} contiene caratteri di riga non validi.")
+    return value
+
+
+def add_app(
+    name: str,
+    command: str,
+    comment: str = "",
+    icon: str = "",
+    category: str = "",
+) -> Path:
+    name = clean_field("nome", name)
+    if not name:
+        raise ValueError("Il nome è obbligatorio.")
+    comment = clean_field("commento", comment)
+    icon = clean_field("icona", icon)
+    category = clean_field("categoria", category)
+    exec_line = sanitize_exec(command)
+    user_dir = user_app_dir()
+    slug = choose_slug(name, user_dir, system_basenames())
+    if category:
+        categories = category if category.endswith(";") else category + ";"
+    else:
+        categories = "Utility;"
+    lines = [
+        "[Desktop Entry]",
+        "Type=Application",
+        f"Name={name}",
+    ]
+    if comment:
+        lines.append(f"Comment={comment}")
+    lines.append(f"Exec={exec_line}")
+    if icon:
+        lines.append(f"Icon={icon}")
+    lines.append("Terminal=false")
+    lines.append(f"Categories={categories}")
+    lines.append(MARKER)
+    target = user_dir / f"{slug}.desktop"
+    tmp = user_dir / f".{slug}.desktop.tmp"
+    try:
+        tmp.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        os.chmod(tmp, 0o644)
+        os.replace(tmp, target)
+    except OSError:
+        tmp.unlink(missing_ok=True)
+        raise
+    return target
+
+
+def remove_app(user_dir: Path, basename: str) -> bool:
+    """Rimuove solo un .desktop regolare nella cartella utente. Ritorna True se oscurava un'app di sistema."""
+    if not basename or basename in (".", "..") or "/" in basename or "\\" in basename:
+        raise ValueError("Nome file non valido: usa solo il basename, es. mia-app.desktop.")
+    if not basename.endswith(".desktop"):
+        raise ValueError("Si possono rimuovere solo file .desktop.")
+    path = user_dir / basename
+    if path.is_symlink():
+        raise ValueError("Non rimuovo collegamenti simbolici.")
+    if not path.is_file():
+        raise ValueError(f"File non trovato nella cartella utente: {basename}")
+    if path.parent.resolve() != user_dir.resolve():
+        raise ValueError("Percorso non valido.")
+    shadow = basename in system_basenames()
+    path.unlink()
+    return shadow
+
+
+def update_database(user_dir: Path) -> None:
+    tool = shutil.which("update-desktop-database")
+    if not tool:
+        return
+    try:
+        subprocess.run([tool, str(user_dir)], capture_output=True, timeout=30, check=False)
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
+class FuzzelApps:
+    def __init__(self) -> None:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("Gdk", "3.0")
+        gi.require_version("Pango", "1.0")
+        from gi.repository import Gdk, Gtk, Pango
+
+        self.Gtk = Gtk
+        self.Pango = Pango
+        self.rows: list = []
+        self.selected: dict | None = None
+        self.search_text = ""
+        self.system_names: set[str] = set()
+        c = colors()
+
+        provider = Gtk.CssProvider()
+        provider.load_from_data(self.css(c).encode("utf-8"))
+        screen = Gdk.Screen.get_default()
+        if screen is not None:
+            Gtk.StyleContext.add_provider_for_screen(
+                screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+            )
+
+        self.window = Gtk.Window(title="App di Fuzzel — Labwc")
+        self.window.set_default_size(900, 620)
+        self.window.set_size_request(900, 620)
+        self.window.set_border_width(14)
+        self.window.set_position(Gtk.WindowPosition.CENTER)
+        self.window.set_icon_name("applications-system")
+        self.window.connect("destroy", Gtk.main_quit)
+
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        self.window.add(outer)
+
+        title = Gtk.Label(label="App di Fuzzel", xalign=0)
+        title.get_style_context().add_class("title")
+        subtitle = Gtk.Label(
+            label="Aggiungi o rimuovi le app utente del launcher; quelle di sistema sono protette",
+            xalign=0,
+        )
+        subtitle.get_style_context().add_class("subtitle")
+        outer.pack_start(title, False, False, 0)
+        outer.pack_start(subtitle, False, False, 0)
+
+        body = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        outer.pack_start(body, True, True, 0)
+
+        # sinistra: elenco con ricerca
+        left = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        body.pack_start(left, True, True, 0)
+        search_label = Gtk.Label(label="CERCA", xalign=0)
+        search_label.get_style_context().add_class("card-title")
+        left.pack_start(search_label, False, False, 0)
+        self.search = Gtk.Entry()
+        self.search.set_placeholder_text("Cerca applicazione…")
+        self.search.connect("changed", self.on_search)
+        left.pack_start(self.search, False, False, 0)
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_vexpand(True)
+        self.listbox = Gtk.ListBox()
+        self.listbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
+        self.listbox.connect("row-selected", self.on_selected)
+        scroll.add(self.listbox)
+        left.pack_start(scroll, True, True, 0)
+        self.remove_button = Gtk.Button(label="Rimuovi selezionata")
+        self.remove_button.set_sensitive(False)
+        self.remove_button.connect("clicked", self.on_remove)
+        left.pack_start(self.remove_button, False, False, 0)
+
+        # destra: modulo di aggiunta
+        form = self.card("AGGIUNGI APP", "Crea una voce .desktop nella cartella utente.")
+        form.set_size_request(360, -1)
+        body.pack_start(form, False, False, 0)
+
+        form.pack_start(Gtk.Label(label="Nome *", xalign=0), False, False, 0)
+        self.name_entry = Gtk.Entry()
+        self.name_entry.set_placeholder_text("es. La mia app")
+        form.pack_start(self.name_entry, False, False, 0)
+
+        form.pack_start(Gtk.Label(label="Comando *", xalign=0), False, False, 0)
+        exec_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self.exec_entry = Gtk.Entry()
+        self.exec_entry.set_placeholder_text("es. /opt/My App/run.sh %U")
+        exec_row.pack_start(self.exec_entry, True, True, 0)
+        browse = Gtk.FileChooserButton(
+            title="Scegli eseguibile", action=Gtk.FileChooserAction.OPEN
+        )
+        browse.set_tooltip_text("Sfoglia…")
+        browse.connect("file-set", self.on_exec_browsed)
+        exec_row.pack_start(browse, False, False, 0)
+        form.pack_start(exec_row, False, False, 0)
+
+        form.pack_start(Gtk.Label(label="Commento", xalign=0), False, False, 0)
+        self.comment_entry = Gtk.Entry()
+        form.pack_start(self.comment_entry, False, False, 0)
+
+        form.pack_start(Gtk.Label(label="Icona", xalign=0), False, False, 0)
+        icon_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self.icon_entry = Gtk.Entry()
+        self.icon_entry.set_placeholder_text("nome icona o percorso assoluto")
+        icon_row.pack_start(self.icon_entry, True, True, 0)
+        icon_button = Gtk.Button(label="Scegli icona…")
+        icon_button.connect("clicked", self.on_choose_icon)
+        icon_row.pack_start(icon_button, False, False, 0)
+        form.pack_start(icon_row, False, False, 0)
+
+        form.pack_start(Gtk.Label(label="Categoria (opzionale)", xalign=0), False, False, 0)
+        self.category_entry = Gtk.Entry()
+        self.category_entry.set_placeholder_text("es. Utility;Graphics;")
+        form.pack_start(self.category_entry, False, False, 0)
+
+        add_button = Gtk.Button(label="Aggiungi app")
+        add_button.get_style_context().add_class("suggested-action")
+        add_button.connect("clicked", self.on_add)
+        form.pack_start(add_button, False, False, 0)
+
+        self.status = Gtk.Label(label="", xalign=0)
+        self.status.get_style_context().add_class("status")
+        self.status.set_line_wrap(True)
+        outer.pack_start(self.status, False, False, 0)
+
+        close = Gtk.Button(label="Chiudi")
+        close.set_halign(Gtk.Align.END)
+        close.connect("clicked", lambda _b: self.window.destroy())
+        outer.pack_end(close, False, False, 0)
+
+        self.refresh()
+        self.window.show_all()
+
+    def css(self, c: dict[str, str]) -> str:
+        return f"""
+        window {{ background-color: #{c['BG']}; color: #{c['FG']}; }}
+        .title {{ font-size: 26px; font-weight: 700; }}
+        .subtitle {{ color: #{c['FG_MUTED']}; font-size: 12px; }}
+        .card {{ background-color: #{c['SURFACE']}; border: 1px solid #{c['BORDER']};
+                 border-radius: 14px; padding: 14px; }}
+        .card-title {{ color: #{c['ACCENT_SOFT']}; font-size: 11px;
+                       font-weight: 700; letter-spacing: 1px; }}
+        .card-hint {{ color: #{c['FG_MUTED']}; font-size: 11px; }}
+        .status {{ color: #{c['ACCENT_SOFT']}; font-size: 12px; font-weight: 600; }}
+        entry {{ background-color: #{c['SURFACE']}; color: #{c['FG']};
+                 border: 1px solid #{c['BORDER']}; border-radius: 10px;
+                 padding: 8px 10px; }}
+        entry placeholder {{ color: #{c['FG_MUTED']}; }}
+        entry:focus {{ border-color: #{c['ACCENT']}; }}
+        list {{ background-color: transparent; }}
+        row {{ background-color: #{c['SURFACE']}; border: 1px solid #{c['BORDER']};
+               border-radius: 10px; margin: 3px 0; padding: 7px 10px; }}
+        row:hover {{ border-color: #{c['ACCENT']}; }}
+        row:selected {{ background-color: #{c['SURFACE_ALT']};
+                        border-color: #{c['ACCENT']}; }}
+        row.locked {{ background-color: #{c['BG']}; }}
+        row.locked .app-name, row.locked .app-comment {{ color: #{c['FG_MUTED']}; }}
+        .app-name {{ font-size: 13px; font-weight: 600; color: #{c['FG']}; }}
+        .app-comment {{ font-size: 11px; color: #{c['FG_MUTED']}; }}
+        .tag {{ color: #{c['ACCENT_SOFT']}; font-size: 10px; font-weight: 700; }}
+        .tag-system {{ color: #{c['FG_MUTED']}; }}
+        button {{ background-image: none; background-color: #{c['SURFACE_ALT']};
+                  color: #{c['FG']}; border: 1px solid #{c['BORDER']};
+                  border-radius: 9px; padding: 8px 14px; font-weight: 600; }}
+        button label {{ color: #{c['FG']}; }}
+        button:hover {{ background-image: none; border-color: #{c['ACCENT']}; }}
+        button:disabled {{ color: #{c['FG_MUTED']}; }}
+        button:disabled label {{ color: #{c['FG_MUTED']}; }}
+        .suggested-action {{ background-color: #{c['ACCENT']}; border-color: #{c['ACCENT']}; }}
+        .suggested-action label {{ color: #{c['BG']}; }}
+        .suggested-action:hover {{ background-color: #{c['ACCENT_SOFT']}; }}
+        combobox, combobox button {{ background-image: none; color: #{c['FG']}; }}
+        """
+
+    def card(self, title: str, hint: str):
+        Gtk = self.Gtk
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        box.get_style_context().add_class("card")
+        t = Gtk.Label(label=title, xalign=0)
+        t.get_style_context().add_class("card-title")
+        h = Gtk.Label(label=hint, xalign=0)
+        h.set_line_wrap(True)
+        h.get_style_context().add_class("card-hint")
+        box.pack_start(t, False, False, 0)
+        box.pack_start(h, False, False, 0)
+        return box
+
+    def icon_image(self, icon: str):
+        Gtk = self.Gtk
+        if icon.startswith("/") and os.path.isfile(icon):
+            try:
+                from gi.repository import GdkPixbuf
+
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(icon, 32, 32, True)
+                return Gtk.Image.new_from_pixbuf(pixbuf)
+            except Exception:
+                return Gtk.Image.new_from_icon_name(
+                    "application-x-executable", Gtk.IconSize.DND
+                )
+        return Gtk.Image.new_from_icon_name(
+            icon or "application-x-executable", Gtk.IconSize.DND
+        )
+
+    def refresh(self) -> None:
+        Gtk = self.Gtk
+        for row in list(self.listbox.get_children()):
+            self.listbox.remove(row)
+        self.rows = []
+        self.selected = None
+        self.remove_button.set_sensitive(False)
+        self.system_names = system_basenames()
+        entries = list_entries()
+        entries.sort(key=lambda e: (not e["user"], e["name"].casefold()))
+        for entry in entries:
+            self.add_row(entry)
+        self.apply_filter()
+        self.listbox.show_all()
+
+    def add_row(self, entry: dict) -> None:
+        Gtk = self.Gtk
+        row = Gtk.ListBoxRow()
+        row.app_data = entry
+        if not entry["user"]:
+            row.get_style_context().add_class("locked")
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        box.pack_start(self.icon_image(entry["icon"]), False, False, 0)
+        texts = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+        name = Gtk.Label(label=entry["name"], xalign=0)
+        name.get_style_context().add_class("app-name")
+        comment = Gtk.Label(label=entry["comment"] or entry["exec"], xalign=0)
+        comment.get_style_context().add_class("app-comment")
+        comment.set_ellipsize(self.Pango.EllipsizeMode.END)
+        texts.pack_start(name, False, False, 0)
+        texts.pack_start(comment, False, False, 0)
+        box.pack_start(texts, True, True, 0)
+        tag = Gtk.Label(label="utente" if entry["user"] else "🔒 sistema", xalign=0)
+        tag.get_style_context().add_class("tag")
+        if not entry["user"]:
+            tag.get_style_context().add_class("tag-system")
+        box.pack_end(tag, False, False, 0)
+        row.add(box)
+        self.listbox.add(row)
+        self.rows.append(row)
+
+    def on_search(self, entry) -> None:
+        self.search_text = entry.get_text().casefold().strip()
+        self.apply_filter()
+
+    def apply_filter(self) -> None:
+        for row in self.rows:
+            data = row.app_data
+            haystack = " ".join(
+                [data["name"], data["comment"], data["exec"], data["file_name"]]
+            ).casefold()
+            row.set_visible(not self.search_text or self.search_text in haystack)
+
+    def on_selected(self, _listbox, row) -> None:
+        self.selected = row.app_data if row is not None else None
+        entry = self.selected
+        self.remove_button.set_sensitive(bool(entry and entry["removable"]))
+
+    def on_exec_browsed(self, chooser) -> None:
+        filename = chooser.get_filename()
+        if filename:
+            self.exec_entry.set_text(shlex.quote(filename))
+
+    def on_choose_icon(self, _button) -> None:
+        Gtk = self.Gtk
+        if hasattr(Gtk, "IconChooserDialog"):
+            dialog = Gtk.IconChooserDialog(transient_for=self.window)
+            if dialog.run() == Gtk.ResponseType.OK:
+                getter = getattr(dialog, "get_icon_name", None)
+                if getter:
+                    self.icon_entry.set_text(getter())
+            dialog.destroy()
+            return
+        dialog = Gtk.FileChooserDialog(
+            title="Scegli icona",
+            transient_for=self.window,
+            action=Gtk.FileChooserAction.OPEN,
+        )
+        dialog.add_buttons(
+            "Annulla", Gtk.ResponseType.CANCEL, "Apri", Gtk.ResponseType.OK
+        )
+        image_filter = Gtk.FileFilter()
+        image_filter.set_name("Immagini (png, svg)")
+        for pattern in ("*.png", "*.svg", "*.svgz", "*.xpm", "*.ico"):
+            image_filter.add_pattern(pattern)
+        dialog.add_filter(image_filter)
+        if dialog.run() == Gtk.ResponseType.OK:
+            self.icon_entry.set_text(dialog.get_filename() or "")
+        dialog.destroy()
+
+    def on_add(self, _button) -> None:
+        try:
+            path = add_app(
+                self.name_entry.get_text(),
+                self.exec_entry.get_text(),
+                self.comment_entry.get_text(),
+                self.icon_entry.get_text(),
+                self.category_entry.get_text(),
+            )
+        except (ValueError, OSError) as exc:
+            self.status.set_text(f"Errore: {exc}")
+            return
+        update_database(user_app_dir())
+        self.status.set_text(f"Aggiunta: {path.name}")
+        for entry in (
+            self.name_entry,
+            self.exec_entry,
+            self.comment_entry,
+            self.icon_entry,
+            self.category_entry,
+        ):
+            entry.set_text("")
+        self.refresh()
+
+    def on_remove(self, _button) -> None:
+        Gtk = self.Gtk
+        entry = self.selected
+        if not entry or not entry["removable"]:
+            return
+        secondary = f"Il file {entry['file_name']} verrà eliminato dalla cartella utente."
+        if entry["file_name"] in self.system_names:
+            secondary += (
+                "\n\nAttenzione: questo file oscura un'app di sistema con lo stesso "
+                "nome. Rimuovendolo, la voce di sistema tornerà visibile nel launcher."
+            )
+        dialog = Gtk.MessageDialog(
+            transient_for=self.window,
+            flags=0,
+            message_type=Gtk.MessageType.QUESTION,
+            buttons=Gtk.ButtonsType.YES_NO,
+            text=f"Rimuovere «{entry['name']}»?",
+        )
+        dialog.format_secondary_text(secondary)
+        response = dialog.run()
+        dialog.destroy()
+        if response != Gtk.ResponseType.YES:
+            return
+        try:
+            remove_app(user_app_dir(), entry["file_name"])
+        except (ValueError, OSError) as exc:
+            self.status.set_text(f"Errore: {exc}")
+            return
+        update_database(user_app_dir())
+        self.status.set_text(f"Rimossa: {entry['name']}")
+        self.refresh()
+
+    def run(self) -> int:
+        self.Gtk.main()
+        return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="labwc-fuzzel-apps",
+        description="Aggiunge e rimuove le app utente mostrate da Fuzzel. "
+        "Senza argomenti apre la finestra grafica.",
+    )
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--list", action="store_true", help="elenco JSON (utente + sistema)")
+    group.add_argument("--add", metavar="NOME", help="nome della nuova app")
+    group.add_argument("--remove", metavar="BASENAME", help="file .desktop da rimuovere (solo utente)")
+    parser.add_argument("--exec", metavar="CMD", help="comando della nuova app")
+    parser.add_argument("--comment", metavar="TESTO", default="", help="commento")
+    parser.add_argument("--icon", metavar="ICONA", default="", help="nome icona o percorso assoluto")
+    parser.add_argument("--category", metavar="CAT", default="", help="categorie desktop, es. Utility;")
+    return parser
+
+
+def cli_list() -> int:
+    for entry in list_entries():
+        print(
+            json.dumps(
+                {key: entry[key] for key in ("name", "file", "user", "icon", "exec")},
+                ensure_ascii=False,
+            )
+        )
+    return 0
+
+
+def cli_add(args: argparse.Namespace) -> int:
+    try:
+        path = add_app(args.add, args.exec, args.comment, args.icon, args.category)
+    except (ValueError, OSError) as exc:
+        print(f"Errore: {exc}", file=sys.stderr)
+        return 2
+    update_database(user_app_dir())
+    print(path)
+    return 0
+
+
+def cli_remove(args: argparse.Namespace) -> int:
+    try:
+        shadow = remove_app(user_app_dir(), args.remove)
+    except (ValueError, OSError) as exc:
+        print(f"Errore: {exc}", file=sys.stderr)
+        return 2
+    update_database(user_app_dir())
+    message = f"Rimosso: {args.remove}"
+    if shadow:
+        message += " (la voce di sistema con lo stesso nome torna visibile)"
+    print(message)
+    return 0
+
+
+def main() -> int:
+    parser = build_parser()
+    args = parser.parse_args()
+    if args.add is not None and not args.exec:
+        parser.error("--exec è obbligatorio con --add.")
+    if args.exec and args.add is None:
+        parser.error("--exec richiede --add.")
+    if args.list:
+        return cli_list()
+    if args.add is not None:
+        return cli_add(args)
+    if args.remove is not None:
+        return cli_remove(args)
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("Gdk", "3.0")
+        from gi.repository import Gtk
+    except (ImportError, ValueError) as exc:
+        print(f"GTK3/PyGObject non disponibile: {exc}", file=sys.stderr)
+        return 1
+    Gtk.init([])
+    return FuzzelApps().run()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

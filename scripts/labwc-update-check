@@ -107,7 +107,7 @@ status_json() {
 notify_update() {
     local installed="$1" online="$2"
 
-    # Popup persistente: resta aperto fino a "Aggiorna" o "Chiudi".
+    # Popup GTK: si chiude da solo dopo 15 s, con tre azioni.
     if [ -x "$HOME/.local/bin/labwc-update-popup" ] &&
        command -v zenity >/dev/null 2>&1 &&
        { [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${DISPLAY:-}" ]; }; then

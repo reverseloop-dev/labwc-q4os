@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-touchscreen - trova il touchscreen
+#
+#  Cerca in /sys/class/input gli event device con INPUT_PROP_DIRECT (bit 1 di
+#  properties): e' la proprieta' che distingue un touchscreen da un touchpad.
+#  Preferisce un device non-penna/stilo, cosi' lisgd non finisce sul digitizer
+#  del pennino quando il pannello touch e il pen sono device separati.
+#  Non serve root.
+#
+#  Uso: labwc-touchscreen          stampa /dev/input/eventX (primo utile)
+#       labwc-touchscreen --count  stampa quanti touchscreen ha trovato
+#  Esce 1 se non trova nulla.
+# =============================================================================
+set -uo pipefail
+
+count_only=0
+[ "${1:-}" = "--count" ] && count_only=1
+
+devices=()
+names=()
+for dev in /sys/class/input/event*; do
+    [ -r "$dev/device/properties" ] || continue
+    props="$(cat "$dev/device/properties" 2>/dev/null)" || continue
+    props="${props%% *}"
+    [ -n "$props" ] || continue
+    # shellcheck disable=SC2004  # 16# richiede il valore senza $ per la base
+    [ $((16#$props & 2)) -ne 0 ] || continue
+    devices+=("$dev")
+    names+=("$(cat "$dev/device/name" 2>/dev/null || true)")
+done
+
+[ "${#devices[@]}" -gt 0 ] || exit 1
+[ "$count_only" -eq 1 ] && { printf '%s\n' "${#devices[@]}"; exit 0; }
+
+chosen=""
+for i in "${!devices[@]}"; do
+    case "${names[i],,}" in
+        *pen*|*stylus*|*eraser*) continue ;;
+    esac
+    chosen="${devices[i]}"
+    break
+done
+[ -n "$chosen" ] || chosen="${devices[0]}"
+
+printf '/dev/input/%s\n' "$(basename "$chosen")"

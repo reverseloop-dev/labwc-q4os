@@ -12,8 +12,17 @@ CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}"
 STATE="${XDG_STATE_HOME:-$HOME/.local/state}/labwc-q4os"
 THEMES_DIR="$SHARE/themes"
 TEMPLATES="$SHARE/templates"
+LOGIN_CONF="$CONFIG/labwc/login.conf"
+LOGIN_HELPER="/usr/local/libexec/labwc-q4os/login-theme-apply"
 
 VALID_THEMES=(nordic-cobalt muted-crimson sage-emerald)
+
+# Shell scelta dall'installer: in modalita' noctalia lo sfondo va via IPC,
+# niente swaybg/waybar/mako. Senza marker vale il comportamento classico.
+shell_mode="waybar"
+if [ -r "$CONFIG/labwc/shell" ]; then
+    shell_mode="$(tr -d '[:space:]' < "$CONFIG/labwc/shell")"
+fi
 
 NO_RELOAD=0
 QUIET=0
@@ -117,6 +126,21 @@ if [ -f "$CONFIG/labwc/themerc" ] && grep -q 'labwc themerc -' "$CONFIG/labwc/th
     mv -f "$CONFIG/labwc/themerc" "$CONFIG/labwc/themerc.old" 2>/dev/null || true
 fi
 install -m 0644 "$THEMES_DIR/$THEME_ID/themerc" "$CONFIG/labwc/themerc-override"
+if [ -f "$CONFIG/labwc/touchscreen.enabled" ]; then
+    # Pulsanti e voci di menu piu' grandi per il dito.
+    cat >> "$CONFIG/labwc/themerc-override" <<'EOF'
+
+# Touchscreen: bersagli piu' grandi
+window.button.width: 44
+window.button.height: 44
+window.button.spacing: 6
+window.titlebar.padding.width: 12
+window.titlebar.padding.height: 10
+menu.items.padding.x: 16
+menu.items.padding.y: 12
+menu.width.min: 260
+EOF
+fi
 render "$TEMPLATES/waybar-style.css" "$CONFIG/waybar/style.css"
 render "$TEMPLATES/fuzzel.ini" "$CONFIG/fuzzel/fuzzel.ini"
 render "$TEMPLATES/mako-config" "$CONFIG/mako/config"
@@ -124,8 +148,8 @@ render "$TEMPLATES/wlogout-style.css" "$CONFIG/wlogout/style.css"
 
 printf '%s\n' "$THEME_ID" > "$CONFIG/labwc/theme"
 
-# Icone coordinate al tema (tema GTK "labwc-q4os")
-if [ -x "$SHARE/scripts/generate-icons.py" ]; then
+# Icone coordinate al tema (tema GTK "labwc-q4os"); rigenerate solo se mancanti.
+if [ -x "$SHARE/scripts/generate-icons.py" ] && [ ! -d "$SHARE/icons/$THEME_ID" ]; then
     python3 "$SHARE/scripts/generate-icons.py" \
         --theme-conf "$THEMES_DIR/$THEME_ID/theme.conf" \
         --output "$SHARE/icons" >/dev/null 2>&1 || true
@@ -165,13 +189,23 @@ runtime_reload() {
 
     mkdir -p "$STATE"
 
+    labwc --reconfigure >/dev/null 2>&1 || pkill -HUP -x labwc >/dev/null 2>&1 || true
+
+    if [ "$shell_mode" = "noctalia" ] && command -v noctalia >/dev/null 2>&1; then
+        # IPC confermato (docs.noctalia.dev/noctalia/ipc/media-and-ui/#wallpaper):
+        # wallpaper-set imposta lo sfondo; con [theme] source = "wallpaper"
+        # la palette si rigenera da sola. Mai bloccare il cambio tema.
+        if pgrep -x noctalia >/dev/null 2>&1 && [ -f "$WALLPAPER_PATH" ]; then
+            timeout 2 noctalia msg wallpaper-set "$WALLPAPER_PATH" >>"$STATE/session.log" 2>&1 || true
+        fi
+        return 0
+    fi
+
     if [ -f "$WALLPAPER_PATH" ] && command -v swaybg >/dev/null 2>&1; then
         pkill -x swaybg >/dev/null 2>&1 || true
         sleep 0.15
         setsid -f swaybg -m fill -i "$WALLPAPER_PATH" >>"$STATE/session.log" 2>&1 || true
     fi
-
-    labwc --reconfigure >/dev/null 2>&1 || pkill -HUP -x labwc >/dev/null 2>&1 || true
 
     if command -v waybar >/dev/null 2>&1; then
         pkill -x waybar >/dev/null 2>&1 || true
@@ -185,7 +219,48 @@ runtime_reload() {
     fi
 }
 
+set_login_conf() {
+    local follow="$1" variant="$2" tmp
+    mkdir -p "$CONFIG/labwc"
+    tmp="$(mktemp)"
+    if [ -r "$LOGIN_CONF" ]; then
+        grep -vE '^(follow_theme|variant)=' "$LOGIN_CONF" > "$tmp" || true
+    fi
+    printf 'follow_theme=%s\nvariant=%s\n' "$follow" "$variant" >> "$tmp"
+    install -m 0644 "$tmp" "$LOGIN_CONF"
+    rm -f "$tmp"
+}
+
+# Se il login segue il tema del desktop, porta colori e layout anche su SDDM.
+sync_login_theme() {
+    local follow=1
+    if [ -r "$LOGIN_CONF" ] && grep -q '^follow_theme=0' "$LOGIN_CONF"; then
+        follow=0
+    fi
+    [ "$follow" -eq 1 ] || return 0
+    set_login_conf 1 "$THEME_ID"
+    [ "${LABWC_Q4OS_SKIP_LOGIN:-0}" = "1" ] && return 0
+    if [ ! -x "$LOGIN_HELPER" ]; then
+        [ "$QUIET" -eq 1 ] || printf 'Tema login non sincronizzato: helper mancante (esegui install.sh).\n' >&2
+        return 0
+    fi
+    if [ "$(id -u)" -eq 0 ]; then
+        "$LOGIN_HELPER" "$THEME_ID" || [ "$QUIET" -eq 1 ] || printf 'Tema login non applicato.\n' >&2
+    elif command -v pkexec >/dev/null 2>&1; then
+        pkexec "$LOGIN_HELPER" "$THEME_ID" ||
+            [ "$QUIET" -eq 1 ] || printf 'Tema login non applicato (autorizzazione annullata?).\n' >&2
+    elif [ "$QUIET" -eq 1 ]; then
+        :
+    else
+        printf 'Tema login non sincronizzato: pkexec mancante.\n' >&2
+    fi
+}
+
 runtime_reload
+
+# Il login si sincronizza dopo il desktop: se pkexec viene annullato i colori
+# del desktop sono comunque già applicati.
+sync_login_theme
 
 if [ "$QUIET" -eq 0 ] && [ "$NO_RELOAD" -eq 0 ] && [ -n "${WAYLAND_DISPLAY:-}" ] && command -v notify-send >/dev/null 2>&1; then
     notify-send -a "Labwc" -i "$WALLPAPER_PATH" "Tema attivo: $THEME_NAME" "Colori, Waybar, Fuzzel e sfondo aggiornati" || true

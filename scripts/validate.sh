@@ -28,8 +28,8 @@ done < <(find . -path ./.git -prune -o -type f \( -name '*.sh' -o -path './scrip
 # --- 2. sintassi Python ------------------------------------------------------
 check "sintassi Python"
 PYCACHE_DIR="$(mktemp -d)"
-if PYTHONPYCACHEPREFIX="$PYCACHE_DIR" python3 -m py_compile scripts/generate-wallpapers.py scripts/render-menu.py scripts/labwc-zram scripts/labwc-app-manager scripts/labwc-update-gui scripts/labwc-preferences scripts/generate-icons.py; then
-    pass "Python: sfondi, menu, zram, app manager, update GUI, preferences, icone"
+if PYTHONPYCACHEPREFIX="$PYCACHE_DIR" python3 -m py_compile scripts/generate-wallpapers.py scripts/render-menu.py scripts/labwc-zram scripts/labwc-app-manager scripts/labwc-update-gui scripts/labwc-login-theme scripts/labwc-fuzzel-apps scripts/labwc-preferences scripts/generate-icons.py; then
+    pass "Python: sfondi, menu, zram, app manager, update GUI, login, fuzzel, preferences, icone"
 else
     bad "py_compile"
 fi
@@ -53,12 +53,120 @@ if [ -s VERSION ]; then pass "VERSION"; else bad "VERSION"; fi
 UPDTMP="$(mktemp -d)"
 mkdir -p "$UPDTMP/share"
 if HOME="$UPDTMP" LABWC_Q4OS_SHARE="$UPDTMP/share" \
+    XDG_CONFIG_HOME="$UPDTMP/.config" XDG_DATA_HOME="$UPDTMP/.local/share" \
+    XDG_STATE_HOME="$UPDTMP/.local/state" \
     bash scripts/labwc-update-check --status | jq -e '.repo' >/dev/null; then
     pass "labwc-update-check --status"
 else
     bad "labwc-update-check --status"
 fi
 rm -rf "$UPDTMP"
+if python3 scripts/labwc-update-gui --help >/dev/null 2>&1; then
+    pass "labwc-update-gui --help"
+else
+    bad "labwc-update-gui --help"
+fi
+if python3 scripts/labwc-login-theme --show >/dev/null 2>&1; then
+    pass "labwc-login-theme --show"
+else
+    bad "labwc-login-theme --show"
+fi
+if bash scripts/labwc-login-theme-apply nordic-cobalt >/dev/null 2>&1; then
+    bad "labwc-login-theme-apply non rifiuta l'utente normale"
+else
+    pass "labwc-login-theme-apply richiede root"
+fi
+APPS_TMP="$(mktemp -d)"
+created="$(XDG_DATA_HOME="$APPS_TMP" python3 scripts/labwc-fuzzel-apps \
+    --add "App Test" --exec /bin/true --icon utilities-terminal 2>/dev/null || true)"
+if [ -f "$created" ] && XDG_DATA_HOME="$APPS_TMP" python3 scripts/labwc-fuzzel-apps \
+    --remove "$(basename "$created")" >/dev/null 2>&1 && [ ! -e "$created" ]; then
+    pass "labwc-fuzzel-apps aggiunge e rimuove l'app utente"
+else
+    bad "labwc-fuzzel-apps round-trip"
+fi
+rm -rf "$APPS_TMP"
+APPS_TMP="$(mktemp -d)"
+spaced="$(XDG_DATA_HOME="$APPS_TMP" python3 scripts/labwc-fuzzel-apps \
+    --add "A B" --exec "/tmp/a b/x %U" 2>/dev/null || true)"
+if [ -f "$spaced" ] && grep -q '^Exec="/tmp/a b/x" %U$' "$spaced"; then
+    pass "labwc-fuzzel-apps quota Exec con spazi e mantiene %U"
+else
+    bad "labwc-fuzzel-apps quoting Exec"
+fi
+rm -rf "$APPS_TMP"
+
+# --- shell desktop: flag --shell e marker di sessione -------------------------
+check "shell desktop (--shell, marker sessione)"
+if bash install.sh --help | grep -q -- '--shell'; then
+    pass "install.sh --help include --shell"
+else
+    bad "install.sh --help senza --shell"
+fi
+SHELL_ERR="$(mktemp)"
+if bash install.sh --shell valore-non-valido </dev/null >/dev/null 2>"$SHELL_ERR"; then
+    bad "install.sh --shell accetta valori non validi"
+elif grep -q 'non valido' "$SHELL_ERR"; then
+    pass "install.sh --shell rifiuta valori non validi"
+else
+    bad "install.sh --shell: errore inatteso (non e' la validazione)"
+fi
+rm -f "$SHELL_ERR"
+if bash install.sh --help 2>/dev/null | grep -q -- '--lookswitcher' &&
+    bash install.sh --help 2>/dev/null | grep -q -- '--no-lookswitcher'; then
+    pass "install.sh --help include --lookswitcher/--no-lookswitcher (Trinity)"
+else
+    bad "install.sh --help senza i flag LookSwitcher"
+fi
+# session-start headless: HOME isolata e PATH minimo senza waybar/noctalia,
+# cosi' non viene avviato alcun componente reale.
+SESS_TMP="$(mktemp -d)"
+SESS_STUB="$SESS_TMP/bin"
+SESS_LOG="$SESS_TMP/home/.local/state/labwc-q4os/session.log"
+mkdir -p "$SESS_STUB" "$SESS_TMP/home/.config/labwc" "$(dirname "$SESS_LOG")"
+for tool in mkdir date tr pgrep pkill setsid sleep head timeout; do
+    tool_path="$(command -v "$tool" 2>/dev/null || true)"
+    if [ -n "$tool_path" ]; then ln -s "$tool_path" "$SESS_STUB/$tool"; fi
+done
+for stub in waybar mako swaybg; do
+    printf '#!/bin/sh\necho "%s-started" >> "%s"\n' "$stub" "$SESS_LOG" > "$SESS_STUB/$stub"
+    chmod 0755 "$SESS_STUB/$stub"
+done
+sess_run() {
+    : > "$SESS_LOG" 2>/dev/null || true
+    HOME="$SESS_TMP/home" XDG_CONFIG_HOME="$SESS_TMP/home/.config" \
+        XDG_DATA_HOME="$SESS_TMP/home/.local/share" \
+        XDG_STATE_HOME="$SESS_TMP/home/.local/state" \
+        PATH="$SESS_STUB" "$BASH" scripts/labwc-session-start
+}
+if sess_run && grep -q 'sessione pronta' "$SESS_LOG" &&
+    grep -q 'waybar-started' "$SESS_LOG" && ! grep -q 'noctalia-started' "$SESS_LOG"; then
+    pass "session-start senza marker (default waybar)"
+else
+    bad "session-start senza marker"
+fi
+printf 'noctalia\n' > "$SESS_TMP/home/.config/labwc/shell"
+if sess_run && grep -q 'comando mancante' "$SESS_LOG" && grep -q 'waybar-started' "$SESS_LOG"; then
+    pass "session-start marker noctalia senza comando (fallback waybar)"
+else
+    bad "session-start marker noctalia senza comando"
+fi
+printf 'valore-non-valido\n' > "$SESS_TMP/home/.config/labwc/shell"
+if sess_run && grep -q 'waybar-started' "$SESS_LOG"; then
+    pass "session-start marker non valido (default waybar)"
+else
+    bad "session-start marker non valido"
+fi
+printf '#!/bin/sh\necho "noctalia-started" >> "%s"\n' "$SESS_LOG" > "$SESS_STUB/noctalia"
+chmod 0755 "$SESS_STUB/noctalia"
+printf 'noctalia\n' > "$SESS_TMP/home/.config/labwc/shell"
+if sess_run && grep -q 'noctalia-started' "$SESS_LOG" && ! grep -q 'waybar-started' "$SESS_LOG"; then
+    pass "session-start marker noctalia (una sola shell)"
+else
+    bad "session-start marker noctalia"
+fi
+sleep 1
+rm -rf "$SESS_TMP"
 
 # --- 3. JSON -----------------------------------------------------------------
 check "JSON (Waybar, wlogout)"
@@ -76,9 +184,12 @@ for f in install.sh bootstrap.sh scripts/labwc-theme-apply scripts/labwc-theme-s
          scripts/labwc-help scripts/labwc-screenshot scripts/labwc-zram scripts/labwc-doctor \
          scripts/labwc-app-manager scripts/labwc-update-check scripts/labwc-update-copy \
          scripts/labwc-update-popup scripts/labwc-update-run scripts/labwc-update-toggle \
-         scripts/labwc-update-gui scripts/labwc-preferences \
+         scripts/labwc-update-apply scripts/labwc-update-gui scripts/labwc-preferences \
+         scripts/labwc-login-theme scripts/labwc-login-theme-apply \
+         scripts/labwc-fuzzel-apps \
          scripts/labwc-desktop scripts/labwc-desktop-state scripts/labwc-desktop-status scripts/labwc-desktop-menu \
          scripts/labwc-power-menu scripts/labwc-sysinfo \
+         scripts/labwc-touchscreen \
          scripts/labwc-session-start scripts/validate.sh scripts/generate-wallpapers.py \
          scripts/render-menu.py scripts/generate-icons.py; do
     if [ -x "$f" ]; then pass "$f"; else bad "$f non eseguibile"; fi
@@ -88,6 +199,9 @@ done
 check "smoke test tema + menu in HOME temporanea"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
+# Isola anche XDG_*: altrimenti i test scrivono nella HOME reale.
+export XDG_CONFIG_HOME="$TMP/.config" XDG_DATA_HOME="$TMP/.local/share"
+export XDG_STATE_HOME="$TMP/.local/state"
 mkdir -p "$TMP/share/themes" "$TMP/share/templates" "$TMP/share/scripts" "$TMP/share/wallpapers"
 cp -a configs/themes/. "$TMP/share/themes/"
 cp configs/waybar/style.css.in "$TMP/share/templates/waybar-style.css"
@@ -97,7 +211,7 @@ cp configs/wlogout/style.css.in "$TMP/share/templates/wlogout-style.css"
 install -m 0755 scripts/generate-icons.py "$TMP/share/scripts/generate-icons.py"
 
 for theme in nordic-cobalt muted-crimson sage-emerald; do
-    if HOME="$TMP" LABWC_Q4OS_SHARE="$TMP/share" \
+    if HOME="$TMP" LABWC_Q4OS_SHARE="$TMP/share" LABWC_Q4OS_SKIP_LOGIN=1 \
         bash scripts/labwc-theme-apply "$theme" --no-reload --quiet >/dev/null; then
         pass "tema $theme"
     else
@@ -124,6 +238,20 @@ for theme in nordic-cobalt muted-crimson sage-emerald; do
         bad "icone del tema $theme mancanti"
     fi
 done
+
+# Idempotenza blocco touch: due applicazioni tema = un solo blocco 44px.
+printf '1\n' > "$TMP/.config/labwc/touchscreen.enabled"
+for _ in 1 2; do
+    HOME="$TMP" LABWC_Q4OS_SHARE="$TMP/share" LABWC_Q4OS_SKIP_LOGIN=1 \
+        bash scripts/labwc-theme-apply nordic-cobalt --no-reload --quiet >/dev/null 2>&1
+done
+touch_blocks="$(grep -c '^window.button.width: 44$' "$TMP/.config/labwc/themerc-override" 2>/dev/null || true)"
+if [ "$touch_blocks" = "1" ]; then
+    pass "blocco touch nel tema (idempotente)"
+else
+    bad "blocco touch nel tema: $touch_blocks occorrenze (attesa 1)"
+fi
+rm -f "$TMP/.config/labwc/touchscreen.enabled"
 
 if HOME="$TMP" python3 scripts/render-menu.py --render >/dev/null; then
     pass "menu.xml generato"
@@ -154,9 +282,12 @@ if command -v shellcheck >/dev/null 2>&1; then
         scripts/labwc-reload scripts/labwc-generate-wallpapers scripts/labwc-help \
         scripts/labwc-screenshot scripts/labwc-doctor scripts/labwc-update-check \
         scripts/labwc-update-copy scripts/labwc-update-popup scripts/labwc-update-run \
-        scripts/labwc-update-toggle scripts/labwc-desktop scripts/labwc-desktop-state \
+        scripts/labwc-update-toggle scripts/labwc-update-apply \
+        scripts/labwc-login-theme-apply \
+        scripts/labwc-desktop scripts/labwc-desktop-state \
         scripts/labwc-desktop-status scripts/labwc-desktop-menu \
         scripts/labwc-power-menu scripts/labwc-sysinfo \
+        scripts/labwc-touchscreen \
         scripts/labwc-session-start scripts/validate.sh; then
         pass "shellcheck"
     else

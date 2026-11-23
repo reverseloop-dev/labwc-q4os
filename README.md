@@ -1,20 +1,32 @@
 # labwc-q4os
 
-**Desktop Wayland moderno, completo e veloce per Q4OS / Debian.**
-Installazione automatizzata di **labwc + Waybar + Fuzzel**, tre temi coordinati
-(blu, rosso tenue, verde salvia), sfondi originali generati in locale, menu
-contestuale dinamico e ottimizzazione della memoria con zram.
+**Una seconda vita per i PC che il mercato considera vecchi.**
 
-> ### Lo scopo del progetto
+Ogni anno milioni di computer ancora perfettamente funzionanti vengono
+dismessi solo perché il sistema operativo di serie è diventato lento, pesante
+o non più aggiornato. **labwc-q4os** nasce per loro: trasforma un PC di qualche
+anno fa in una postazione veloce, moderna e sicura, senza cambiare hardware.
+
+L'idea è il **riuso consapevole**. Non serve un computer nuovo per navigare,
+scrivere, lavorare o studiare: serve un sistema costruito bene. Per questo il
+progetto parte dalla solidità di **Debian**, aggiunge la configurazione pronta
+e collaudata di **Q4OS** e usa **labwc su Wayland** come desktop: un compositor
+essenziale che consuma poche risorse, riduce il carico di CPU e RAM e rende
+l'interazione più immediata, anche su macchine con pochi gigabyte di memoria.
+
+Il risultato è un desktop curato e completo, con tre temi coordinati, un login
+moderno e tutti gli strumenti di uso quotidiano già configurati. Le sessioni
+Trinity e Plasma restano disponibili: labwc-q4os **aggiunge** una sessione,
+non impone una sostituzione.
+
+> ### Riuso, stabilità, prestazioni
 >
-> **labwc-q4os non sostituisce Q4OS: aggiunge una sessione Wayland moderna
-> alla base Q4OS già collaudata.** L'obiettivo è unire la stabilità, la
-> leggerezza e l'affidabilità di Q4OS con **labwc**, un compositor Wayland
-> essenziale e reattivo, per ottenere **prestazioni più alte, avvio e
-> interazione più veloci** e un desktop grafico curato, senza rinunciare alle
-> sessioni Trinity/Plasma già installate. Le caratteristiche già collaudate e
-> **performanti di Q4OS restano la fondazione**; labwc aggiunge il livello
-> grafico moderno e selezionabile al login.
+> **Meno rifiuti elettronici, più computer utili.** labwc-q4os non richiede
+> hardware recente e non introduce un sistema operativo sperimentale: si
+> appoggia a Debian, una delle basi più solide e longeve del mondo Linux, e
+> alle ottimizzazioni di Q4OS. Sopra questa fondazione, **labwc** offre un
+> ambiente Wayland leggero e reattivo, con avvio rapido, basso consumo e
+> un'interfaccia grafica moderna. Il PC che hai già può tornare a essere veloce.
 
 > **[Scarica Q4OS 6](https://www.q4os.org/downloads1.html)**
 
@@ -23,52 +35,60 @@ contestuale dinamico e ottimizzazione della memoria con zram.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.0.2**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.4.0**
 
 ---
 
-## Perche' labwc-q4os
+## Trinity o Labwc: scegli tu
 
-Q4OS e' stabile e leggero, ma la sua sessione principale non e' Wayland.
-Questo progetto aggiunge una sessione **labwc** selezionabile dal display
-manager, senza toccare Trinity, Plasma o le configurazioni esistenti.
+**Q4OS resta il sistema di base.** labwc-q4os non sostituisce Trinity o
+Plasma: aggiunge una sessione **labwc** selezionabile al login. Puoi tenere
+tutto e scegliere ogni volta l'ambiente che preferisci.
 
-- Compositor **labwc** con decorazioni arrotondate, ombre e snap alle metà
-  dello schermo.
-- **Waybar** moderna: taskbar, orologio/calendario, tray, audio,
-  rete, batteria, CPU, RAM e menu sessione.
-- **Fuzzel** come launcher: icone, ricerca fuzzy, bordi arrotondati e colori
-  sincronizzati al tema; terminale predefinito **Terminator**.
-- **Mako** per notifiche discrete, **swaybg** per lo sfondo, **swaylock**
-  per bloccare lo schermo e **labwc-power-menu** per la sessione.
-- Tre temi completi e intercambiabili a caldo.
-- Tre sfondi 2560×1440 generati con Pillow, senza download esterni.
-- **Icone SVG originali per ogni tema**, coordinate con la palette e applicate
-  a GTK, Waybar, Fuzzel, Mako e alle finestre degli strumenti.
-- Menu del tasto destro con **App preferite** gestibili dall'utente.
-- **App nel menu Labwc**: gestore grafico con tasto destro per aggiungere ai
-  preferiti, spostare in una categoria (es. Multimedia) o rimuovere.
-- **Login SDDM moderno e colorato** con sessione Labwc preselezionata,
-  selettore TDM/Labwc, tastiera italiana e pulsanti di spegnimento.
-- **Menu sessione affidabile** da Waybar: blocca, esci, sospendi, riavvia e
-  spegni senza dipendere da wlogout.
-- **Doppio clic sinistro sul desktop**: guida, scorciatoie, versioni delle app,
-  versione script, data di aggiornamento e link al repository.
-- Guida integrata in italiano con tasti rapidi e istruzioni di modifica file.
-- **ZRAM — memoria compressa**: pannello con indicatori live e attivazione/
-  disattivazione.
-- **Controlli aggiornamenti script labwc-q4os**: pannello separato con
-  abilitazione, controllo manuale, copia comando e repository.
-- **Labwc Doctor**: controlli automatici e riparazione di configurazione,
-  Waybar, menu, sessione, XWayland, portali, zram e log.
-- **Preferenze della scrivania Labwc**: tema, tastiera, desktop 1–4 e
-  strumenti in un'unica finestra.
-- **Desktop 1–4 visibili**: indicatore `[1] 2 3 4` in Waybar e selezione dal
-  pannello Preferenze o con `Super + 1…4`.
-- Finestre con i **tre pulsanti classici** (riduci a icona, ingrandisci,
-  chiudi) tramite decorazioni lato server labwc.
-- **Terminator** come terminale predefinito di labwc, Fuzzel e menu.
+- **Trinity** è la sessione classica di Q4OS: barra, menu Start e disposizione
+  simile a Windows. È la scelta giusta se arrivi da Windows, se ti trovi meglio
+  con un'interfaccia tradizionale o se vuoi restare fedele al desktop Q4OS.
+  L'installer può aggiungere **LookSwitcher** (solo per Trinity) per cambiarne
+  i temi in un clic.
+- **Labwc** è la sessione Wayland di questo progetto: compositor minimale,
+  **massima reattività**, poche distrazioni e consumo ridotto di CPU, RAM e
+  GPU. È pensata per chi vuole un desktop moderno ed essenziale, soprattutto su
+  PC vecchi o poco potenti.
+- **Plasma** resta disponibile per chi preferisce l'ambiente KDE completo.
+
+In breve: **Trinity per la familiarità di Windows, Labwc per la reattività e
+un ambiente sobrio.**
+
+## Cosa aggiunge labwc-q4os
+
+- Compositor **labwc** con decorazioni arrotondate, ombre e snap; finestre con
+  i tre pulsanti classici.
+- **Waybar + Fuzzel** (default) oppure **Noctalia v5**: barra, launcher,
+  notifiche, orologio, tray e menu sessione, con la leggerezza di componenti
+  separati o l'integrazione di una shell unica.
+- **Mako** per le notifiche, **swaybg** per lo sfondo, **swaylock** per il
+  blocco e **labwc-power-menu** per la sessione.
+- Tre temi completi e intercambiabili a caldo, con tre sfondi 2560×1440 e icone
+  SVG originali coordinate alla palette.
+- **Grafica coerente**: tutte le app del progetto (Preferenze, ZRAM, Login,
+  Aggiornamenti, App in Fuzzel, App nel menu) seguono il tema attivo.
+- **Tre schermate di login SDDM** con layout diversi (Aurora Card, Split
+  Studio, Bottom Dock), tastiera IT e sessione Labwc preselezionata. Il login
+  può seguire automaticamente i colori dello sfondo.
+- **App nel menu Labwc** e **App in Fuzzel**: aggiungi, organizza o rimuovi le
+  applicazioni con selezione icona; le voci di sistema restano protette.
+- **Chromium** con **uBlock Origin Lite** e **Privacy Badger**; supporto
+  **touchscreen** con tastiera su schermo e gesti.
+- **ZRAM**, **Labwc Doctor**, **Preferenze**, desktop 1–4 e guida integrata in
+  italiano.
+- **Aggiornamenti in-app**: controllo versione, password root nella GUI, barra
+  di avanzamento e log; popup di avviso con chiusura automatica dopo 15 s.
 - zram e swappiness configurabili durante l'installazione.
+
+**In sintesi, l'installer chiede:** se il PC ha un touchscreen, quale shell
+usare (Waybar + Fuzzel o Noctalia v5), se installare LookSwitcher per Trinity
+(solo se Trinity è presente) e, quando serve, se passare a SDDM. Ogni domanda
+ha un flag corrispondente (`--touch`, `--shell`, `--lookswitcher`, `--sddm`).
 
 ---
 
@@ -84,6 +104,27 @@ Ogni sfondo riporta la firma discreta `reverseloop-dev` in basso a destra.
 
 ## Correzioni recenti
 
+- **LookSwitcher per Trinity** (opzionale, solo sessione Trinity): selettore
+  temi Q4OS; labwc resta sui suoi tre temi.
+- Scelta della shell: **Waybar + Fuzzel** (default, leggerissima) o
+  **Noctalia v5** (shell integrata, repo APT ufficiale di terze parti), con
+  fallback automatico e `--shell waybar|noctalia`.
+- Tre schermate di login SDDM con layout e stile distinti: **Aurora Card**
+  (blu), **Split Studio** (rosso), **Bottom Dock** (verde).
+- Nuova app **Schermata di login** e switch **Login uguale allo sfondo** nelle
+  Preferenze: il login segue colori e layout del tema desktop.
+- Nuova app **App in Fuzzel**: aggiunge e rimuove le voci utente del launcher
+  con selezione icona; le app di sistema restano protette.
+- Tutte le app del progetto seguono il tema attivo con il colore di riferimento.
+- Tastiera **IT** predefinita al login (SDDM/X11 e sessione labwc).
+- Chromium installato se assente, con **uBlock Origin Lite** e **Privacy Badger**
+  forzate via policy `/etc/chromium/policies/managed/labwc-q4os-extensions.json`.
+- Rilevamento touchscreen, con tastiera su schermo **wvkbd** e gesti **lisgd**
+  (swipe dal basso), scaling Qt 1.25, font e pulsanti più grandi.
+- Popup nuova versione: si chiude dopo **15 secondi**, con **Chiudi**,
+  **Copia stringa shell** e **Apri app per aggiornare**.
+- Aggiornamento in-app: password root in finestra (`pkexec`), barra di
+  avanzamento e log nel riquadro nero; helper root-owned `update-apply`.
 - Pulsante sessione di Waybar: ora apre `labwc-power-menu` e le azioni
   riavvio/spegnimento/sospensione/blocco funzionano davvero.
 - Editor menu: aggiunta/rimozione più robuste, supporto `remove-id`,
@@ -111,24 +152,49 @@ Ogni sfondo riporta la firma discreta `reverseloop-dev` in basso a destra.
 ## Login moderno SDDM
 
 Se il sistema usa **TDM**, l'installer propone di passare a **SDDM** (default
-sì; `--keep-tdm` per restare su TDM). Con SDDM viene installato il tema
-originale **`labwc-q4os`**:
+sì; `--keep-tdm` per restare su TDM). Con SDDM vengono installate **tre
+schermate di login complete**, ognuna con layout e stile diversi:
 
-- sfondo aurora animato blu/viola/ciano;
-- card in vetro scuro con angoli arrotondati;
-- selettore **utente** e **sessione** (Trinity/TDE e Labwc);
-- campo password e pulsante Accedi;
-- orologio e data in italiano;
-- pulsanti Spegni, Riavvia, Sospendi;
-- indicazione **Tastiera: IT**;
-- sessione **Labwc preselezionata**;
-- firma discreta `reverseloop-dev`.
+| Tema | Colore | Layout |
+|---|---|---|
+| **Aurora Card** | blu | card di vetro centrale, aurora animata, griglia di punti |
+| **Split Studio** | rosso tenue | pannello laterale con orologio grande, form a destra, spigoli netti |
+| **Bottom Dock** | verde salvia | barra orizzontale in basso, alone radiale, form compatto |
 
-![Login SDDM Labwc](preview/sddm-login.png)
+Tutte hanno selettore **utente** e **sessione** (Trinity/TDE e Labwc), campo
+password, orologio e data in italiano, pulsanti Spegni/Riavvia/Sospendi e
+l'indicazione **Tastiera: IT**. La sessione **Labwc è preselezionata**.
 
-Il layout di login/console viene impostato a **it** con
-`localectl` e `/etc/default/keyboard`; labwc usa `XKB_DEFAULT_LAYOUT=it`.
-Per cambiare layout al login:
+| Aurora Card (blu) | Split Studio (rosso) | Bottom Dock (verde) |
+|---|---|---|
+| ![Aurora Card](preview/login-aurora-card.png) | ![Split Studio](preview/login-split-studio.png) | ![Bottom Dock](preview/login-bottom-dock.png) |
+
+**Sincronizzazione con lo sfondo.** Nelle Preferenze c'è lo switch *Login con
+gli stessi colori dello sfondo*: quando è attivo, cambiare tema desktop
+(blu/rosso/verde) aggiorna automaticamente anche il login. Lo switch si trova
+nello stesso pannello del cambio sfondo. Per scegliere una schermata diversa
+dal tema, usa l'app **Schermata di login** (menu del tasto destro):
+
+```bash
+labwc-login-theme              # grafica: tre anteprime + switch
+labwc-login-theme --show       # stato in JSON
+labwc-login-theme --apply muted-crimson
+```
+
+L'applicazione al login richiede la password di root una sola volta
+(`pkexec`); il cambio diventa effettivo al login successivo.
+
+![App Schermata di login](preview/login-theme-gui.png)
+
+La tastiera del login è **IT** per impostazione predefinita: l'installer usa
+`localectl`, `/etc/default/keyboard` e un fallback in
+`/etc/X11/xorg.conf.d/00-keyboard.conf` per SDDM (X11); labwc usa
+`XKB_DEFAULT_LAYOUT=it`. Per cambiare layout al login:
+
+```bash
+sudo localectl set-keyboard-layout it
+# oppure it,us
+```
 
 ```bash
 sudo localectl set-keyboard-layout it
@@ -158,6 +224,78 @@ Wayland — l'installer propone di installare e attivare **SDDM** (default sì),
 mantenendo Trinity/Plasma selezionabili al login. Con `--keep-tdm` il display
 manager non viene toccato; in tal caso si può avviare Labwc da TTY con
 `dbus-run-session labwc`.
+
+### Chromium ed estensioni
+
+Se **Chromium** non è presente, l'installer lo installa da apt. Scrive poi la
+policy `/etc/chromium/policies/managed/labwc-q4os-extensions.json`, che al
+primo avvio installa dal Chrome Web Store:
+
+- **uBlock Origin Lite** (`ddkjiahejlhfcafbddmgiahcphecmpfh`);
+- **Privacy Badger** (`pkehgijcmpdhfbdbbnkijodmdjhbjlgp`).
+
+Le estensioni risultano installate dall'amministratore: non serve aggiungerle
+a mano. Con `--skip-apt` la policy viene scritta solo se Chromium esiste già.
+
+### Touchscreen
+
+Durante l'installazione lo script chiede se il PC ha un touchscreen; il
+default è **sì** quando `labwc-touchscreen` trova un device con
+`INPUT_PROP_DIRECT`. `--touch` / `--no-touch` saltano la domanda.
+
+Con il touchscreen attivo l'installer:
+
+- installa `wvkbd`, `lisgd`, `libinput-tools`, `wlr-randr`;
+- aggiunge l'utente al gruppo `input` (serve un nuovo login per i gesti);
+- scrive `~/.config/labwc/touchscreen.enabled`;
+- imposta in `environment`: `QT_SCALE_FACTOR=1.25`, `GDK_SCALE=1`,
+  `MOZ_USE_XINPUT2=1`;
+- porta a 13 il font di `rc.xml` e a 44 px i pulsanti del titolo nel tema;
+- all'avvio avvia `wvkbd-mobintl --hidden` e `lisgd`: **swipe dal bordo
+  inferiore verso l'alto** mostra/nasconde la tastiera con `SIGRTMIN`.
+
+Se `wvkbd` o `lisgd` non fossero disponibili nei repository, l'installer
+avvisa e il resto della sessione resta invariato.
+
+### Barra e launcher: Waybar + Fuzzel oppure Noctalia v5
+
+Dopo la domanda sul touchscreen l'installer chiede come gestire barra,
+launcher e notifiche. La scelta si può forzare con `--shell waybar|noctalia`
+e si può cambiare in seguito rieseguendo l'installer con lo stesso flag.
+
+| | **Waybar + Fuzzel** (default) | **Noctalia v5** |
+|---|---|---|
+| **Cosa è** | Componenti separati: Waybar, Fuzzel, Mako, swaybg | Una shell unica: barra, launcher, notifiche, centro di controllo, sfondo, lock |
+| **Risorse** | Molto leggera su CPU, RAM e GPU; adatta a PC vecchi e VM | Nativa OpenGL ES, molto curata ma più esigente su RAM e GPU |
+| **Grafica** | GTK3, colori del tema labwc-q4os | Pannelli e animazioni proprie, palette generata dallo sfondo |
+| **Uso** | Ogni pezzo è indipendente; Fuzzel e Zenity servono anche agli strumenti del progetto | Esperienza integrata e moderna, con impostazioni grafiche unificate |
+| **Installazione** | Pacchetti Debian standard | Repository APT di terze parti `pkg.noctalia.dev`, solo Debian/Q4OS amd64/arm64 |
+| **Configurazione** | File del progetto (`configs/`) già pronti | `~/.config/noctalia/config.toml`, hot-reload |
+
+In modalità Noctalia l'installer aggiunge il repository ufficiale del progetto
+Noctalia, installa il pacchetto `noctalia`, imposta `Super+D` sul launcher
+Noctalia e usa `[theme] source = "wallpaper"` così la palette segue lo sfondo
+del tema attivo. Waybar, Mako e swaybg non vengono avviati. Se l'installazione
+di Noctalia fallisce (rete, architettura, repository non raggiungibile) si
+torna automaticamente a **Waybar + Fuzzel** senza interrompere il resto.
+
+> Noctalia è un progetto indipendente: il repository APT è di terze parti.
+> Se preferisci ridurre le dipendenze esterne, resta sul default
+> Waybar + Fuzzel.
+
+### LookSwitcher per Trinity (solo Trinity)
+
+Se sul sistema è presente **Trinity** (la sessione classica di Q4OS), dopo la
+scelta della shell l'installer chiede se installare **LookSwitcher**, il
+selettore di temi del desktop Q4OS Trinity
+([q4os-trinity/q4os-desktop](https://github.com/q4os-trinity/q4os-desktop)),
+con una breve descrizione. **Riguarda solo Trinity e non modifica labwc**, che
+continua a usare i suoi tre temi blu/rosso/verde.
+
+- pacchetto cercato: `lookswitcher-trinity`, fallback `lookswitcher`;
+- se i repository Q4OS non lo forniscono, nessuna modifica e avviso;
+- `--lookswitcher` / `--no-lookswitcher` per non ricevere la domanda;
+- la domanda viene saltata se Trinity non è installato o con `--skip-apt`.
 
 ---
 
@@ -193,6 +331,9 @@ cd labwc-q4os
 | `--yes` | Nessuna domanda: zram e swappiness attivi, tema corrente o blu |
 | `--zram` / `--no-zram` | Attiva/disattiva zram senza prompt |
 | `--keyboard LAYOUT` | Layout labwc/login: `it`, `us`, `it,us` (default rilevato) |
+| `--touch` / `--no-touch` | Installa o esclude tastiera su schermo e gesti touch |
+| `--shell waybar\|noctalia` | Barra/launcher: Waybar+Fuzzel (default) o Noctalia v5 |
+| `--lookswitcher` / `--no-lookswitcher` | Selettore temi LookSwitcher per Trinity (solo Trinity) |
 | `--swappiness N` | Imposta `vm.swappiness` a `N` (0–200) |
 | `--no-swappiness` | Non modificare `vm.swappiness` |
 | `--sddm` | Installa e attiva SDDM se TDM non supporta Wayland |
@@ -207,7 +348,13 @@ Durante l'esecuzione lo script chiede:
    su macchine con 4–8 GB.
 2. **swappiness** — parametri `vm.swappiness` e `vm.vfs_cache_pressure`
    persistenti in `/etc/sysctl.d/99-labwc-performance.conf`.
-3. **display manager** — solo se è attivo TDM: propone SDDM per rendere
+3. **touchscreen** — se il PC ha un pannello touch, installa tastiera su
+   schermo e gesti (default sì se viene rilevato).
+4. **shell desktop** — Waybar + Fuzzel (default, leggero) oppure Noctalia v5
+   (shell integrata, più risorse; repository APT di terze parti).
+5. **LookSwitcher** — solo se Trinity è installato: selettore di temi per la
+   sessione Trinity; non tocca labwc (saltata con `--skip-apt`).
+6. **display manager** — solo se è attivo TDM: propone SDDM per rendere
    Labwc selezionabile al login (TDM resta installato).
 
 Scelta tecnica trasparente: con zram lo swap avviene in RAM compressa, quindi
@@ -238,11 +385,12 @@ export PATH="$HOME/.local/bin:$PATH"
 
 Al primo login partono automaticamente:
 
-- lo sfondo del tema attivo (`swaybg`);
-- Waybar con la configurazione e il tema correnti;
-- Mako per le notifiche;
-- `nm-applet` e `lxpolkit`;
-- la cronologia appunti con `cliphist` (se installato).
+- con **Waybar + Fuzzel** (default): sfondo del tema (`swaybg`), Waybar,
+  Mako per le notifiche;
+- con **Noctalia v5**: la shell Noctalia, che gestisce barra, launcher,
+  notifiche, centro di controllo e sfondo (Waybar/Mako/swaybg non partono);
+- in entrambi i casi: `nm-applet`, `lxpolkit` e la cronologia appunti con
+  `cliphist` (se installato).
 
 ### Tasti rapidi
 
@@ -251,7 +399,8 @@ Al primo login partono automaticamente:
 | Combinazione | Azione |
 |---|---|
 | `Super + Invio` | Terminale Terminator |
-| `Super + D` / `Super + Spazio` / `Alt + F2` | Launcher Fuzzel |
+| `Super + D` | Launcher: Noctalia (se scelto) o Fuzzel |
+| `Super + Spazio` / `Alt + F2` | Launcher Fuzzel |
 | `Super + E` | File manager (pcmanfm) |
 | `Super + Q` / `Alt + F4` | Chiudi finestra |
 | `Super + A` | Massimizza / ripristina |
@@ -528,19 +677,29 @@ attende la connessione internet e confronta:
 - la versione installata in `~/.local/share/labwc-q4os/version-info`;
 - la versione online `VERSION` del repository GitHub.
 
-Se la versione online è più recente compare un **popup persistente** con
-installata/disponibile, che resta visibile finché l'utente non sceglie:
+Se la versione online è più recente compare un **popup** con
+installata/disponibile che **si chiude da solo dopo 15 secondi**. Sotto il
+testo ci sono tre pulsanti:
 
-- **Aggiorna** → apre **Terminator** con il comando già compilato:
+- **Chiudi** → chiude subito il popup senza fare nulla;
+- **Copia stringa shell** → copia negli appunti:
   ```bash
   curl -fsSL https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh | bash
   ```
-  il comando non parte da solo: premi Invio per eseguirlo o Ctrl+C per annullare;
-- **Chiudi** → chiude il popup senza aggiornare.
+- **Apri app per aggiornare** → apre il pannello (`labwc-update-gui`) con la
+  finestra di aggiornamento già avviata.
 
-Il controllo non installa nulla automaticamente: l'aggiornamento resta sempre
-un'azione esplicita dell'utente. Se Zenity non è disponibile, viene usata una
-notifica Mako persistente; il click apre lo stesso terminale precompilato.
+L'aggiornamento in-app chiede la **password di root una sola volta** tramite
+`pkexec` (finestra di sistema, nessun terminale), mostra una **barra di
+avanzamento** e le **righe di avanzamento in un riquadro nero**. Usa l'helper
+root-owned `/usr/local/libexec/labwc-q4os/update-apply`: i sorgenti sono
+clonati in una directory temporanea di root e, a fine corsa, i file
+dell'utente tornano al proprietario originale.
+
+In alternativa resta il flusso manuale: dalla finestra **Copia comando**, poi
+Incolla nel terminale e premi Invio. Il controllo non installa nulla da solo:
+l'aggiornamento parte sempre da un'azione esplicita dell'utente. Se GTK non è
+disponibile, viene usata una notifica Mako persistente.
 
 ![Popup di aggiornamento](preview/update-popup.png)
 
@@ -554,6 +713,8 @@ tasto destro → **Labwc & Desktop → Controlli aggiornamenti script labwc-q4os
   **disattivare** subito; per **riattivare** serve la password di root
   (`pkexec` + helper installato root-owned);
 - intervallo predefinito **6 ore**, modificabile da 1 a 24 ore;
+- **Aggiorna ora** → aggiornamento in-app con password root in GUI, barra di
+  avanzamento e log nel riquadro nero;
 - **Controlla ora** → verifica immediata;
 - **Copia comando** → copia il bootstrap negli appunti;
 - **Apri repository**;
@@ -661,7 +822,28 @@ scelta="$(printf 'Si\nNo\n' | fuzzel --dmenu --prompt='Confermi? ')"
 
 ### Aggiungere o togliere un link in Fuzzel
 
-Fuzzel mostra i link come normali applicazioni `.desktop`. Per aggiungerne uno:
+Fuzzel mostra i link come normali applicazioni `.desktop`. L'app **App in
+Fuzzel** (`labwc-fuzzel-apps`, tasto destro → *Labwc & Desktop → App in Fuzzel*)
+fa tutto dalla grafica: nome, comando con selettore file, commento e **scelta
+dell'icona** dal set installato o da un PNG/SVG.
+
+![App in Fuzzel](preview/fuzzel-apps.png)
+
+La rimozione è limitata alle voci create dall'utente in
+`~/.local/share/applications`: le applicazioni di sistema in
+`/usr/share/applications` non vengono mai toccate. Se una voce utente copre
+un'app di sistema, l'app avvisa che rimuovendola ricompare quella di sistema.
+
+Da terminale:
+
+```bash
+labwc-fuzzel-apps --list
+labwc-fuzzel-apps --add "Mio link" --exec "xdg-open https://example.com" \
+    --icon web-browser --comment "Sito preferito"
+labwc-fuzzel-apps --remove mio-link.desktop
+```
+
+Aggiunta manuale, se preferisci:
 
 ```ini
 # ~/.local/share/applications/mio-link.desktop
@@ -679,13 +861,7 @@ Categories=Network;
 update-desktop-database ~/.local/share/applications
 ```
 
-Il link appare in Fuzzel e nella categoria **Internet** del menu desktop. Per
-rimuoverlo:
-
-```bash
-rm ~/.local/share/applications/mio-link.desktop
-update-desktop-database ~/.local/share/applications
-```
+Il link appare in Fuzzel e nella categoria **Internet** del menu desktop.
 
 ---
 
@@ -706,7 +882,8 @@ labwc-q4os/
 │   ├── mako/config.in
 │   ├── wlogout/{layout,style.css.in}
 │   ├── gtk/settings.ini
-│   ├── sddm/labwc-q4os/{Main.qml,theme.conf,metadata.desktop}
+│   ├── sddm/themes/{nordic-cobalt,muted-crimson,sage-emerald}/
+│   │   └── {Main.qml,theme.conf,metadata.desktop}   # 3 login
 │   └── themes/<tema>/{theme.conf,themerc}
 ├── scripts/
 │   ├── generate-wallpapers.py     # sfondi con Pillow
@@ -719,12 +896,16 @@ labwc-q4os/
 │   ├── labwc-screenshot           # grim + slurp
 │   ├── labwc-zram                 # pannello GTK zram
 │   ├── labwc-app-manager          # gestore app/preferite/categorie
+│   ├── labwc-fuzzel-apps          # aggiungi/rimuovi app in Fuzzel, con icona
 │   ├── labwc-update-check         # controllo versione online
 │   ├── labwc-update-copy          # copia comando di aggiornamento
-│   ├── labwc-update-popup         # popup persistente nuova versione
+│   ├── labwc-update-popup         # popup 15 s: chiudi, copia, apri GUI
 │   ├── labwc-update-run           # terminale col comando precompilato
-│   ├── labwc-update-gui           # pannello aggiornamenti
+│   ├── labwc-update-gui           # pannello + aggiornamento in-app
 │   ├── labwc-update-toggle        # helper root per l'attivazione
+│   ├── labwc-update-apply         # helper root: aggiornamento da GUI
+│   ├── labwc-login-theme          # 3 schermate login + switch sfondo
+│   ├── labwc-login-theme-apply    # helper root: applica tema SDDM
 │   ├── labwc-preferences          # preferenze scrivania
 │   ├── labwc-desktop              # cambio desktop 1-4
 │   ├── labwc-desktop-state        # stato desktop per Waybar
@@ -732,6 +913,7 @@ labwc-q4os/
 │   ├── labwc-desktop-menu         # selettore desktop 1-4
 │   ├── labwc-power-menu           # menu sessione Fuzzel/Zenity
 │   ├── labwc-sysinfo              # versioni e informazioni sistema
+│   ├── labwc-touchscreen          # rileva /dev/input/eventX del touchscreen
 │   ├── labwc-doctor               # diagnostica e riparazione
 │   ├── labwc-session-start        # autostart sessione
 │   ├── labwc-help                 # visualizzatore guida
@@ -759,6 +941,10 @@ Configurazione utente:
 ~/.config/labwc/autostart
 ~/.config/labwc/environment
 ~/.config/labwc/help.txt
+~/.config/labwc/login.conf
+~/.config/labwc/shell
+~/.config/labwc/touchscreen.enabled        # solo con touchscreen
+~/.config/noctalia/config.toml             # solo con Noctalia v5
 ~/.config/waybar/config.jsonc
 ~/.config/waybar/style.css
 ~/.config/fuzzel/fuzzel.ini
@@ -767,13 +953,16 @@ Configurazione utente:
 ~/.config/wlogout/style.css
 ~/.config/gtk-3.0/settings.ini
 ~/.config/gtk-4.0/settings.ini
-~/.config/applications/labwc-theme-switcher.desktop
-~/.config/applications/labwc-menu-editor.desktop
-~/.config/applications/labwc-help.desktop
-~/.config/applications/labwc-zram.desktop
-~/.config/applications/labwc-doctor.desktop
-~/.config/applications/labwc-app-manager.desktop
-~/.config/applications/labwc-sysinfo.desktop
+~/.local/share/applications/labwc-theme-switcher.desktop
+~/.local/share/applications/labwc-menu-editor.desktop
+~/.local/share/applications/labwc-help.desktop
+~/.local/share/applications/labwc-zram.desktop
+~/.local/share/applications/labwc-doctor.desktop
+~/.local/share/applications/labwc-app-manager.desktop
+~/.local/share/applications/labwc-fuzzel-apps.desktop
+~/.local/share/applications/labwc-login-theme.desktop
+~/.local/share/applications/labwc-preferences.desktop
+~/.local/share/applications/labwc-sysinfo.desktop
 ```
 
 Dati e strumenti:
@@ -904,19 +1093,13 @@ Copiali indietro nelle rispettive directory `~/.config/`.
 **Disinstallare la sessione**
 ```bash
 rm -rf ~/.config/labwc ~/.config/waybar ~/.config/fuzzel ~/.config/mako ~/.config/wlogout
-rm -f ~/.local/bin/labwc-theme-apply ~/.local/bin/labwc-theme-switcher \
-      ~/.local/bin/labwc-menu-editor ~/.local/bin/labwc-reload \
-      ~/.local/bin/labwc-generate-wallpapers ~/.local/bin/labwc-help \
-      ~/.local/bin/labwc-screenshot ~/.local/bin/labwc-zram \
-      ~/.local/bin/labwc-doctor ~/.local/bin/labwc-session-start
-rm -f ~/.config/applications/labwc-theme-switcher.desktop \
-      ~/.config/applications/labwc-menu-editor.desktop \
-      ~/.config/applications/labwc-help.desktop \
-      ~/.config/applications/labwc-zram.desktop \
-      ~/.config/applications/labwc-doctor.desktop
+rm -f ~/.local/bin/labwc-*                 # helper del progetto
+rm -f ~/.local/share/applications/labwc-*.desktop
 rm -rf ~/.local/share/labwc-q4os ~/.local/state/labwc-q4os
 sudo rm -f /usr/share/wayland-sessions/labwc.desktop
 ```
+Le impostazioni di Noctalia (`~/.config/noctalia`) e i pacchetti di sistema
+restano: rimuovili separatamente solo se non ti servono.
 Rimuovi zram/sysctl solo se non ti servono:
 ```bash
 sudo rm -f /etc/sysctl.d/99-labwc-performance.conf

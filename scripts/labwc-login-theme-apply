@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-login-theme-apply - installa uno dei tre temi SDDM di labwc-q4os
+#
+#  Eseguito come root (pkexec dal pannello Preferenze/Login). Copia il tema
+#  scelto da /usr/share/labwc-q4os/login-themes/<variante> (root-owned, scritto
+#  dall'installer) in /usr/share/sddm/themes/labwc-q4os e imposta
+#  [Theme] Current=labwc-q4os. Non accetta percorsi arbitrari.
+#
+#  Uso: labwc-login-theme-apply nordic-cobalt|muted-crimson|sage-emerald
+# =============================================================================
+set -euo pipefail
+
+[ "$(id -u)" -eq 0 ] || { printf 'labwc-login-theme-apply richiede root.\n' >&2; exit 1; }
+
+variant="${1:-}"
+case "$variant" in
+    nordic-cobalt|muted-crimson|sage-emerald) ;;
+    *) printf 'Uso: %s nordic-cobalt|muted-crimson|sage-emerald\n' "$(basename "$0")" >&2; exit 2 ;;
+esac
+
+themes_root="/usr/share/labwc-q4os/login-themes"
+src="$themes_root/$variant"
+[ -d "$src" ] || {
+    printf 'Tema login mancante: %s (riesegui install.sh)\n' "$src" >&2
+    exit 1
+}
+
+dest="/usr/share/sddm/themes/labwc-q4os"
+stage="$(mktemp -d)"
+trap 'rm -rf "$stage"' EXIT
+cp -a "$src/." "$stage/"
+chown -R root:root "$stage"
+
+install -d -m 0755 "$(dirname "$dest")"
+rm -rf "$dest"
+mv "$stage" "$dest"
+chmod -R a+rX "$dest"
+
+conf="/etc/sddm.conf.d/90-labwc-q4os.conf"
+install -d -m 0755 /etc/sddm.conf.d
+if [ -r "$conf" ] && grep -q '^\[Theme\]' "$conf"; then
+    if grep -q '^Current=' "$conf"; then
+        sed -i 's|^Current=.*|Current=labwc-q4os|' "$conf"
+    else
+        sed -i '/^\[Theme\]/a Current=labwc-q4os' "$conf"
+    fi
+else
+    printf '[Theme]\nCurrent=labwc-q4os\n' >> "$conf"
+fi
+chmod 0644 "$conf"
+
+printf 'Tema login applicato: %s (effettivo al prossimo login)\n' "$variant"
