@@ -35,7 +35,7 @@ non impone una sostituzione.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.5.3**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.6.0**
 
 ---
 
@@ -81,8 +81,8 @@ un ambiente sobrio.**
   **touchscreen** con tastiera su schermo e gesti.
 - **ZRAM**, **Labwc Doctor**, **Preferenze**, desktop 1–4 e guida integrata in
   italiano.
-- **Aggiornamenti in-app**: controllo versione, password root nella GUI, barra
-  di avanzamento e log; popup di avviso con chiusura automatica dopo 15 s.
+- **Aggiornamenti interattivi**: controllo versione, popup di avviso con
+  chiusura dopo 15 s e aggiornamento nel terminale che rifà le domande.
 - zram e swappiness configurabili durante l'installazione.
 
 **In sintesi, l'installer chiede:** se il PC ha un touchscreen, quale shell
@@ -125,8 +125,8 @@ Ogni sfondo riporta la firma discreta `reverseloop-dev` in basso a destra.
   (swipe dal basso), scaling Qt 1.25, font e pulsanti più grandi.
 - Popup nuova versione: si chiude dopo **15 secondi**, con **Chiudi**,
   **Copia stringa shell** e **Apri app per aggiornare**.
-- Aggiornamento in-app: password root in finestra (`pkexec`), barra di
-  avanzamento e log nel riquadro nero; helper root-owned `update-apply`.
+- Aggiornamento nel terminale (password root e domande dell'installer),
+  popup con chiusura dopo 15 s; fallback in-app solo senza terminale.
 - Pulsante sessione di Waybar: ora apre `labwc-power-menu` e le azioni
   riavvio/spegnimento/sospensione/blocco funzionano davvero.
 - Editor menu: aggiunta/rimozione più robuste, supporto `remove-id`,
@@ -720,20 +720,21 @@ testo ci sono tre pulsanti:
   ```bash
   curl -fsSL https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh | bash
   ```
-- **Apri app per aggiornare** → apre il pannello (`labwc-update-gui`) con la
-  finestra di aggiornamento già avviata.
+- **Apri app per aggiornare** → apre il pannello (`labwc-update-gui`) e avvia
+  il terminale con il comando di aggiornamento.
 
-L'aggiornamento in-app chiede la **password di root una sola volta** tramite
-`pkexec` (finestra di sistema, nessun terminale), mostra una **barra di
-avanzamento** e le **righe di avanzamento in un riquadro nero**. Usa l'helper
-root-owned `/usr/local/libexec/labwc-q4os/update-apply`: i sorgenti sono
-clonati in una directory temporanea di root e, a fine corsa, i file
-dell'utente tornano al proprietario originale.
+L'aggiornamento è **interattivo**: `labwc-update-run` apre Terminator (o foot,
+x-terminal-emulator, konsole) ed esegue subito
+`curl -fsSL .../bootstrap.sh | bash`. L'installer **rifà tutte le domande**
+(tema, shell Waybar/Fuzzel o Noctalia, touchscreen, LookSwitcher, SDDM), quindi
+le nuove scelte vengono applicate. Il terminale resta aperto alla fine per
+leggere eventuali errori.
 
-In alternativa resta il flusso manuale: dalla finestra **Copia comando**, poi
-Incolla nel terminale e premi Invio. Il controllo non installa nulla da solo:
-l'aggiornamento parte sempre da un'azione esplicita dell'utente. Se GTK non è
-disponibile, viene usata una notifica Mako persistente.
+Se non è disponibile alcun terminale grafico, il pannello usa il vecchio
+aggiornamento in-app (`pkexec` + barra di avanzamento + log) come fallback.
+Il controllo non installa nulla da solo: l'aggiornamento parte sempre da
+un'azione esplicita dell'utente. Se GTK non è disponibile, viene usata una
+notifica Mako persistente.
 
 ![Popup di aggiornamento](preview/update-popup.png)
 
@@ -747,8 +748,8 @@ tasto destro → **Labwc & Desktop → Controlli aggiornamenti script labwc-q4os
   **disattivare** subito; per **riattivare** serve la password di root
   (`pkexec` + helper installato root-owned);
 - intervallo predefinito **6 ore**, modificabile da 1 a 24 ore;
-- **Aggiorna ora** → aggiornamento in-app con password root in GUI, barra di
-  avanzamento e log nel riquadro nero;
+- **Aggiorna ora** → apre il terminale ed esegue il bootstrap: l'installer
+  rifà le domande e applica le scelte;
 - **Controlla ora** → verifica immediata;
 - **Copia comando** → copia il bootstrap negli appunti;
 - **Apri repository**;

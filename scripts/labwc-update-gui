@@ -32,6 +32,7 @@ SHARE = Path(
 STATE = Path(os.environ.get("XDG_STATE_HOME", HOME / ".local/state")) / "labwc-q4os"
 UPDATE_CHECK = HOME / ".local/bin/labwc-update-check"
 UPDATE_COPY = HOME / ".local/bin/labwc-update-copy"
+UPDATE_RUN = HOME / ".local/bin/labwc-update-run"
 SYSTEM_FLAG = Path("/etc/labwc-q4os/update-check.enabled")
 USER_DISABLED = CONFIG / "labwc/update-check.disabled"
 LEGACY_FLAG = CONFIG / "labwc/update-check.enabled"
@@ -206,9 +207,9 @@ class UpdateWindow:
         outer.pack_start(buttons, False, False, 0)
 
         footer = Gtk.Label(
-            label="Aggiorna ora chiede la password di root nella finestra di "
-                  "sistema e mostra avanzamento e log. In alternativa copia il "
-                  "comando e incollalo nel terminale.",
+            label="Aggiorna ora apre il terminale con il comando di "
+                  "aggiornamento: l'installer rifà le domande e applica le tue "
+                  "scelte. In alternativa copia il comando.",
             xalign=0,
         )
         footer.set_line_wrap(True)
@@ -218,6 +219,14 @@ class UpdateWindow:
         self.window.show_all()
 
     def on_upgrade(self, _button) -> None:
+        # Aggiornamento interattivo: terminale con il bootstrap, così
+        # l'installer rifà le domande (tema, shell, touch, ecc.).
+        if UPDATE_RUN.is_file():
+            subprocess.Popen([str(UPDATE_RUN)], start_new_session=True)
+            self.status_text.set_text(
+                "Aggiornamento avviato nel terminale: rispondi alle domande."
+            )
+            return
         dialog = getattr(self, "upgrade_dialog", None)
         if dialog is not None:
             dialog.window.present()

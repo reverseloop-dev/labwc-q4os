@@ -66,6 +66,11 @@ if python3 scripts/labwc-update-gui --help >/dev/null 2>&1; then
 else
     bad "labwc-update-gui --help"
 fi
+if bash scripts/labwc-update-run --print | grep -q 'bootstrap.sh | bash'; then
+    pass "labwc-update-run esegue il bootstrap nel terminale"
+else
+    bad "labwc-update-run --print"
+fi
 if python3 scripts/labwc-login-theme --show >/dev/null 2>&1; then
     pass "labwc-login-theme --show"
 else

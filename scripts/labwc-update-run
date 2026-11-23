@@ -1,18 +1,47 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  labwc-update-run - apre Terminator con il comando di aggiornamento pronto
+#  labwc-update-run - esegue l'aggiornamento labwc-q4os in un terminale
+#
+#  Apre un terminale ed esegue subito il bootstrap: l'installer rifa' le
+#  domande (tema, shell, touch, LookSwitcher, SDDM), quindi l'aggiornamento
+#  non e' silenzioso e le nuove scelte vengono applicate.
+#
+#  Uso: labwc-update-run [--print]
 # =============================================================================
 set -uo pipefail
 
 COMMAND="curl -fsSL https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh | bash"
-PROMPT='Labwc Q4OS: comando di aggiornamento pronto. Premi Invio per eseguirlo, Ctrl+C per annullare.'
 
-if command -v terminator >/dev/null 2>&1; then
-    exec terminator -x bash -c "CMD='$COMMAND'; printf '%s\\n' '$PROMPT'; read -e -i \"\$CMD\" -p '> ' ANSWER; printf '\\n'; eval \"\$ANSWER\""
+if [ "${1:-}" = "--print" ]; then
+    printf '%s\n' "$COMMAND"
+    exit 0
+fi
+if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
+    printf 'Uso: %s [--print]\nApre il terminale ed esegue:\n%s\n' \
+        "$(basename "$0")" "$COMMAND"
+    exit 0
 fi
 
+# Il terminale resta aperto alla fine, cosi' si leggono gli errori.
+BODY="$COMMAND; printf '\\n[labwc-q4os] aggiornamento terminato. Premi Invio per chiudere...'; read -r _"
+
+if command -v terminator >/dev/null 2>&1; then
+    exec terminator -x bash -c "$BODY"
+fi
 if command -v foot >/dev/null 2>&1; then
-    exec foot -e bash -c "CMD='$COMMAND'; printf '%s\\n' '$PROMPT'; read -e -i \"\$CMD\" -p '> ' ANSWER; printf '\\n'; eval \"\$ANSWER\""
+    exec foot -e bash -c "$BODY"
+fi
+if command -v x-terminal-emulator >/dev/null 2>&1; then
+    exec x-terminal-emulator -e bash -c "$BODY"
+fi
+if command -v konsole >/dev/null 2>&1; then
+    exec konsole -e bash -c "$BODY"
+fi
+if command -v gnome-terminal >/dev/null 2>&1; then
+    exec gnome-terminal -- bash -c "$BODY"
+fi
+if command -v xfce4-terminal >/dev/null 2>&1; then
+    exec xfce4-terminal --command "bash -c \"$BODY\""
 fi
 
 # Fallback: copia il comando e avvisa.
@@ -23,4 +52,5 @@ if command -v notify-send >/dev/null 2>&1; then
     notify-send -a "Labwc Q4OS" "Comando copiato" \
         "Incollalo nel terminale con Ctrl+Shift+V e premi Invio." >/dev/null 2>&1 || true
 fi
+printf '%s\n' "$COMMAND" >&2
 exit 1
