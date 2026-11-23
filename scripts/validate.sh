@@ -90,6 +90,13 @@ if bash scripts/labwc-update-run --print | grep -q 'bootstrap.sh | bash'; then
 else
     bad "labwc-update-run --print"
 fi
+if command -v xvfb-run >/dev/null 2>&1; then
+    if xvfb-run -a python3 scripts/labwc-update-gui --smoke 2>/dev/null | grep -q GUI_OK; then
+        pass "labwc-update-gui --smoke (finestra costruita)"
+    else
+        bad "labwc-update-gui --smoke"
+    fi
+fi
 if python3 scripts/labwc-login-theme --show >/dev/null 2>&1; then
     pass "labwc-login-theme --show"
 else

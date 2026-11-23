@@ -42,7 +42,7 @@ POPUP_SECONDS = 15
 STATUS = STATE / "update-status.json"
 REPO = "https://github.com/reverseloop-dev/labwc-q4os"
 COMMAND = (
-    "curl -fsSL --proto '=https' --proto-redir '=https' --tlsv1.2 "
+    "curl -fsSL "
     "https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh | bash"
 )
 
@@ -342,4 +342,302 @@ class UpdateWindow:
         self.on_upgrade(None)
         return False
 
+    def updates_enabled(self) -> bool:
+        try:
+            enabled = SYSTEM_FLAG.read_text(encoding="utf-8").strip() == "1"
+        except OSError:
+            enabled = False
+        if not enabled or USER_DISABLED.exists():
+            return False
+        try:
+            if LEGACY_FLAG.read_text(encoding="utf-8").strip() == "0":
+                return False
+        except OSError:
+            pass
+        return True
 
+    def interval_value(self) -> int:
+        try:
+            value = int(INTERVAL_FILE.read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):
+            return 21600
+        return max(300, min(604800, value))
+
+    def on_interval(self, _button) -> None:
+        value = self.interval.get_active_id() or "21600"
+        try:
+            INTERVAL_FILE.parent.mkdir(parents=True, exist_ok=True)
+            INTERVAL_FILE.write_text(value + "\n", encoding="utf-8")
+            self.status_text.set_text(f"Intervallo aggiornato: {self.interval.get_active_text()}.")
+        except OSError as exc:
+            self.status_text.set_text(f"Errore: {exc}")
+
+    def status_text_value(self) -> str:
+        try:
+            data = json.loads(STATUS.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return "Nessun controllo effettuato in questa sessione."
+        if data.get("available"):
+            return (
+                f"Nuova versione disponibile: {data.get('online', '?')} "
+                f"(installata {data.get('installed', '?')})"
+            )
+        if not data.get("online"):
+            return "Ultimo controllo non riuscito (rete non disponibile?)."
+        return f"Versione aggiornata: {data.get('installed', '?')}"
+
+    def on_toggle(self, button) -> None:
+        if self.toggle_busy:
+            return
+        if button.get_active():
+            # L'attivazione richiede la password di root.
+            if not ROOT_HELPER.is_file():
+                self.status_text.set_text("Helper root mancante: esegui install.sh.")
+                button.set_active(False)
+                return
+            if not shutil.which("pkexec"):
+                self.status_text.set_text("pkexec non disponibile: serve la password di root.")
+                button.set_active(False)
+                return
+            self.toggle.set_sensitive(False)
+            self.status_text.set_text("Autenticazione root in corso…")
+
+            def worker() -> None:
+                result = subprocess.run(
+                    ["pkexec", str(ROOT_HELPER), "enable", os.environ.get("USER", "")],
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                    check=False,
+                )
+                self.GLib.idle_add(self.toggle_done, result.returncode == 0, result.stderr)
+
+            threading.Thread(target=worker, daemon=True).start()
+            return
+
+        try:
+            USER_DISABLED.parent.mkdir(parents=True, exist_ok=True)
+            USER_DISABLED.write_text("1\n", encoding="utf-8")
+            subprocess.run(
+                ["pkill", "-f", "labwc-update-check --startup"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+            self.status_text.set_text("Controllo aggiornamenti disattivato (nessuna password richiesta).")
+        except OSError as exc:
+            self.status_text.set_text(f"Errore: {exc}")
+            self.toggle.set_active(True)
+
+    def toggle_done(self, success: bool, error: str) -> bool:
+        self.toggle_busy = True
+        self.toggle.set_sensitive(True)
+        if success:
+            self.toggle.set_active(True)
+            self.status_text.set_text("Controllo aggiornamenti attivato con autorizzazione root.")
+            if UPDATE_CHECK.is_file():
+                subprocess.Popen(
+                    [str(UPDATE_CHECK), "--startup"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+        else:
+            self.toggle.set_active(False)
+            detail = (error or "").strip().splitlines()[-1] if error else "autenticazione annullata"
+            self.status_text.set_text(f"Attivazione non riuscita: {detail}")
+        self.toggle_busy = False
+        return False
+
+    def on_check(self, _button) -> None:
+        if not UPDATE_CHECK.is_file():
+            self.status_text.set_text("labwc-update-check non trovato.")
+            return
+        self.check_button.set_sensitive(False)
+        self.status_text.set_text("Controllo in corso…")
+
+        def worker() -> None:
+            try:
+                subprocess.run(
+                    [str(UPDATE_CHECK), "--force"],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=False,
+                )
+            except (OSError, subprocess.SubprocessError):
+                pass
+            self.GLib.idle_add(self.check_done)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def check_done(self) -> bool:
+        self.check_button.set_sensitive(True)
+        self.status_text.set_text(self.status_text_value())
+        return False
+
+    def on_copy(self, _button) -> None:
+        if UPDATE_COPY.is_file():
+            subprocess.Popen([str(UPDATE_COPY)], start_new_session=True)
+            self.status_text.set_text("Comando copiato negli appunti.")
+        else:
+            self.status_text.set_text("labwc-update-copy non trovato.")
+
+    def on_repo(self, _button) -> None:
+        subprocess.Popen(["xdg-open", REPO], start_new_session=True)
+
+    def run(self) -> int:
+        self.Gtk.main()
+        return 0
+
+
+class UpdatePopup:
+    """Avviso di nuova versione: si chiude da solo dopo POPUP_SECONDS e offre
+    Chiudi, copia del comando shell e apertura del pannello con la GUI."""
+
+    def __init__(self, installed: str, online: str) -> None:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("Gdk", "3.0")
+        from gi.repository import Gdk, GLib, Gtk
+
+        self.GLib = GLib
+        self.Gtk = Gtk
+        self.Gdk = Gdk
+        self.remaining = POPUP_SECONDS
+
+        provider = Gtk.CssProvider()
+        provider.load_from_data(base_css(theme_colors()).encode("utf-8"))
+        screen = Gdk.Screen.get_default()
+        if screen is not None:
+            Gtk.StyleContext.add_provider_for_screen(
+                screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+            )
+
+        self.window = Gtk.Window(title="Labwc Q4OS — aggiornamento disponibile")
+        self.window.set_default_size(560, 320)
+        self.window.set_resizable(False)
+        self.window.set_border_width(16)
+        self.window.set_position(Gtk.WindowPosition.CENTER)
+        self.window.set_icon_name("software-update-available")
+        self.window.connect("destroy", self.on_destroy)
+
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        self.window.add(outer)
+
+        title = Gtk.Label(label="Nuova versione di labwc-q4os", xalign=0)
+        title.get_style_context().add_class("title")
+        versions = Gtk.Label(label=f"Installata: {installed}   ·   Disponibile: {online}", xalign=0)
+        versions.get_style_context().add_class("subtitle")
+        versions.set_line_wrap(True)
+        outer.pack_start(title, False, False, 0)
+        outer.pack_start(versions, False, False, 0)
+
+        self.countdown = Gtk.Label(xalign=0)
+        self.countdown.get_style_context().add_class("status")
+        outer.pack_start(self.countdown, False, False, 0)
+        self.update_countdown()
+
+        self.status = Gtk.Label(label="", xalign=0)
+        self.status.get_style_context().add_class("subtitle")
+        outer.pack_start(self.status, False, False, 0)
+
+        buttons = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        close_button = Gtk.Button(label="Chiudi")
+        close_button.connect("clicked", lambda _b: self.window.destroy())
+        copy_button = Gtk.Button(label="Copia stringa shell")
+        copy_button.connect("clicked", self.on_copy)
+        open_button = Gtk.Button(label="Apri app per aggiornare")
+        open_button.get_style_context().add_class("suggested")
+        open_button.connect("clicked", self.on_open_app)
+        buttons.pack_start(close_button, False, False, 0)
+        buttons.pack_start(copy_button, False, False, 0)
+        buttons.pack_end(open_button, False, False, 0)
+        outer.pack_end(buttons, False, False, 0)
+
+        self.window.show_all()
+        self.timer = GLib.timeout_add_seconds(1, self.tick)
+
+    def update_countdown(self) -> None:
+        self.countdown.set_text(
+            f"Questa finestra si chiude automaticamente tra {self.remaining} secondi."
+        )
+
+    def tick(self) -> bool:
+        self.remaining -= 1
+        if self.remaining <= 0:
+            self.window.destroy()
+            return False
+        self.update_countdown()
+        return True
+
+    def on_destroy(self, *_args) -> None:
+        if getattr(self, "timer", None):
+            self.GLib.source_remove(self.timer)
+            self.timer = None
+        self.Gtk.main_quit()
+
+    def on_copy(self, _button) -> None:
+        try:
+            subprocess.run(
+                ["wl-copy"],
+                input=COMMAND,
+                text=True,
+                timeout=5,
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except (OSError, subprocess.SubprocessError):
+            clipboard = self.Gtk.Clipboard.get(self.Gdk.SELECTION_CLIPBOARD)
+            clipboard.set_text(COMMAND, -1)
+            clipboard.store()
+        self.status.set_text("Comando copiato negli appunti.")
+
+    def on_open_app(self, _button) -> None:
+        subprocess.Popen(
+            [sys.executable, str(Path(__file__).resolve()), "--upgrade"],
+            start_new_session=True,
+        )
+        self.window.destroy()
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = list(sys.argv[1:] if argv is None else argv)
+    if "-h" in args or "--help" in args:
+        print("Uso: labwc-update-gui [--popup INSTALLATA ONLINE | --upgrade]")
+        return 0
+
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("Gdk", "3.0")
+        from gi.repository import Gtk
+    except (ImportError, ValueError) as exc:
+        print(f"GTK3/PyGObject non disponibile: {exc}", file=sys.stderr)
+        return 1
+    Gtk.init([])
+
+    if args and args[0] == "--popup":
+        installed = args[1] if len(args) > 1 else "?"
+        online = args[2] if len(args) > 2 else "?"
+        UpdatePopup(installed, online)
+        Gtk.main()
+        return 0
+
+    if "--smoke" in args:
+        UpdateWindow()
+        print("GUI_OK")
+        return 0
+
+    window = UpdateWindow()
+    if "--upgrade" in args:
+        window.GLib.idle_add(window.start_upgrade)
+    return window.run()
+
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
