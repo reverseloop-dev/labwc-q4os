@@ -72,4 +72,35 @@ if command -v dbus-update-activation-environment >/dev/null 2>&1; then
 fi
 
 printf 'exec labwc\n' >>"$LOG"
-exec labwc
+
+# Rete di sicurezza: labwc esegue ~/.config/labwc/autostart, ma con login
+# Plasma/SDDM o configurazioni migrate puo' non farlo. Dopo l'avvio del
+# compositor controlliamo che la shell scelta sia attiva; se manca, avviamo
+# labwc-session-start una volta. Cosi' sfondo e barra compaiono da soli.
+(
+    attempt=0
+    while [ "$attempt" -lt 60 ]; do
+        if find "$XDG_RUNTIME_DIR" -maxdepth 1 -name 'wayland-*' -type s \
+            -print -quit 2>/dev/null | grep -q .; then
+            break
+        fi
+        attempt=$((attempt + 1))
+        sleep 0.25
+    done
+    sleep 2.5
+    shell_mode="waybar"
+    [ -r "$XDG_CONFIG_HOME/labwc/shell" ] &&
+        shell_mode="$(tr -d '[:space:]' < "$XDG_CONFIG_HOME/labwc/shell")"
+    if [ "$shell_mode" = "noctalia" ] && command -v noctalia >/dev/null 2>&1; then
+        expected="noctalia"
+    else
+        expected="waybar"
+    fi
+    if ! pgrep -x "$expected" >/dev/null 2>&1; then
+        printf 'shell %s non attiva dopo il login: avvio labwc-session-start\n' \
+            "$expected" >>"$LOG"
+        "$HOME/.local/bin/labwc-session-start" >>"$LOG" 2>&1 &
+    fi
+) >/dev/null 2>&1 &
+
+exec labwc -c "$XDG_CONFIG_HOME/labwc"

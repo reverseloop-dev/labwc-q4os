@@ -201,6 +201,9 @@ runtime_reload() {
         return 0
     fi
 
+    # Modalita' Waybar (o fallback): una sola shell attiva.
+    pkill -x noctalia >/dev/null 2>&1 || true
+
     if [ -f "$WALLPAPER_PATH" ] && command -v swaybg >/dev/null 2>&1; then
         pkill -x swaybg >/dev/null 2>&1 || true
         sleep 0.15

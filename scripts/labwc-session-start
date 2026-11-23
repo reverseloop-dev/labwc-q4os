@@ -48,6 +48,10 @@ if [ "$shell_mode" = "noctalia" ]; then
         use_noctalia=1
     else
         printf 'shell: marker noctalia ma comando mancante, uso Waybar+Mako+swaybg\n'
+        if command -v notify-send >/dev/null 2>&1 && [ -n "${WAYLAND_DISPLAY:-}" ]; then
+            notify-send -a "Labwc" "Noctalia non installato" \
+                "Uso Waybar + Fuzzel. Reinstalla con --shell noctalia." >/dev/null 2>&1 || true
+        fi
     fi
 fi
 
@@ -57,6 +61,9 @@ if [ "$use_noctalia" -eq 1 ]; then
     pkill -x mako >/dev/null 2>&1 || true
     pkill -x swaybg >/dev/null 2>&1 || true
     start_once noctalia noctalia
+else
+    # Una sola shell attiva: se Noctalia era partita, la fermiamo.
+    pkill -x noctalia >/dev/null 2>&1 || true
 fi
 
 # Sfondo coordinato al tema corrente

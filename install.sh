@@ -648,7 +648,20 @@ Aggiorna a Q4OS 6 oppure usa una release Debian 13 o successiva."
     fi
 
     log "Installazione pacchetti base (puo' richiedere qualche minuto)..."
-    install_packages "${CORE_PKGS[@]}"
+    if [ "$WANT_SHELL" = "noctalia" ]; then
+        # Una sola shell: con Noctalia non installiamo Waybar/Mako/swaybg.
+        # Fuzzel resta per gli strumenti del progetto (menu, temi), non come launcher.
+        shell_core=()
+        for pkg in "${CORE_PKGS[@]}"; do
+            case "$pkg" in
+                waybar|mako-notifier|swaybg) continue ;;
+            esac
+            shell_core+=("$pkg")
+        done
+        install_packages "${shell_core[@]}"
+    else
+        install_packages "${CORE_PKGS[@]}"
+    fi
     log "Installazione pacchetti opzionali consigliati..."
     install_packages "${OPTIONAL_PKGS[@]}"
 
@@ -723,7 +736,14 @@ if [ "$WANT_SHELL" = "noctalia" ]; then
         warn "Installazione di Noctalia non riuscita: uso Waybar + Fuzzel."
         shell_ok=0
     fi
-    [ "$shell_ok" -eq 1 ] || WANT_SHELL=waybar
+    if [ "$shell_ok" -eq 0 ]; then
+        WANT_SHELL=waybar
+        # Se avevamo saltato Waybar/Mako/swaybg per Noctalia, li installiamo ora.
+        if [ "$SKIP_APT" -ne 1 ] && have apt-get; then
+            log "Ripristino Waybar + Mako + swaybg per il fallback..."
+            install_packages waybar mako-notifier swaybg
+        fi
+    fi
 fi
 
 log "Configurazione Chromium ed estensioni (uBlock Origin Lite, Privacy Badger)..."

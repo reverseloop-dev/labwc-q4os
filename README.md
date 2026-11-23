@@ -35,7 +35,7 @@ non impone una sostituzione.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.4.1**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.4.2**
 
 ---
 
@@ -293,9 +293,17 @@ e si può cambiare in seguito rieseguendo l'installer con lo stesso flag.
 In modalità Noctalia l'installer aggiunge il repository ufficiale del progetto
 Noctalia, installa il pacchetto `noctalia`, imposta `Super+D` sul launcher
 Noctalia e usa `[theme] source = "wallpaper"` così la palette segue lo sfondo
-del tema attivo. Waybar, Mako e swaybg non vengono avviati. Se l'installazione
-di Noctalia fallisce (rete, architettura, repository non raggiungibile) si
-torna automaticamente a **Waybar + Fuzzel** senza interrompere il resto.
+del tema attivo. **Waybar, Mako e swaybg non vengono installati né avviati**
+(Fuzzel resta solo per gli strumenti del progetto, non come launcher). Se
+l'installazione di Noctalia fallisce (rete, architettura, repository non
+raggiungibile) vengono installati e attivati Waybar + Mako + swaybg, senza
+interrompere il resto.
+
+La sessione avvia **una sola shell**: al login viene fermata l'eventuale shell
+precedente. Un watchdog nel wrapper di sessione controlla dopo pochi secondi
+che la barra scelta sia attiva; se l'autostart non è partito, avvia
+`labwc-session-start` una volta. Così sfondo e barra compaiono da soli, senza
+dover riaprire il selettore sfondi.
 
 > Noctalia è un progetto indipendente: il repository APT è di terze parti.
 > Se preferisci ridurre le dipendenze esterne, resta sul default

@@ -22,6 +22,7 @@ if pgrep -x labwc >/dev/null 2>&1 && [ -n "${WAYLAND_DISPLAY:-}" ]; then
 fi
 
 if [ "$use_noctalia" -eq 0 ] && [ -n "${WAYLAND_DISPLAY:-}" ] && command -v waybar >/dev/null 2>&1; then
+    pkill -x noctalia >/dev/null 2>&1 || true
     pkill -x waybar >/dev/null 2>&1 || true
     sleep 0.25
     setsid -f waybar -c "$CONFIG/waybar/config.jsonc" -s "$CONFIG/waybar/style.css" \

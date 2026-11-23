@@ -387,7 +387,8 @@ SHELL DESKTOP (scelta in installazione con --shell):
     sfondo, lock) nativa OpenGL ES, piu' moderna ma piu' pesante su RAM/GPU;
     installata dal repository APT di terze parti pkg.noctalia.dev (Debian/Q4OS
     amd64/arm64). Super+D apre il launcher Noctalia; Waybar/Mako/swaybg non
-    vengono avviati. La palette segue lo sfondo del tema.
+    vengono installati ne' avviati. La palette segue lo sfondo del tema.
+    In caso di errore si torna a Waybar+Fuzzel e vengono installati.
   Per cambiare: riesegui l'installer con --shell waybar oppure --shell noctalia.
 
 LOOKSWITCHER PER TRINITY (solo Trinity):
