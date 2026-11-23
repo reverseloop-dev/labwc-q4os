@@ -1011,13 +1011,18 @@ configure_touchscreen
 printf '%s\n' "$WANT_SHELL" > "$CONFIG/labwc/shell"
 chmod 0644 "$CONFIG/labwc/shell"
 if [ "$WANT_SHELL" = "noctalia" ] && [ ! -f "$CONFIG/noctalia/config.toml" ]; then
-    # Palette derivata dallo sfondo e modalita' scura (file hot-reloadato).
+    # Palette derivata dallo sfondo, modalita' scura e cartella sfondi del
+    # progetto (il picker di Noctalia altrimenti mostra solo ~/Pictures).
     mkdir -p "$CONFIG/noctalia"
-    cat > "$CONFIG/noctalia/config.toml" <<'EOF'
+    cat > "$CONFIG/noctalia/config.toml" <<EOF
 # Generato da labwc-q4os — https://github.com/reverseloop-dev/labwc-q4os
 [theme]
 mode = "dark"
 source = "wallpaper"
+
+[wallpaper]
+directory = "$SHARE/wallpapers"
+fill_mode = "crop"
 EOF
     chmod 0644 "$CONFIG/noctalia/config.toml"
 fi

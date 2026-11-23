@@ -82,18 +82,30 @@ fi
 
 # Noctalia disegna il proprio sfondo: allinea il tema e la palette wallpaper.
 # In background: il login non deve attendere che la shell sia pronta.
-if [ "$use_noctalia" -eq 1 ] && [ -f "$wallpaper" ]; then
+if [ "$use_noctalia" -eq 1 ]; then
     (
         attempt=0
         while [ "$attempt" -lt 8 ]; do
-            if timeout 2 noctalia msg wallpaper-set "$wallpaper"; then
-                printf 'shell: sfondo Noctalia impostato\n'
+            if timeout 2 noctalia msg config-set wallpaper.directory \
+                "\"$SHARE/wallpapers\""; then
                 break
             fi
             attempt=$((attempt + 1))
             sleep 0.5
         done
-        [ "$attempt" -lt 8 ] || printf 'shell: wallpaper-set Noctalia non riuscito\n'
+        [ "$attempt" -lt 8 ] || printf 'shell: cartella sfondi Noctalia non impostata\n'
+        if [ -f "$wallpaper" ]; then
+            attempt=0
+            while [ "$attempt" -lt 8 ]; do
+                if timeout 2 noctalia msg wallpaper-set "$wallpaper"; then
+                    printf 'shell: sfondo Noctalia impostato\n'
+                    break
+                fi
+                attempt=$((attempt + 1))
+                sleep 0.5
+            done
+            [ "$attempt" -lt 8 ] || printf 'shell: wallpaper-set Noctalia non riuscito\n'
+        fi
     ) >>"$LOG" 2>&1 &
 fi
 

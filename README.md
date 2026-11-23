@@ -35,7 +35,7 @@ non impone una sostituzione.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.5.2**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.5.3**
 
 ---
 
@@ -297,8 +297,11 @@ In modalità Noctalia l'installer aggiunge il repository ufficiale del progetto
 Noctalia, installa il pacchetto `noctalia`, imposta i tasti launcher
 (`Super+D`, `Super+Spazio`, `Alt+F2`) su Noctalia e usa
 `[theme] source = "wallpaper"` così la palette segue lo sfondo del tema attivo.
-**Waybar, Mako, swaybg e Fuzzel vengono rimossi** (con Fuzzel assente, gli
-strumenti del progetto usano Zenity come selettore). Se l'installazione di
+Imposta anche la **cartella sfondi del progetto**
+(`~/.local/share/labwc-q4os/wallpapers`) come directory del picker Noctalia,
+così i tre sfondi compaiono nella galleria; al login applica lo sfondo del tema
+corrente. **Waybar, Mako, swaybg e Fuzzel vengono rimossi** (con Fuzzel assente,
+gli strumenti del progetto usano Zenity come selettore). Se l'installazione di
 Noctalia fallisce (rete, architettura, repository non raggiungibile) vengono
 reinstallati e attivati Waybar + Mako + swaybg, senza interrompere il resto.
 

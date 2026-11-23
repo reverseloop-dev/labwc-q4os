@@ -387,7 +387,8 @@ SHELL DESKTOP (scelta in installazione con --shell):
     sfondo, lock) nativa OpenGL ES, piu' moderna ma piu' pesante su RAM/GPU;
     installata dal repository APT di terze parti pkg.noctalia.dev (Debian/Q4OS
     amd64/arm64). I tasti launcher aprono Noctalia; Waybar/Mako/swaybg/Fuzzel
-    vengono rimossi. La palette segue lo sfondo del tema.
+    vengono rimossi. La palette segue lo sfondo del tema e la galleria
+    wallpaper punta a ~/.local/share/labwc-q4os/wallpapers.
     In caso di errore si torna a Waybar+Fuzzel e vengono reinstallati.
   • Scegliendo Waybar+Fuzzel viene rimosso il pacchetto noctalia.
     La sessione avvia una sola shell; un watchdog avvia barra e sfondo se
