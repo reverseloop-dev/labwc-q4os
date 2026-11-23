@@ -695,12 +695,13 @@ Aggiorna a Q4OS 6 oppure usa una release Debian 13 o successiva."
 
     log "Installazione pacchetti base (puo' richiedere qualche minuto)..."
     if [ "$WANT_SHELL" = "noctalia" ]; then
-        # Una sola shell: con Noctalia non installiamo Waybar/Mako/swaybg.
+        # Una sola shell: con Noctalia non installiamo Waybar/Mako.
+        # swaybg resta come sfondo immediato finché Noctalia non è pronto.
         # Fuzzel resta per gli strumenti del progetto (menu, temi), non come launcher.
         shell_core=()
         for pkg in "${CORE_PKGS[@]}"; do
             case "$pkg" in
-                waybar|mako-notifier|swaybg|fuzzel) continue ;;
+                waybar|mako-notifier|fuzzel) continue ;;
             esac
             shell_core+=("$pkg")
         done
@@ -795,7 +796,7 @@ fi
 # Shell esclusiva: rimuove davvero i pacchetti dell'altra shell.
 if [ "$SKIP_APT" -ne 1 ] && have apt-get; then
     if [ "$WANT_SHELL" = "noctalia" ]; then
-        remove_shell_packages waybar mako-notifier swaybg fuzzel
+        remove_shell_packages waybar mako-notifier fuzzel
     else
         remove_shell_packages noctalia
     fi
@@ -1051,6 +1052,26 @@ directory = "$SHARE/wallpapers"
 fill_mode = "crop"
 EOF
     chmod 0644 "$CONFIG/noctalia/config.toml"
+fi
+if [ "$WANT_SHELL" = "noctalia" ]; then
+    # Overlay del progetto: sfondi, niente download community all'avvio
+    # (su VM/rete lenta bloccavano il login per decine di secondi).
+    mkdir -p "$CONFIG/noctalia"
+    cat > "$CONFIG/noctalia/99-labwc-q4os.toml" <<EOF
+# Generato da labwc-q4os — non modificare a mano
+[wallpaper]
+directory = "$SHARE/wallpapers"
+
+[theme.templates]
+enable_community_templates = false
+
+[shell.launcher]
+fetch_exchange_rates = false
+
+[weather]
+enabled = false
+EOF
+    chmod 0644 "$CONFIG/noctalia/99-labwc-q4os.toml"
 fi
 
 install -m 0755 "$REPO_DIR/configs/labwc/autostart" "$CONFIG/labwc/autostart"

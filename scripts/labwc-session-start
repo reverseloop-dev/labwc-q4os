@@ -56,10 +56,19 @@ if [ "$shell_mode" = "noctalia" ]; then
 fi
 
 if [ "$use_noctalia" -eq 1 ]; then
-    # Noctalia fornisce barra, launcher, notifiche e sfondo: niente waybar/mako/swaybg.
+    # Noctalia fornisce barra, launcher e notifiche: niente waybar/mako.
     pkill -x waybar >/dev/null 2>&1 || true
     pkill -x mako >/dev/null 2>&1 || true
-    pkill -x swaybg >/dev/null 2>&1 || true
+    # Sfondo immediato: Noctalia impiega qualche secondo a inizializzarsi.
+    # swaybg viene fermato quando Noctalia ha applicato lo sfondo.
+    theme_boot="nordic-cobalt"
+    [ -r "$CONFIG/labwc/theme" ] && theme_boot="$(tr -d '[:space:]' < "$CONFIG/labwc/theme")"
+    boot_wall="$SHARE/wallpapers/$theme_boot.png"
+    if [ -f "$boot_wall" ] && command -v swaybg >/dev/null 2>&1; then
+        pkill -x swaybg >/dev/null 2>&1 || true
+        setsid -f swaybg -m fill -i "$boot_wall" >>"$LOG" 2>&1 || true
+        printf 'sfondo immediato: %s\n' "$boot_wall"
+    fi
     start_once noctalia noctalia
 else
     # Una sola shell attiva: se Noctalia era partita, la fermiamo.
@@ -85,26 +94,29 @@ fi
 if [ "$use_noctalia" -eq 1 ]; then
     (
         attempt=0
-        while [ "$attempt" -lt 8 ]; do
+        while [ "$attempt" -lt 60 ]; do
             if timeout 2 noctalia msg config-set wallpaper.directory \
                 "\"$SHARE/wallpapers\""; then
+                timeout 2 noctalia msg config-set theme.source '"wallpaper"' \
+                    >/dev/null 2>&1 || true
                 break
             fi
             attempt=$((attempt + 1))
             sleep 0.5
         done
-        [ "$attempt" -lt 8 ] || printf 'shell: cartella sfondi Noctalia non impostata\n'
+        [ "$attempt" -lt 60 ] || printf 'shell: cartella sfondi Noctalia non impostata\n'
         if [ -f "$wallpaper" ]; then
             attempt=0
-            while [ "$attempt" -lt 8 ]; do
+            while [ "$attempt" -lt 60 ]; do
                 if timeout 2 noctalia msg wallpaper-set "$wallpaper"; then
                     printf 'shell: sfondo Noctalia impostato\n'
+                    pkill -x swaybg >/dev/null 2>&1 || true
                     break
                 fi
                 attempt=$((attempt + 1))
                 sleep 0.5
             done
-            [ "$attempt" -lt 8 ] || printf 'shell: wallpaper-set Noctalia non riuscito\n'
+            [ "$attempt" -lt 60 ] || printf 'shell: wallpaper-set Noctalia non riuscito\n'
         fi
     ) >>"$LOG" 2>&1 &
 fi
