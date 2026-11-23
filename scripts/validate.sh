@@ -208,6 +208,11 @@ if HOME="$WRAP_TMP" XDG_CONFIG_HOME="$WRAP_TMP/.config" \
 else
     bad "labwc-session-launch --check"
 fi
+if grep -q 'exec labwc -C' scripts/labwc-session-launch; then
+    pass "wrapper usa -C (directory configurazione), non -c"
+else
+    bad "wrapper: labwc deve usare -C per la directory"
+fi
 rm -rf "$WRAP_TMP"
 
 # Menu coerente con la shell: con marker noctalia usa il launcher Noctalia.

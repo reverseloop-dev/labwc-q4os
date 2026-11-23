@@ -469,7 +469,11 @@ if [ -r /usr/share/wayland-sessions/labwc.desktop ]; then
     ok "sessione Wayland registrata"
     if grep -q '^Exec=/usr/local/libexec/labwc-q4os/labwc-session' /usr/share/wayland-sessions/labwc.desktop; then
         if [ -x /usr/local/libexec/labwc-q4os/labwc-session ]; then
-            ok "sessione Wayland usa il wrapper labwc"
+            if grep -q 'exec labwc -C' /usr/local/libexec/labwc-q4os/labwc-session; then
+                ok "sessione Wayland usa il wrapper labwc (-C)"
+            else
+                bad "wrapper sessione: manca 'labwc -C' (config directory)"
+            fi
         else
             bad "wrapper sessione mancante: /usr/local/libexec/labwc-q4os/labwc-session"
         fi

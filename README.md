@@ -35,7 +35,7 @@ non impone una sostituzione.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.9.0**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.9.1**
 
 ---
 
@@ -108,6 +108,8 @@ Ogni sfondo riporta la firma discreta `reverseloop-dev` in basso a destra.
   temi Q4OS; labwc resta sui suoi tre temi.
 - **Login Plasma/Breeze gestito**: drop-in `99-labwc-q4os.conf` e wrapper di
   sessione che garantiscono tema, sessione e configurazione labwc.
+- **Desktop ripristinato**: `labwc` usa `-C` per la cartella config, quindi
+  tornano menu col tasto destro e doppio clic sinistro su aiuto/scorciatoie.
 - Scelta della shell: **Waybar + Fuzzel** (default, leggerissima) o
   **Noctalia v5** (shell integrata, repo APT ufficiale di terze parti), con
   fallback automatico e `--shell waybar|noctalia`.

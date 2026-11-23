@@ -111,4 +111,4 @@ printf 'exec labwc\n' >>"$LOG"
     fi
 ) >/dev/null 2>&1 &
 
-exec labwc -c "$XDG_CONFIG_HOME/labwc"
+exec labwc -C "$XDG_CONFIG_HOME/labwc"
