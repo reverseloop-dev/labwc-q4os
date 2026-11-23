@@ -35,7 +35,7 @@ non impone una sostituzione.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.5.0**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.5.1**
 
 ---
 
@@ -208,8 +208,11 @@ l'ultimo drop-in, prevale sui file di Plasma e forza tema `labwc-q4os`,
 La sessione Labwc usa anche un piccolo wrapper
 `/usr/local/libexec/labwc-q4os/labwc-session`: imposta `HOME` e le variabili
 XDG corrette, ripara la configurazione se manca (`labwc-doctor --fix`) e scrive
-l'esito in `~/.local/state/labwc-q4os/session.log`. Serve a evitare lo schermo
-nero con menu minimo quando il login non è quello installato dal progetto.
+l'esito in `~/.local/state/labwc-q4os/session.log`. Dopo il login esegue
+**due ricariche automatiche** di menu e desktop (2 e 4 secondi), così Waybar e
+lo sfondo compaiono anche quando il primo avvio fallisce. Serve a evitare lo
+schermo nero con menu minimo quando il login non è quello installato dal
+progetto.
 
 Se dopo l'installazione il login mostra ancora Plasma:
 ```bash

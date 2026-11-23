@@ -137,6 +137,7 @@ sess_run() {
     HOME="$SESS_TMP/home" XDG_CONFIG_HOME="$SESS_TMP/home/.config" \
         XDG_DATA_HOME="$SESS_TMP/home/.local/share" \
         XDG_STATE_HOME="$SESS_TMP/home/.local/state" \
+        LABWC_Q4OS_NO_AUTO_RELOAD=1 \
         PATH="$SESS_STUB" "$BASH" scripts/labwc-session-start
 }
 if sess_run && grep -q 'sessione pronta' "$SESS_LOG" &&

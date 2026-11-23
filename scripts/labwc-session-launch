@@ -96,6 +96,14 @@ printf 'exec labwc\n' >>"$LOG"
     else
         expected="waybar"
     fi
+    # Il socket Wayland e' creato da labwc solo dopo l'avvio: senza questa
+    # variabile Waybar/swaybg fallirebbero al primo tentativo (schermo nero
+    # finche' non si ricarica il desktop a mano).
+    watch_socket="$(find "$XDG_RUNTIME_DIR" -maxdepth 1 \
+        -name 'wayland-*' -type s -print -quit 2>/dev/null || true)"
+    if [ -n "$watch_socket" ]; then
+        export WAYLAND_DISPLAY="$(basename "$watch_socket")"
+    fi
     if ! pgrep -x "$expected" >/dev/null 2>&1; then
         printf 'shell %s non attiva dopo il login: avvio labwc-session-start\n' \
             "$expected" >>"$LOG"

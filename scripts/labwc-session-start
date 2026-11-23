@@ -180,5 +180,19 @@ if command -v xdg-user-dirs-update >/dev/null 2>&1 && [ ! -f "$CONFIG/user-dirs.
     xdg-user-dirs-update || true
 fi
 
+# Doppia ricarica automatica dopo il login: su alcuni login (Plasma/SDDM)
+# Waybar e lo sfondo falliscono il primo avvio; due reload ravvicinati
+# evitano lo schermo nero con solo il menu del tasto destro.
+if [ "${LABWC_Q4OS_NO_AUTO_RELOAD:-0}" != "1" ] &&
+    pgrep -x labwc >/dev/null 2>&1 && [ -x "$HOME/.local/bin/labwc-reload" ]; then
+    (
+        sleep 2
+        "$HOME/.local/bin/labwc-reload" >>"$LOG" 2>&1 || true
+        sleep 2
+        "$HOME/.local/bin/labwc-reload" >>"$LOG" 2>&1 || true
+        printf 'auto-reload: desktop ricaricato due volte\n'
+    ) &
+fi
+
 printf '===== sessione pronta =====\n'
 exit 0
