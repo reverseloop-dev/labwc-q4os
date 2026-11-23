@@ -185,6 +185,20 @@ else
 fi
 rm -rf "$WRAP_TMP"
 
+# Menu coerente con la shell: con marker noctalia usa il launcher Noctalia.
+MENU_TMP="$(mktemp -d)"
+mkdir -p "$MENU_TMP/.config/labwc"
+printf 'noctalia\n' > "$MENU_TMP/.config/labwc/shell"
+if HOME="$MENU_TMP" XDG_CONFIG_HOME="$MENU_TMP/.config" \
+    XDG_DATA_HOME="$MENU_TMP/.local/share" \
+    python3 scripts/render-menu.py --render >/dev/null 2>&1 &&
+    grep -q 'noctalia msg panel-toggle launcher' "$MENU_TMP/.config/labwc/menu.xml"; then
+    pass "menu con launcher Noctalia quando la shell e' noctalia"
+else
+    bad "menu shell-aware (Noctalia)"
+fi
+rm -rf "$MENU_TMP"
+
 # --- 3. JSON -----------------------------------------------------------------
 check "JSON (Waybar, wlogout)"
 if jq empty configs/waybar/config.jsonc; then pass "waybar/config.jsonc"; else bad "waybar/config.jsonc"; fi

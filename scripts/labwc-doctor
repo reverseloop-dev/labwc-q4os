@@ -165,9 +165,11 @@ if [ "$FIX" -eq 1 ]; then
 
     restore_from_template rc.xml "$CONFIG/labwc/rc.xml" 0644 || true
     if [ "$shell_mode" = "noctalia" ] && have noctalia && [ -r "$CONFIG/labwc/rc.xml" ]; then
-        # Super+D sul launcher Noctalia (stesso sed mirato dell'installer).
-        sed -i '/<keybind key="W-d">/,/<\/keybind>/ s|command="fuzzel"|command="noctalia msg panel-toggle launcher"|' \
-            "$CONFIG/labwc/rc.xml"
+        # Launcher Noctalia sui tasti che prima aprivano Fuzzel.
+        for launcher_key in W-d A-F2 W-space; do
+            sed -i "/<keybind key=\"$launcher_key\">/,/<\\/keybind>/ s|command=\"fuzzel\"|command=\"noctalia msg panel-toggle launcher\"|" \
+                "$CONFIG/labwc/rc.xml"
+        done
     fi
     restore_from_template environment "$CONFIG/labwc/environment" 0644 || true
     restore_from_template autostart "$CONFIG/labwc/autostart" 0755 || true

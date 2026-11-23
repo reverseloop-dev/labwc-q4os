@@ -29,6 +29,14 @@ from xml.sax.saxutils import escape
 
 HOME = Path.home()
 CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME", HOME / ".config"))
+
+
+def shell_mode() -> str:
+    try:
+        value = (CONFIG_HOME / "labwc/shell").read_text(encoding="utf-8").strip()
+    except OSError:
+        return "waybar"
+    return value if value in ("waybar", "noctalia") else "waybar"
 LABWC_DIR = CONFIG_HOME / "labwc"
 MENU_FILE = LABWC_DIR / "menu.xml"
 FAVORITES_FILE = LABWC_DIR / "favorites.tsv"
@@ -438,7 +446,10 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     parts.append('    <separator label="reverseloop-dev" />\n')
     parts.append(item("Terminale", "terminator"))
     parts.append(item("File manager", "pcmanfm"))
-    parts.append(item("Cerca applicazioni (Fuzzel)", "fuzzel"))
+    if shell_mode() == "noctalia":
+        parts.append(item("Cerca applicazioni (Noctalia)", "noctalia msg panel-toggle launcher"))
+    else:
+        parts.append(item("Cerca applicazioni (Fuzzel)", "fuzzel"))
     parts.append("    <separator />\n")
 
     favorites_body = ""
@@ -469,7 +480,7 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
 
     desktop_body = ""
     desktop_body += item("Gestisci app e preferite", helper("labwc-app-manager"))
-    desktop_body += item("Editor rapido del menu (Fuzzel)", helper("labwc-menu-editor"))
+    desktop_body += item("Editor rapido del menu", helper("labwc-menu-editor"))
     desktop_body += item("Ricarica menu e desktop", helper("labwc-reload"))
     desktop_body += item("Aiuto, scorciatoie e sistema", helper("labwc-help"))
     desktop_body += item("Informazioni di sistema", f"terminator -x {helper('labwc-sysinfo')}")

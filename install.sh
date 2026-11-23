@@ -631,6 +631,26 @@ EOF
     ok "Chromium: uBlock Origin Lite e Privacy Badger installate da policy al primo avvio."
 }
 
+# Rimuove i pacchetti dell'altra shell, se presenti. Usata dopo aver scelto
+# e verificato la shell: Noctalia toglie Waybar/Mako/swaybg/Fuzzel; Waybar
+# toglie Noctalia. Non interrompe l'installazione se apt fallisce.
+remove_shell_packages() {
+    local -a to_remove=()
+    local pkg
+    for pkg in "$@"; do
+        if dpkg -s "$pkg" >/dev/null 2>&1; then
+            to_remove+=("$pkg")
+        fi
+    done
+    [ "${#to_remove[@]}" -gt 0 ] || return 0
+    log "Rimozione della shell non scelta: ${to_remove[*]}"
+    if sudo env DEBIAN_FRONTEND=noninteractive apt-get remove -y "${to_remove[@]}"; then
+        ok "Rimossi: ${to_remove[*]}"
+    else
+        warn "Rimozione non riuscita: ${to_remove[*]}. Restano installati ma non verranno avviati."
+    fi
+}
+
 if [ "$SKIP_APT" -eq 1 ]; then
     warn "Installazione pacchetti saltata (--skip-apt)."
     if [ "$WANT_LOOKSWITCHER" -eq 1 ]; then
@@ -654,7 +674,7 @@ Aggiorna a Q4OS 6 oppure usa una release Debian 13 o successiva."
         shell_core=()
         for pkg in "${CORE_PKGS[@]}"; do
             case "$pkg" in
-                waybar|mako-notifier|swaybg) continue ;;
+                waybar|mako-notifier|swaybg|fuzzel) continue ;;
             esac
             shell_core+=("$pkg")
         done
@@ -746,11 +766,26 @@ if [ "$WANT_SHELL" = "noctalia" ]; then
     fi
 fi
 
+# Shell esclusiva: rimuove davvero i pacchetti dell'altra shell.
+if [ "$SKIP_APT" -ne 1 ] && have apt-get; then
+    if [ "$WANT_SHELL" = "noctalia" ]; then
+        remove_shell_packages waybar mako-notifier swaybg fuzzel
+    else
+        remove_shell_packages noctalia
+    fi
+elif [ "$WANT_SHELL" = "noctalia" ]; then
+    warn "Noctalia scelto con --skip-apt: Waybar/Fuzzel non vengono rimossi (non verranno avviati)."
+fi
+
 log "Configurazione Chromium ed estensioni (uBlock Origin Lite, Privacy Badger)..."
 install_browser_extensions
 
-required_cmds=(labwc fuzzel foot python3)
-[ "$WANT_SHELL" = "waybar" ] && required_cmds+=(waybar)
+required_cmds=(labwc foot python3)
+if [ "$WANT_SHELL" = "waybar" ]; then
+    required_cmds+=(waybar fuzzel)
+else
+    required_cmds+=(noctalia)
+fi
 for required_cmd in "${required_cmds[@]}"; do
     if ! command -v "$required_cmd" >/dev/null 2>&1; then
         die "Comando essenziale mancante: $required_cmd. Controlla l'installazione apt."
@@ -996,10 +1031,11 @@ if [ "$ENABLE_TOUCH" -eq 1 ]; then
     sed -i 's|<size>10</size>|<size>13</size>|g' "$CONFIG/labwc/rc.xml"
 fi
 if [ "$WANT_SHELL" = "noctalia" ]; then
-    # Super+D apre il launcher di Noctalia; Fuzzel resta installato per gli
-    # strumenti del progetto. Il template rc.xml non viene modificato.
-    sed -i '/<keybind key="W-d">/,/<\/keybind>/ s|command="fuzzel"|command="noctalia msg panel-toggle launcher"|' \
-        "$CONFIG/labwc/rc.xml"
+    # Launcher Noctalia su tutti i tasti che prima aprivano Fuzzel.
+    for launcher_key in W-d A-F2 W-space; do
+        sed -i "/<keybind key=\"$launcher_key\">/,/<\\/keybind>/ s|command=\"fuzzel\"|command=\"noctalia msg panel-toggle launcher\"|" \
+            "$CONFIG/labwc/rc.xml"
+    done
 fi
 install -m 0644 "$REPO_DIR/configs/waybar/config.jsonc" "$CONFIG/waybar/config.jsonc"
 install -m 0644 "$REPO_DIR/configs/wlogout/layout" "$CONFIG/wlogout/layout"
