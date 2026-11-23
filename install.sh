@@ -20,6 +20,18 @@ set -Eeuo pipefail
 IFS=$'\n\t'
 
 REPO_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+EXPECTED_ORIGIN="https://github.com/reverseloop-dev/labwc-q4os"
+if [ -d "$REPO_DIR/.git" ] && [ "${LABWC_Q4OS_ALLOW_UNVERIFIED:-0}" != "1" ]; then
+    repo_origin="$(git -C "$REPO_DIR" remote get-url origin 2>/dev/null || true)"
+    case "$repo_origin" in
+        "$EXPECTED_ORIGIN"|"$EXPECTED_ORIGIN.git") ;;
+        *)
+            printf '[labwc-q4os] ERRORE: repository non attendibile: %s\n' "${repo_origin:-nessuno}" >&2
+            printf "Atteso: %s\nPer un fork consapevole: LABWC_Q4OS_ALLOW_UNVERIFIED=1\n" "$EXPECTED_ORIGIN" >&2
+            exit 1
+            ;;
+    esac
+fi
 # shellcheck source=scripts/lib.sh
 source "$REPO_DIR/scripts/lib.sh"
 
@@ -550,6 +562,8 @@ install_packages() {
 # https://docs.noctalia.dev/noctalia/getting-started/installation/
 install_noctalia() {
     local arch tmp
+    local expected_keyring="2f58e934a5983b41dbd0d9e30fbf246f7eaef1d0c02132cf1d6f69cb87c1074f"
+    local expected_sources="0400b8783090fede580d5173978440aeea7b7c443819a29d240da9851910367d"
     arch="$(uname -m)"
     case "$arch" in
         x86_64|amd64|aarch64|arm64) ;;
@@ -571,12 +585,24 @@ install_noctalia() {
         if ! curl -fL --connect-timeout 10 --max-time 60 -o "$tmp/nickh-archive-keyring.deb" \
                 https://pkg.noctalia.dev/deb/nickh-archive-keyring.deb ||
             ! curl -fL --connect-timeout 10 --max-time 60 -o "$tmp/noctalia-trixie.sources" \
-                https://pkg.noctalia.dev/deb/noctalia-trixie.sources ||
-            ! sudo dpkg -i "$tmp/nickh-archive-keyring.deb" ||
+                https://pkg.noctalia.dev/deb/noctalia-trixie.sources; then
+            rm -rf "$tmp"
+            warn "Repository Noctalia: download di keyring/sources non riuscito."
+            return 1
+        fi
+        if ! printf '%s  %s\n%s  %s\n' \
+                "$expected_keyring" "$tmp/nickh-archive-keyring.deb" \
+                "$expected_sources" "$tmp/noctalia-trixie.sources" |
+            sha256sum -c --strict --quiet -; then
+            rm -rf "$tmp"
+            warn "Repository Noctalia: checksum di keyring/sources non valido. Installazione annullata."
+            return 1
+        fi
+        if ! sudo dpkg -i "$tmp/nickh-archive-keyring.deb" ||
             ! sudo install -m 0644 "$tmp/noctalia-trixie.sources" \
                 /etc/apt/sources.list.d/noctalia-trixie.sources; then
             rm -rf "$tmp"
-            warn "Repository Noctalia: download o installazione di keyring/sources non riusciti."
+            warn "Repository Noctalia: installazione di keyring/sources non riuscita."
             return 1
         fi
         rm -rf "$tmp"
@@ -1302,9 +1328,6 @@ log "Installazione helper root (aggiornamenti e tema login)..."
 sudo install -d -m 0755 /usr/local/libexec/labwc-q4os
 sudo install -m 0755 "$REPO_DIR/scripts/labwc-update-toggle" \
     /usr/local/libexec/labwc-q4os/update-toggle
-# Aggiornamento dalla GUI: un solo prompt polkit, log in finestra.
-sudo install -m 0755 "$REPO_DIR/scripts/labwc-update-apply" \
-    /usr/local/libexec/labwc-q4os/update-apply
 # Login: applica uno dei tre temi SDDM (sorgenti root-owned in /usr/share).
 sudo install -m 0755 "$REPO_DIR/scripts/labwc-login-theme-apply" \
     /usr/local/libexec/labwc-q4os/login-theme-apply
@@ -1469,7 +1492,6 @@ log "Verifica finale..."
 [ -f "$SHARE/VERSION" ] || die "VERSION mancante."
 [ -f "$SHARE/version-info" ] || die "version-info mancante."
 [ -r "${XDG_DATA_HOME:-$HOME/.local/share}/icons/labwc-q4os/index.theme" ] || die "icon theme labwc-q4os mancante."
-[ -x /usr/local/libexec/labwc-q4os/update-apply ] || die "helper aggiornamento GUI mancante."
 [ -x /usr/local/libexec/labwc-q4os/login-theme-apply ] || die "helper tema login mancante."
 [ -x /usr/local/libexec/labwc-q4os/labwc-session ] || die "wrapper sessione labwc mancante."
 grep -q 'Exec=/usr/local/libexec/labwc-q4os/labwc-session' /usr/share/wayland-sessions/labwc.desktop ||

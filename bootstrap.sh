@@ -1,28 +1,61 @@
 #!/usr/bin/env bash
 # =============================================================================
 #  labwc-q4os — bootstrap per installazione one-liner
-#  Clona/aggiorna il repository e lancia install.sh
+#
+#  Clona il repository in una directory temporanea privata, verifica che i
+#  file non siano stati modificati (SHA256SUMS con hash del manifest fissato
+#  qui sotto) e lancia install.sh.
+#
+#  ATTENZIONE: questa e' una verifica di INTEGRITA', non di autenticita'.
+#  Se il repository main e questo bootstrap vengono compromessi insieme,
+#  l'ancora di fiducia e' compromessa. Per la massima sicurezza scarica il
+#  bootstrap da una release firmata e confronta il suo SHA256 con quello
+#  pubblicato ufficialmente, poi eseguilo.
 # =============================================================================
 set -euo pipefail
 
 REPO_URL="https://github.com/reverseloop-dev/labwc-q4os.git"
-DEST="${LABWC_Q4OS_DIR:-$HOME/.cache/labwc-q4os-src}"
+REPO_HTTPS="https://github.com/reverseloop-dev/labwc-q4os"
+# Hash del file SHA256SUMS del repository (aggiornato a ogni release da
+# scripts/make-checksums). Se un file viene modificato, la verifica fallisce.
+MANIFEST_SHA256="3e6ed8fe8faca9ff8411e7dc3f92db9e1c0ce511a4566f64f06d6f2fe7532063"
+
+die() { printf '[labwc-q4os] ERRORE: %s\n' "$*" >&2; exit 1; }
 
 if ! command -v git >/dev/null 2>&1; then
-    printf 'git non trovato. Su Q4OS/Debian: sudo apt install git\n' >&2
-    exit 1
+    die "git non trovato. Su Q4OS/Debian: sudo apt install git"
+fi
+if ! command -v sha256sum >/dev/null 2>&1; then
+    die "sha256sum non trovato (pacchetto coreutils)."
 fi
 
-if [ -d "$DEST/.git" ]; then
-    printf '[labwc-q4os] Aggiornamento sorgenti in %s...\n' "$DEST"
-    git -C "$DEST" pull --ff-only || {
-        printf 'Aggiornamento fallito, uso la copia esistente.\n' >&2
-    }
-else
-    printf '[labwc-q4os] Download sorgenti in %s...\n' "$DEST"
-    mkdir -p "$(dirname "$DEST")"
-    rm -rf "$DEST"
-    git clone --depth 1 "$REPO_URL" "$DEST"
+# Directory temporanea privata: nessun riuso di cache scrivibile, nessun
+# rischio di cancellare una directory esistente indicata dall'utente.
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/labwc-q4os.XXXXXX")"
+chmod 0700 "$WORK"
+cleanup() { rm -rf "$WORK"; }
+trap cleanup EXIT
+DEST="$WORK/src"
+
+printf '[labwc-q4os] Download sorgenti verificati...\n'
+git clone --depth 1 --branch main "$REPO_URL" "$DEST" ||
+    die "clone del repository non riuscito."
+
+origin="$(git -C "$DEST" remote get-url origin 2>/dev/null || true)"
+case "$origin" in
+    "$REPO_URL"|"$REPO_HTTPS"|"$REPO_HTTPS.git") ;;
+    *) die "repository inatteso: '$origin' (atteso $REPO_URL)." ;;
+esac
+
+[ -f "$DEST/SHA256SUMS" ] || die "SHA256SUMS mancante: repository non verificabile."
+actual_manifest="$(sha256sum "$DEST/SHA256SUMS" | cut -d' ' -f1)"
+if [ "$actual_manifest" != "$MANIFEST_SHA256" ]; then
+    die "SHA256SUMS non corrisponde all'ancora di fiducia (atteso $MANIFEST_SHA256, trovato $actual_manifest)."
 fi
 
-exec bash "$DEST/install.sh" "$@"
+if ! (cd "$DEST" && sha256sum -c --strict --quiet SHA256SUMS); then
+    die "verifica integrita' fallita: uno o piu' file del repository sono stati modificati."
+fi
+printf "[labwc-q4os] Integrita' verificata (%s).\n" "$actual_manifest"
+
+bash "$DEST/install.sh" "$@"

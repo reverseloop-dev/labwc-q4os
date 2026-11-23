@@ -5,7 +5,7 @@
 # =============================================================================
 set -uo pipefail
 
-COMMAND="curl -fsSL https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh | bash"
+COMMAND="curl -fsSL --proto '=https' --proto-redir '=https' --tlsv1.2 https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh | bash"
 
 if command -v wl-copy >/dev/null 2>&1 && [ -n "${WAYLAND_DISPLAY:-}" ]; then
     if printf '%s' "$COMMAND" | wl-copy; then

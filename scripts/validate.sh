@@ -50,6 +50,25 @@ else
     bad "labwc-power-menu --action (dry-run)"
 fi
 if [ -s VERSION ]; then pass "VERSION"; else bad "VERSION"; fi
+# Integrita' del repository: manifest, ancora in bootstrap e copertura file.
+if sha256sum -c --strict --quiet SHA256SUMS >/dev/null 2>&1; then
+    pass "SHA256SUMS verificato"
+else
+    bad "SHA256SUMS non valido (esegui scripts/make-checksums)"
+fi
+manifest_now="$(sha256sum SHA256SUMS 2>/dev/null | cut -d' ' -f1)"
+if grep -q "MANIFEST_SHA256=\"$manifest_now\"" bootstrap.sh; then
+    pass "ancora SHA256SUMS allineata in bootstrap.sh"
+else
+    bad "MANIFEST_SHA256 in bootstrap.sh non corrisponde (esegui scripts/make-checksums)"
+fi
+tracked="$(git ls-files | grep -vE '^(SHA256SUMS|bootstrap\.sh)$' | LC_ALL=C sort)"
+manifest_files="$(cut -d' ' -f3- SHA256SUMS | LC_ALL=C sort)"
+if [ "$tracked" = "$manifest_files" ]; then
+    pass "SHA256SUMS copre tutti i file tracciati"
+else
+    bad "SHA256SUMS non copre esattamente i file tracciati"
+fi
 UPDTMP="$(mktemp -d)"
 mkdir -p "$UPDTMP/share"
 if HOME="$UPDTMP" LABWC_Q4OS_SHARE="$UPDTMP/share" \
@@ -221,7 +240,7 @@ for f in install.sh bootstrap.sh scripts/labwc-theme-apply scripts/labwc-theme-s
          scripts/labwc-help scripts/labwc-screenshot scripts/labwc-zram scripts/labwc-doctor \
          scripts/labwc-app-manager scripts/labwc-update-check scripts/labwc-update-copy \
          scripts/labwc-update-popup scripts/labwc-update-run scripts/labwc-update-toggle \
-         scripts/labwc-update-apply scripts/labwc-update-gui scripts/labwc-preferences \
+         scripts/labwc-update-gui scripts/labwc-preferences \
          scripts/labwc-login-theme scripts/labwc-login-theme-apply scripts/labwc-session-launch \
          scripts/labwc-fuzzel-apps \
          scripts/labwc-desktop scripts/labwc-desktop-state scripts/labwc-desktop-status scripts/labwc-desktop-menu \
@@ -319,7 +338,7 @@ if command -v shellcheck >/dev/null 2>&1; then
         scripts/labwc-reload scripts/labwc-generate-wallpapers scripts/labwc-help \
         scripts/labwc-screenshot scripts/labwc-doctor scripts/labwc-update-check \
         scripts/labwc-update-copy scripts/labwc-update-popup scripts/labwc-update-run \
-        scripts/labwc-update-toggle scripts/labwc-update-apply \
+        scripts/labwc-update-toggle \
         scripts/labwc-login-theme-apply scripts/labwc-session-launch \
         scripts/labwc-desktop scripts/labwc-desktop-state \
         scripts/labwc-desktop-status scripts/labwc-desktop-menu \

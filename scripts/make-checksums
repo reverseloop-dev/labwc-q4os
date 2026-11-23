@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-q4os — genera SHA256SUMS e aggiorna l'ancora in bootstrap.sh
+#
+#  Uso: scripts/make-checksums
+#  Richiede un albero pulito (file tracciati gia' committati/staged senza
+#  differenze): cosi' il manifest descrive esattamente cio' che sara' nel
+#  commit. Esclude bootstrap.sh e SHA256SUMS stesso.
+# =============================================================================
+set -euo pipefail
+
+REPO_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_DIR"
+
+if ! git diff --quiet || ! git diff --cached --quiet; then
+    printf 'Errore: ci sono modifiche non committate/staged. Fai commit o git add prima.\n' >&2
+    exit 1
+fi
+
+mapfile -d '' files < <(git ls-files -z | grep -zvE '^(SHA256SUMS|bootstrap\.sh)$')
+[ "${#files[@]}" -gt 0 ] || { echo "Nessun file tracciato." >&2; exit 1; }
+
+sha256sum "${files[@]}" | LC_ALL=C sort -k2 > SHA256SUMS
+manifest="$(sha256sum SHA256SUMS | cut -d' ' -f1)"
+sed -i "s|^MANIFEST_SHA256=.*|MANIFEST_SHA256=\"$manifest\"|" bootstrap.sh
+
+printf 'manifest_sha256=%s\n' "$manifest"
+printf 'file=%s\n' "$(wc -l < SHA256SUMS)"

@@ -35,7 +35,7 @@ non impone una sostituzione.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.7.0**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.9.0**
 
 ---
 
@@ -338,13 +338,13 @@ continua a usare i suoi tre temi blu/rosso/verde.
 ### One-liner
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh | bash
+curl -fsSL --proto '=https' --proto-redir '=https' --tlsv1.2 https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh | bash
 ```
 
 Con opzioni:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh \
+curl -fsSL --proto '=https' --proto-redir '=https' --tlsv1.2 https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh \
   | bash -s -- --theme blue --yes
 ```
 
@@ -718,7 +718,7 @@ testo ci sono tre pulsanti:
 - **Chiudi** → chiude subito il popup senza fare nulla;
 - **Copia stringa shell** → copia negli appunti:
   ```bash
-  curl -fsSL https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh | bash
+  curl -fsSL --proto '=https' --proto-redir '=https' --tlsv1.2 https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh | bash
   ```
 - **Apri app per aggiornare** → apre il pannello (`labwc-update-gui`) e avvia
   il terminale con il comando di aggiornamento.
@@ -940,7 +940,6 @@ labwc-q4os/
 │   ├── labwc-update-run           # terminale col comando precompilato
 │   ├── labwc-update-gui           # pannello + aggiornamento in-app
 │   ├── labwc-update-toggle        # helper root per l'attivazione
-│   ├── labwc-update-apply         # helper root: aggiornamento da GUI
 │   ├── labwc-login-theme          # 3 schermate login + switch sfondo
 │   ├── labwc-login-theme-apply    # helper root: applica tema SDDM
 │   ├── labwc-preferences          # preferenze scrivania
@@ -952,6 +951,7 @@ labwc-q4os/
 │   ├── labwc-sysinfo              # versioni e informazioni sistema
 │   ├── labwc-touchscreen          # rileva /dev/input/eventX del touchscreen
 │   ├── labwc-session-launch      # wrapper sessione (login Plasma/SDDM)
+│   ├── make-checksums             # rigenera SHA256SUMS per il bootstrap
 │   ├── labwc-doctor               # diagnostica e riparazione
 │   ├── labwc-session-start        # autostart sessione
 │   ├── labwc-help                 # visualizzatore guida
@@ -1156,6 +1156,51 @@ sudo systemctl disable --now zramswap.service
 - Nessun dato viene inviato all'esterno: sfondi e menu sono generati in locale.
 - Le app nel menu vengono filtrate in base a `NoDisplay`, `Hidden`, `TryExec`
   ed esistenza dell'eseguibile.
+
+### Verifica di integrità del codice
+
+Il bootstrap **verifica l'integrità** dei file rispetto a `SHA256SUMS` e a
+un'ancora fissata in `bootstrap.sh`:
+
+1. clona `main` in una **directory temporanea privata** (non riusa cache
+   scrivibili e non cancella directory esistenti);
+2. controlla che `origin` sia esattamente
+   `https://github.com/reverseloop-dev/labwc-q4os`;
+3. confronta l'hash di `SHA256SUMS` con `MANIFEST_SHA256` in `bootstrap.sh`;
+4. esegue `sha256sum -c --strict SHA256SUMS` su tutti i file del progetto.
+
+Se un file è stato modificato o il repository è un fork, l'installazione si
+ferma. Per un fork consapevole: `LABWC_Q4OS_ALLOW_UNVERIFIED=1` (solo per
+`install.sh`; il bootstrap verifica comunque il manifest).
+
+Questa è **integrità, non autenticità**: `bootstrap.sh`, l'ancora e il manifest
+arrivano tutti da `main`. Se un attaccante compromette l'intero repository e
+il bootstrap servito, può riscrivere tutti e tre. Per questo il bootstrap va
+scaricato da una release ufficiale e confrontato con l'hash pubblicato, non
+eseguito alla cieca da `main`.
+
+Verifica manuale consigliata, prima di eseguire il one-liner:
+
+```bash
+# scarica bootstrap e manifest, controlla l'hash del bootstrap
+# (confrontalo con quello pubblicato nella release / nel commit ufficiale)
+curl -fsSLO https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh
+sha256sum bootstrap.sh
+
+# ispeziona il codice e poi esegui
+less bootstrap.sh
+bash bootstrap.sh
+```
+
+Per controllare un clone manuale:
+
+```bash
+git remote -v          # deve essere reverseloop-dev/labwc-q4os
+sha256sum -c --quiet SHA256SUMS
+```
+
+Firme GPG/minisign delle release sono il passo successivo consigliato per
+un'autenticità vera.
 
 ---
 

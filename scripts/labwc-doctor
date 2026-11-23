@@ -450,12 +450,7 @@ for helper in labwc-theme-apply labwc-theme-switcher labwc-menu-editor labwc-rel
     fi
 done
 
-# Helper root per l'aggiornamento dalla GUI
-if [ -x /usr/local/libexec/labwc-q4os/update-apply ]; then
-    ok "helper root: update-apply"
-else
-    bad "helper root mancante: /usr/local/libexec/labwc-q4os/update-apply (riesegui install.sh)"
-fi
+# Helper root per il tema login
 if [ -x /usr/local/libexec/labwc-q4os/login-theme-apply ]; then
     ok "helper root: login-theme-apply"
 else
