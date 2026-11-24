@@ -2,3 +2,6 @@
 Name=Labwc Q4OS — Aurora Card
 Comment=Tema SDDM blu con card centrale in vetro e aurora animata
 Type=Application
+
+[SddmGreeterTheme]
+QtVersion=6

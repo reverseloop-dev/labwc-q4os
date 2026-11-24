@@ -1300,11 +1300,12 @@ install_sddm_theme() {
     if [ "$PLASMA_LOGIN" -eq 1 ]; then
         warn "Login SDDM/Plasma rilevato: forzo tema labwc-q4os e sessione Labwc."
     fi
-    sudo tee /etc/sddm.conf.d/zz-labwc-q4os.conf >/dev/null <<'EOF'
+    sudo tee /etc/sddm.conf.d/zz-labwc-q4os.conf >/dev/null <<EOF
 # Generato da labwc-q4os — https://github.com/reverseloop-dev/labwc-q4os
 # Deve restare l'ultimo drop-in: vince sui temi Plasma/Breeze.
 [General]
 DisplayServer=x11
+InputMethod=$([ "$ENABLE_TOUCH" -eq 1 ] && echo qtvirtualkeyboard || true)
 
 [Theme]
 Current=labwc-q4os
