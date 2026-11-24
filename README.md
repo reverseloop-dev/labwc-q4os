@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.12.3**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.13.0**
 
 ---
 
@@ -106,12 +106,14 @@ un ambiente sobrio.**
   chiusura dopo 15 s e aggiornamento nel terminale che rifà le domande.
 - zram e swappiness configurabili durante l'installazione.
 
-**In sintesi, l'installer chiede tutto all'inizio:** layout tastiera, zram,
-swappiness, touchscreen, LookSwitcher (solo con Trinity), shell (Waybar +
-Fuzzel o Noctalia v5), display manager se serve, tema iniziale e Chromium
-(solo se manca qualcosa). Poi esegue l'installazione. Ogni domanda ha un flag
-corrispondente (`--keyboard`, `--zram`, `--touch`, `--lookswitcher`,
-`--shell`, `--sddm`, `--theme`, `--chromium`).
+**In sintesi, l'installer chiede tutto all'inizio:** prima se vuoi modificare
+i parametri (no = aggiornamento rapido con le scelte salvate), poi layout
+tastiera, zram, swappiness, touchscreen, LookSwitcher (solo con Trinity),
+shell (Waybar + Fuzzel o Noctalia v5), display manager se serve, tema iniziale
+e Chromium (solo se manca qualcosa). Poi esegue l'installazione. Ogni domanda
+ha un flag corrispondente (`--keyboard`, `--zram`, `--touch`,
+`--lookswitcher`, `--shell`, `--sddm`, `--theme`, `--chromium`);
+`--quick` e `--configure` forzano aggiornamento rapido o configurazione.
 
 ---
 
@@ -413,6 +415,8 @@ cd labwc-q4os
 | `--shell waybar\|noctalia` | Barra/launcher: Waybar+Fuzzel (default) o Noctalia v5 |
 | `--lookswitcher` / `--no-lookswitcher` | Selettore temi LookSwitcher per Trinity (solo Trinity) |
 | `--chromium` / `--no-chromium` | Installa Chromium e/o le estensioni mancanti, oppure non toccare nulla |
+| `--quick` | Aggiorna subito con le opzioni salvate, senza domande |
+| `--configure` | Chiede comunque tutti i parametri prima di aggiornare |
 | `--swappiness N` | Imposta `vm.swappiness` a `N` (0–200) |
 | `--no-swappiness` | Non modificare `vm.swappiness` |
 | `--sddm` | Installa e attiva SDDM se TDM non supporta Wayland |
@@ -424,6 +428,11 @@ cd labwc-q4os
 **Tutte le domande sono all'inizio**, prima di `sudo` e di qualsiasi modifica.
 Dopo il riepilogo parte l'installazione con le scelte fatte; con `--yes` non
 viene chiesto nulla e si usano i default.
+
+La **prima domanda** è: *“Vuoi modificare i parametri prima di aggiornare?”*
+- **Sì** → vengono chieste le opzioni qui sotto;
+- **No** → aggiornamento rapido con le opzioni salvate in
+  `/etc/labwc-q4os/install-options`: nessuna domanda, solo la password `sudo`.
 
 1. **layout tastiera** — rilevato dal sistema (`it`, `us`, `it,us`), saltato
    con `--keyboard` o `--yes`.

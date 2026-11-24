@@ -49,6 +49,9 @@ ENABLE_SWAPPINESS=""
 ENABLE_TOUCH=""
 WANT_LOOKSWITCHER=""
 WANT_CHROMIUM=""
+QUICK_UPDATE=""
+INSTALL_OPTIONS="${LABWC_Q4OS_OPTIONS:-/etc/labwc-q4os/install-options}"
+PARAM_FLAGS=0
 SWAPPINESS_VALUE=""
 SKIP_APT=0
 FORCE_OS=0
@@ -77,6 +80,8 @@ Opzioni:
   --no-lookswitcher   Non proporre/installare LookSwitcher
   --chromium          Installa Chromium e/o le estensioni mancanti senza chiedere
   --no-chromium       Non installare Chromium né le estensioni
+  --quick             Aggiorna senza domande, usando le opzioni salvate
+  --configure         Chiedi comunque tutti i parametri prima di aggiornare
   --shell NOME        Shell desktop: waybar|noctalia (default: waybar)
   --swappiness N      Imposta vm.swappiness a N (0-200)
   --no-swappiness     Non modificare vm.swappiness
@@ -116,6 +121,8 @@ while [ "$#" -gt 0 ]; do
         --no-lookswitcher) WANT_LOOKSWITCHER=0; shift ;;
         --chromium) WANT_CHROMIUM=1; shift ;;
         --no-chromium) WANT_CHROMIUM=0; shift ;;
+        --quick) QUICK_UPDATE=1; shift ;;
+        --configure) QUICK_UPDATE=0; shift ;;
         --shell)
             [ "$#" -ge 2 ] || die "--shell richiede un valore (waybar|noctalia)"
             WANT_SHELL="$2"; shift 2 ;;
@@ -134,6 +141,75 @@ if [ -n "$WANT_SHELL" ]; then
         waybar|noctalia) ;;
         *) die "Valore --shell non valido: $WANT_SHELL (waybar|noctalia)" ;;
     esac
+fi
+
+if [ -n "$THEME$ENABLE_ZRAM$ENABLE_SWAPPINESS$ENABLE_TOUCH$WANT_LOOKSWITCHER$WANT_SHELL$WANT_SDDM$XKB_LAYOUT$WANT_CHROMIUM$SWAPPINESS_VALUE" ]; then
+    PARAM_FLAGS=1
+fi
+
+option_value() {
+    [ -r "$INSTALL_OPTIONS" ] || return 1
+    local value
+    value="$(sed -n "s/^$1=//p" "$INSTALL_OPTIONS" | head -n1)"
+    [ -n "$value" ] && printf '%s' "$value"
+}
+
+load_saved_options() {
+    [ -r "$INSTALL_OPTIONS" ] || return 1
+    local value
+
+    value="$(option_value SHELL || true)"
+    case "$value" in waybar|noctalia) WANT_SHELL="$value" ;; esac
+    value="$(option_value TOUCH || true)"
+    case "$value" in 0|1) ENABLE_TOUCH="$value" ;; esac
+    value="$(option_value LOOKSWITCHER || true)"
+    case "$value" in 0|1) WANT_LOOKSWITCHER="$value" ;; esac
+    value="$(option_value ZRAM || true)"
+    case "$value" in 0|1) ENABLE_ZRAM="$value" ;; esac
+    value="$(option_value SWAPPINESS_ENABLED || true)"
+    case "$value" in 0|1) ENABLE_SWAPPINESS="$value" ;; esac
+    value="$(option_value SWAPPINESS_VALUE || true)"
+    [ -n "$value" ] && SWAPPINESS_VALUE="$value"
+    value="$(option_value THEME || true)"
+    case "$value" in nordic-cobalt|muted-crimson|sage-emerald) THEME="$value" ;; esac
+    value="$(option_value KEYBOARD || true)"
+    if [[ "$value" =~ ^[a-z]{2}(-[a-zA-Z0-9]+)?(,[a-z]{2}(-[a-zA-Z0-9]+)?)*$ ]]; then
+        XKB_LAYOUT="$value"
+    fi
+    value="$(option_value CHROMIUM || true)"
+    case "$value" in
+        0|1) WANT_CHROMIUM="$value" ;;
+        *) WANT_CHROMIUM=0 ;;
+    esac
+    value="$(option_value KEEP_TDM || true)"
+    case "$value" in
+        1) WANT_SDDM=0 ;;
+        0) WANT_SDDM=1 ;;
+    esac
+    return 0
+}
+
+# Prima domanda dell'aggiornamento: modificare i parametri o usare quelli
+# salvati (nessuna domanda, solo password sudo). Su prima installazione non
+# esiste il file opzioni e si procede con la configurazione normale.
+if [ "$ASSUME_YES" -eq 0 ] && [ -z "$QUICK_UPDATE" ] && [ "$PARAM_FLAGS" -eq 0 ] &&
+    [ -r "$INSTALL_OPTIONS" ] && [ -r /dev/tty ]; then
+    if ask_yes_no "Vuoi modificare i parametri prima di aggiornare? (No = usa le opzioni salvate e aggiorna subito)" no; then
+        QUICK_UPDATE=0
+    else
+        QUICK_UPDATE=1
+    fi
+fi
+if [ "$QUICK_UPDATE" = "1" ]; then
+    if load_saved_options; then
+        ASSUME_YES=1
+        info "Aggiornamento rapido: uso le opzioni salvate, nessuna domanda."
+    else
+        warn "Nessuna configurazione salvata: procedo con le domande."
+        QUICK_UPDATE=0
+    fi
+elif [ "$QUICK_UPDATE" = "0" ]; then
+    info "Modalità configurazione: tutte le domande verranno proposte."
 fi
 
 normalize_theme() {
@@ -1571,6 +1647,8 @@ ZRAM=$ENABLE_ZRAM
 SWAPPINESS_ENABLED=$ENABLE_SWAPPINESS
 SWAPPINESS_VALUE=$SWAPPINESS_VALUE
 THEME=$THEME
+CHROMIUM=$WANT_CHROMIUM
+KEYBOARD=$XKB_LAYOUT
 KEEP_TDM=$keep_tdm
 EOF
 sudo chmod 0644 /etc/labwc-q4os/install-options
