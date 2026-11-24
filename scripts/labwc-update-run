@@ -23,7 +23,7 @@ if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
 fi
 
 # Il terminale resta aperto alla fine, cosi' si leggono gli errori.
-BODY="$COMMAND; printf '\\n[labwc-q4os] aggiornamento terminato. Premi Invio per chiudere...'; read -r _"
+BODY="$COMMAND; printf '\\n   by Reverseloop-dev\\n  ~~~~~~~~~~~~~~~~~~~~\\n\\n'; printf '[labwc-q4os] aggiornamento terminato. Premi Invio per chiudere...'; read -r _"
 
 if command -v terminator >/dev/null 2>&1; then
     exec terminator -x bash -c "$BODY"

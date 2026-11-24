@@ -1380,13 +1380,27 @@ chmod 0644 "$APPDATA/labwc-theme-switcher.desktop" \
           "$APPDATA/labwc-sysinfo.desktop"
 
 # -----------------------------------------------------------------------------
-# Generazione sfondi
+# Sfondi: copia quelli pre-generati (istantaneo), genera solo se mancano
 # -----------------------------------------------------------------------------
-log "Generazione dei tre sfondi (2560x1440)..."
-python3 "$REPO_DIR/scripts/generate-wallpapers.py" \
-    --output "$SHARE/wallpapers" \
-    --width 2560 --height 1440
-ok "Sfondi generati in $SHARE/wallpapers"
+mkdir -p "$SHARE/wallpapers"
+missing_wallpapers=0
+for _wall in nordic-cobalt muted-crimson sage-emerald; do
+    [ -f "$REPO_DIR/configs/wallpapers/$_wall.png" ] || missing_wallpapers=1
+done
+if [ "$missing_wallpapers" -eq 0 ]; then
+    log "Installazione dei tre sfondi pre-generati (2560x1440)..."
+    for _wall in nordic-cobalt muted-crimson sage-emerald; do
+        install -m 0644 "$REPO_DIR/configs/wallpapers/$_wall.png" \
+            "$SHARE/wallpapers/$_wall.png"
+    done
+    ok "Sfondi installati in $SHARE/wallpapers"
+else
+    log "Sfondi pre-generati mancanti: generazione locale (2560x1440)..."
+    python3 "$REPO_DIR/scripts/generate-wallpapers.py" \
+        --output "$SHARE/wallpapers" \
+        --width 2560 --height 1440
+    ok "Sfondi generati in $SHARE/wallpapers"
+fi
 
 # -----------------------------------------------------------------------------
 # Applicazione tema e menu
@@ -1737,6 +1751,9 @@ Se stai gia' usando labwc, applica subito le modifiche con:
 
 Repository: https://github.com/reverseloop-dev/labwc-q4os
 EOF
+
+printf '\n%s   by Reverseloop-dev%s\n%s  ~~~~~~~~~~~~~~~~~~~~%s\n\n' \
+    "$C_DIM" "$C_RESET" "$C_DIM" "$C_RESET"
 
 trap - ERR
 exit 0

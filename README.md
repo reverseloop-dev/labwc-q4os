@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.13.0**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.14.0**
 
 ---
 
@@ -550,11 +550,13 @@ labwc-theme-switcher muted-crimson
 labwc-theme-switcher sage-emerald
 ```
 
-Gli sfondi sono generati localmente da `scripts/generate-wallpapers.py` con
-Pillow: gradienti mesh, geometrie sottili, grana e vignettatura. Nessun link
-esterno, nessuna licenza di terzi.
+Gli sfondi 2560×1440 sono **pre-generati e inclusi nel repository**
+(`configs/wallpapers/`): l'installazione li **copia** in pochi istanti, senza
+rigenarli ogni volta. Sono stati creati una volta con
+`scripts/generate-wallpapers.py` (Pillow: gradienti mesh, geometrie sottili,
+grana e vignettatura). Nessun link esterno, nessuna licenza di terzi.
 
-Rigenerazione:
+Rigenerazione manuale, se vuoi crearli da zero:
 
 ```bash
 labwc-generate-wallpapers
