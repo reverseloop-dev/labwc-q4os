@@ -11,10 +11,12 @@ Separato dal pannello ZRAM. Permette di:
 
 from __future__ import annotations
 
+import fcntl
 import getpass
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import threading
@@ -42,9 +44,41 @@ POPUP_SECONDS = 15
 STATUS = STATE / "update-status.json"
 REPO = "https://github.com/reverseloop-dev/labwc-q4os"
 COMMAND = (
-    "curl -fsSL "
+    "curl -fsSL --proto '=https' --proto-redir '=https' --tlsv1.2 "
     "https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh | bash"
 )
+
+GUI_LOCK = STATE / "update-gui.lock"
+GUI_PID = STATE / "update-gui.pid"
+_gui_lock_handle = None
+
+
+def acquire_single_instance() -> bool:
+    """Un solo pannello alla volta: la seconda apertura riporta in primo piano
+    quello esistente invece di creare finestre sovrapposte (loop di popup)."""
+    global _gui_lock_handle
+    try:
+        STATE.mkdir(parents=True, exist_ok=True)
+        handle = open(GUI_LOCK, "w")
+    except OSError:
+        return True
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        try:
+            pid = int(GUI_PID.read_text(encoding="utf-8").strip())
+            os.kill(pid, signal.SIGUSR1)
+        except (OSError, ValueError):
+            pass
+        handle.close()
+        return False
+    _gui_lock_handle = handle
+    try:
+        GUI_PID.write_text(f"{os.getpid()}\n", encoding="utf-8")
+    except OSError:
+        pass
+    return True
+
 
 
 def theme_colors() -> dict[str, str]:
@@ -139,6 +173,9 @@ class UpdateWindow:
         self.window.set_position(Gtk.WindowPosition.CENTER)
         self.window.set_icon_name("software-update-available")
         self.window.connect("destroy", Gtk.main_quit)
+        self.GLib.unix_signal_add(
+            self.GLib.PRIORITY_DEFAULT, signal.SIGUSR1, self.present_window
+        )
 
         outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         self.window.add(outer)
@@ -486,6 +523,10 @@ class UpdateWindow:
     def on_repo(self, _button) -> None:
         subprocess.Popen(["xdg-open", REPO], start_new_session=True)
 
+    def present_window(self) -> bool:
+        self.window.present()
+        return True
+
     def run(self) -> int:
         self.Gtk.main()
         return 0
@@ -597,7 +638,7 @@ class UpdatePopup:
 
     def on_open_app(self, _button) -> None:
         subprocess.Popen(
-            [sys.executable, str(Path(__file__).resolve()), "--upgrade"],
+            [sys.executable, str(Path(__file__).resolve())],
             start_new_session=True,
         )
         self.window.destroy()
@@ -632,6 +673,8 @@ def main(argv: list[str] | None = None) -> int:
         print("GUI_OK")
         return 0
 
+    if not acquire_single_instance():
+        return 0
     window = UpdateWindow()
     if "--upgrade" in args:
         window.GLib.idle_add(window.start_upgrade)
