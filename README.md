@@ -1,4 +1,4 @@
-# labwc-q4os  ------_reverseloop-dev_
+# labwc-q4os  
 
 **Una seconda vita per i PC che il mercato considera vecchi.**
 
