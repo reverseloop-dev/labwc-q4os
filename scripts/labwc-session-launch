@@ -104,7 +104,8 @@ printf 'exec labwc\n' >>"$LOG"
     if [ -n "$watch_socket" ]; then
         export WAYLAND_DISPLAY="$(basename "$watch_socket")"
     fi
-    if ! pgrep -x "$expected" >/dev/null 2>&1; then
+    if ! pgrep -x "$expected" >/dev/null 2>&1 &&
+        ! pgrep -f 'labwc-session-start' >/dev/null 2>&1; then
         printf 'shell %s non attiva dopo il login: avvio labwc-session-start\n' \
             "$expected" >>"$LOG"
         "$HOME/.local/bin/labwc-session-start" >>"$LOG" 2>&1 &

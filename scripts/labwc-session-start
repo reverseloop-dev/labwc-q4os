@@ -69,6 +69,8 @@ if [ "$use_noctalia" -eq 1 ]; then
         setsid -f swaybg -m fill -i "$boot_wall" >>"$LOG" 2>&1 || true
         printf 'sfondo immediato: %s\n' "$boot_wall"
     fi
+    # Noctalia parte subito: l'overlay 99-labwc-q4os.toml disattiva i download
+    # all'avvio (offline_mode), quindi non dipende dal DNS del login.
     start_once noctalia noctalia
 else
     # Una sola shell attiva: se Noctalia era partita, la fermiamo.

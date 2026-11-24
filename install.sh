@@ -618,6 +618,14 @@ install_noctalia() {
         return 1
     fi
     have noctalia || { warn "Comando noctalia non trovato dopo l'installazione."; return 1; }
+    # VM senza adattatore Bluetooth: BlueZ non parte e ogni avvio di Noctalia
+    # aspetta 25 s il D-Bus. Mascherare il servizio fa fallire subito.
+    if [ -z "$(ls -A /sys/class/bluetooth 2>/dev/null || true)" ]; then
+        sudo systemctl mask bluetooth.service >/dev/null 2>&1 &&
+            ok "Nessun adattatore Bluetooth: servizio mascherato (avvio rapido)."
+    else
+        sudo systemctl unmask bluetooth.service >/dev/null 2>&1 || true
+    fi
     ok "Noctalia v5 installato (repository di terze parti pkg.noctalia.dev)."
 }
 
@@ -1070,6 +1078,9 @@ fetch_exchange_rates = false
 
 [weather]
 enabled = false
+
+[shell]
+offline_mode = true
 EOF
     chmod 0644 "$CONFIG/noctalia/99-labwc-q4os.toml"
 fi

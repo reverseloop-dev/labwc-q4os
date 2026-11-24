@@ -391,7 +391,8 @@ SHELL DESKTOP (scelta in installazione con --shell):
     vengono rimossi. swaybg resta solo come sfondo immediato al login e viene
     fermato quando Noctalia applica il suo. La galleria wallpaper punta a
     ~/.local/share/labwc-q4os/wallpapers; i download community all'avvio sono
-    disattivati per un login rapido.
+    disattivati (offline_mode) per un login rapido. Senza adattatore Bluetooth
+    il servizio bluetooth viene mascherato per evitare 25 s di attesa D-Bus.
     In caso di errore si torna a Waybar+Fuzzel e vengono reinstallati.
   • Scegliendo Waybar+Fuzzel viene rimosso il pacchetto noctalia.
     La sessione avvia una sola shell; un watchdog avvia barra e sfondo se
