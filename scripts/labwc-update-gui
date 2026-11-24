@@ -118,6 +118,9 @@ def theme_colors() -> dict[str, str]:
 def base_css(c: dict[str, str]) -> str:
     return f"""
         window {{ background-color: #{c['BG']}; color: #{c['FG']}; }}
+        dialog, dialog .dialog-vbox, dialog .dialog-action-area {{
+                 background-color: #{c['BG']}; color: #{c['FG']}; }}
+        dialog label, dialog .dialog-vbox label {{ color: #{c['FG']}; }}
         .title {{ font-size: 24px; font-weight: 700; }}
         .subtitle {{ color: #{c['FG_MUTED']}; font-size: 12px; }}
         .card {{ background-color: #{c['SURFACE']}; border: 1px solid #{c['BORDER']};
@@ -271,6 +274,7 @@ class UpdateWindow:
                     text=True,
                     timeout=30,
                     check=False,
+                    env=dict(os.environ, LABWC_UPDATE_NO_POPUP="1"),
                 )
             except (OSError, subprocess.SubprocessError):
                 pass
@@ -501,6 +505,7 @@ class UpdateWindow:
                     text=True,
                     timeout=30,
                     check=False,
+                    env=dict(os.environ, LABWC_UPDATE_NO_POPUP="1"),
                 )
             except (OSError, subprocess.SubprocessError):
                 pass

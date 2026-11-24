@@ -107,6 +107,10 @@ status_json() {
 notify_update() {
     local installed="$1" online="$2"
 
+    # Chiamato dal pannello aggiornamenti: niente popup, altrimenti ogni
+    # "Aggiorna ora"/"Controlla ora" ne apre uno sopra la finestra.
+    [ "${LABWC_UPDATE_NO_POPUP:-0}" = "1" ] && return 0
+
     # Popup GTK: si chiude da solo dopo 15 s, con tre azioni.
     if [ -x "$HOME/.local/bin/labwc-update-popup" ] &&
        command -v zenity >/dev/null 2>&1 &&
