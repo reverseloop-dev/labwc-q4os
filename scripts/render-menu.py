@@ -453,6 +453,7 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     parts.append("    <separator />\n")
 
     favorites_body = ""
+    favorites = sorted(favorites, key=lambda row: row[1].casefold())
     if favorites:
         for _, label, command in favorites:
             favorites_body += item(label, command)
@@ -468,46 +469,59 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     parts.append(submenu("favorites-menu", "★ App preferite", favorites_body))
     parts.append("    <separator />\n")
 
-    for category in CATEGORY_ORDER:
-        cat_apps = groups.get(category, [])
-        if not cat_apps:
-            continue
-        body = "".join(item(app.name, app.command) for app in cat_apps)
+    category_groups = [
+        (category, groups.get(category, []))
+        for category in CATEGORY_ORDER
+        if groups.get(category)
+    ]
+    category_groups.sort(key=lambda row: row[0].casefold())
+    for category, cat_apps in category_groups:
+        body = "".join(
+            item(app.name, app.command)
+            for app in sorted(cat_apps, key=lambda app: app.name.casefold())
+        )
         menu_id = "cat-" + re.sub(r"[^a-z0-9]+", "-", category.casefold()).strip("-")
         parts.append(submenu(menu_id, category, body))
 
     parts.append("    <separator />\n")
 
-    desktop_body = ""
-    desktop_body += item("Gestisci app e preferite", helper("labwc-app-manager"))
-    desktop_body += item("Editor rapido del menu", helper("labwc-menu-editor"))
-    desktop_body += item("Ricarica menu e desktop", helper("labwc-reload"))
-    desktop_body += item("Aiuto, scorciatoie e sistema", helper("labwc-help"))
-    desktop_body += item("Informazioni di sistema", f"terminator -x {helper('labwc-sysinfo')}")
-    desktop_body += "    <separator />\n"
-    desktop_body += item("Cattura schermo (area)", helper("labwc-screenshot", "region"))
-    desktop_body += item("Cattura schermo (intero)", helper("labwc-screenshot", "full"))
-    desktop_body += item("ZRAM — memoria compressa", helper("labwc-zram"))
-    desktop_body += item("Controlli aggiornamenti script labwc-q4os", helper("labwc-update-gui"))
-    desktop_body += item("Preferenze della scrivania Labwc", helper("labwc-preferences"))
-    desktop_body += item("Diagnostica e ripara desktop", f"terminator -x {helper('labwc-doctor')} --fix")
-    desktop_body += item("Blocca schermo", "swaylock -f")
-    desktop_body += item("Menu sessione (blocca, esci, riavvia, spegni)", helper("labwc-power-menu"))
-    desktop_body += "    <separator />\n"
-    desktop_body += item("Riconfigura labwc", "labwc --reconfigure")
+    tool_entries: list[tuple[str, str]] = [
+        ("Gestisci app e preferite", item("Gestisci app e preferite", helper("labwc-app-manager"))),
+        ("Editor rapido del menu", item("Editor rapido del menu", helper("labwc-menu-editor"))),
+        ("Ricarica menu e desktop", item("Ricarica menu e desktop", helper("labwc-reload"))),
+        ("Aiuto, scorciatoie e sistema", item("Aiuto, scorciatoie e sistema", helper("labwc-help"))),
+        ("Informazioni di sistema", item("Informazioni di sistema", f"terminator -x {helper('labwc-sysinfo')}")),
+        ("Cattura schermo (area)", item("Cattura schermo (area)", helper("labwc-screenshot", "region"))),
+        ("Cattura schermo (intero)", item("Cattura schermo (intero)", helper("labwc-screenshot", "full"))),
+        ("ZRAM — memoria compressa", item("ZRAM — memoria compressa", helper("labwc-zram"))),
+        ("Controlli aggiornamenti script labwc-q4os", item("Controlli aggiornamenti script labwc-q4os", helper("labwc-update-gui"))),
+        ("Preferenze della scrivania Labwc", item("Preferenze della scrivania Labwc", helper("labwc-preferences"))),
+        ("Diagnostica e ripara desktop", item("Diagnostica e ripara desktop", f"terminator -x {helper('labwc-doctor')} --fix")),
+        ("Blocca schermo", item("Blocca schermo", "swaylock -f")),
+        ("Menu sessione (blocca, esci, riavvia, spegni)", item("Menu sessione (blocca, esci, riavvia, spegni)", helper("labwc-power-menu"))),
+        ("Riconfigura labwc", item("Riconfigura labwc", "labwc --reconfigure")),
+    ]
 
-    theme_body = ""
-    for theme_id, label in THEMES:
-        theme_body += item(label, helper("labwc-theme-switcher", theme_id))
-    theme_body += "    <separator />\n"
-    theme_body += item("Genera di nuovo gli sfondi", helper("labwc-generate-wallpapers"))
-    desktop_body += submenu("theme-menu", "Cambia tema", theme_body)
+    theme_entries: list[tuple[str, str]] = [
+        (label, item(label, helper("labwc-theme-switcher", theme_id)))
+        for theme_id, label in THEMES
+    ]
+    theme_entries.append(
+        ("Genera di nuovo gli sfondi", item("Genera di nuovo gli sfondi", helper("labwc-generate-wallpapers")))
+    )
+    theme_entries.sort(key=lambda row: row[0].casefold())
+    theme_body = "".join(body for _label, body in theme_entries)
+    tool_entries.append(("Cambia tema", submenu("theme-menu", "Cambia tema", theme_body)))
 
-    desktops_body = ""
-    for n in range(1, 5):
-        desktops_body += item(f"Desktop {n}", helper("labwc-desktop", str(n)))
-    desktop_body += submenu("desktop-switcher-menu", "Desktop 1–4", desktops_body)
+    desktops_body = "".join(
+        item(f"Desktop {n}", helper("labwc-desktop", str(n))) for n in range(1, 5)
+    )
+    tool_entries.append(
+        ("Desktop 1–4", submenu("desktop-switcher-menu", "Desktop 1–4", desktops_body))
+    )
 
+    tool_entries.sort(key=lambda row: row[0].casefold())
+    desktop_body = "".join(body for _label, body in tool_entries)
     parts.append(submenu("desktop-menu", "TOOL reverseloop", desktop_body))
 
     parts.append("  </menu>\n\n")
