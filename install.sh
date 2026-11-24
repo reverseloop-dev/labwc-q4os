@@ -49,6 +49,7 @@ ENABLE_SWAPPINESS=""
 ENABLE_TOUCH=""
 WANT_LOOKSWITCHER=""
 WANT_CHROMIUM=""
+WANT_QPDFVIEW=""
 QUICK_UPDATE=""
 INSTALL_OPTIONS="${LABWC_Q4OS_OPTIONS:-/etc/labwc-q4os/install-options}"
 PARAM_FLAGS=0
@@ -80,6 +81,8 @@ Opzioni:
   --no-lookswitcher   Non proporre/installare LookSwitcher
   --chromium          Installa Chromium e/o le estensioni mancanti senza chiedere
   --no-chromium       Non installare Chromium né le estensioni
+  --qpdfview          Installa qpdfview (lettore PDF leggero) senza chiedere
+  --no-qpdfview       Non installare qpdfview
   --quick             Aggiorna senza domande, usando le opzioni salvate
   --configure         Chiedi comunque tutti i parametri prima di aggiornare
   --shell NOME        Shell desktop: waybar|noctalia (default: waybar)
@@ -121,6 +124,8 @@ while [ "$#" -gt 0 ]; do
         --no-lookswitcher) WANT_LOOKSWITCHER=0; shift ;;
         --chromium) WANT_CHROMIUM=1; shift ;;
         --no-chromium) WANT_CHROMIUM=0; shift ;;
+        --qpdfview) WANT_QPDFVIEW=1; shift ;;
+        --no-qpdfview) WANT_QPDFVIEW=0; shift ;;
         --quick) QUICK_UPDATE=1; shift ;;
         --configure) QUICK_UPDATE=0; shift ;;
         --shell)
@@ -143,7 +148,7 @@ if [ -n "$WANT_SHELL" ]; then
     esac
 fi
 
-if [ -n "$THEME$ENABLE_ZRAM$ENABLE_SWAPPINESS$ENABLE_TOUCH$WANT_LOOKSWITCHER$WANT_SHELL$WANT_SDDM$XKB_LAYOUT$WANT_CHROMIUM$SWAPPINESS_VALUE" ]; then
+if [ -n "$THEME$ENABLE_ZRAM$ENABLE_SWAPPINESS$ENABLE_TOUCH$WANT_LOOKSWITCHER$WANT_SHELL$WANT_SDDM$XKB_LAYOUT$WANT_CHROMIUM$WANT_QPDFVIEW$SWAPPINESS_VALUE" ]; then
     PARAM_FLAGS=1
 fi
 
@@ -181,6 +186,8 @@ load_saved_options() {
         0|1) WANT_CHROMIUM="$value" ;;
         *) WANT_CHROMIUM=0 ;;
     esac
+    value="$(option_value QPDFVIEW || true)"
+    case "$value" in 0|1) WANT_QPDFVIEW="$value" ;; esac
     value="$(option_value KEEP_TDM || true)"
     case "$value" in
         1) WANT_SDDM=0 ;;
@@ -520,27 +527,47 @@ if [ -z "$WANT_CHROMIUM" ]; then
     addons_ok=0
     if [ -r "$chromium_policy" ] &&
         grep -q 'ddkjiahejlhfcafbddmgiahcphecmpfh' "$chromium_policy" &&
-        grep -q 'pkehgijcmpdhfbdbbnkijodmdjhbjlgp' "$chromium_policy"; then
+        grep -q 'pkehgijcmpdhfbdbbnkijodmdjhbjlgp' "$chromium_policy" &&
+        grep -q 'omkfmpieigblcllmkgbflkikinpkodlk' "$chromium_policy"; then
         addons_ok=1
     fi
     if [ "$chromium_installed" -eq 1 ] && [ "$addons_ok" -eq 1 ]; then
         WANT_CHROMIUM=0
-        info "Chromium e le estensioni sono gia' presenti: nessuna reinstallazione."
+        info "Chromium e le tre estensioni sono gia' presenti: nessuna reinstallazione."
     elif [ "$ASSUME_YES" -eq 1 ]; then
         WANT_CHROMIUM=1
     elif [ "$chromium_installed" -eq 1 ]; then
-        if ask_yes_no "Chromium e' installato ma mancano uBlock Origin Lite/Privacy Badger. Installare solo le estensioni mancanti?" yes; then
+        if ask_yes_no "Chromium e' installato ma mancano uBlock Origin Lite/Privacy Badger/enhanced-h264ify. Installare solo le estensioni mancanti?" yes; then
             WANT_CHROMIUM=1
         else
             WANT_CHROMIUM=0
         fi
     else
-        if ask_yes_no "Chromium non e' installato. Installare Chromium con uBlock Origin Lite e Privacy Badger?" yes; then
+        if ask_yes_no "Chromium non e' installato. Installare Chromium con uBlock Origin Lite, Privacy Badger ed enhanced-h264ify?" yes; then
             WANT_CHROMIUM=1
         else
             WANT_CHROMIUM=0
             info "Chromium non verra' installato e le estensioni non verranno aggiunte."
         fi
+    fi
+fi
+
+# qpdfview: lettore PDF leggero, utile sui PC vecchi. Non viene reinstallato.
+if [ -z "$WANT_QPDFVIEW" ]; then
+    if have qpdfview; then
+        WANT_QPDFVIEW=0
+        info "qpdfview gia' installato: nessuna reinstallazione."
+    elif [ "$SKIP_APT" -eq 1 ]; then
+        WANT_QPDFVIEW=0
+    elif [ "$QUICK_UPDATE" = "1" ]; then
+        # Le vecchie opzioni salvate non hanno QPDFVIEW: non aggiungere nulla.
+        WANT_QPDFVIEW=0
+    elif [ "$ASSUME_YES" -eq 1 ]; then
+        WANT_QPDFVIEW=1
+    elif ask_yes_no "Installare anche qpdfview, lettore PDF leggero?" yes; then
+        WANT_QPDFVIEW=1
+    else
+        WANT_QPDFVIEW=0
     fi
 fi
 
@@ -552,13 +579,14 @@ SUDO_KEEPALIVE_PID=$!
 trap 'kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true' EXIT
 trap 'err_trap $LINENO' ERR
 
-printf '\n%sRiepilogo:%s tema %s, shell %s, zram %s, swappiness %s, touchscreen %s, chromium %s\n\n' \
+printf '\n%sRiepilogo:%s tema %s, shell %s, zram %s, swappiness %s, touchscreen %s, chromium %s, qpdfview %s\n\n' \
     "$C_BOLD" "$C_RESET" "$(theme_label "$THEME")" \
     "$([ "$WANT_SHELL" = "noctalia" ] && echo "Noctalia v5" || echo "Waybar + Fuzzel")" \
     "$([ "$ENABLE_ZRAM" -eq 1 ] && echo attivo || echo no)" \
     "$([ "$ENABLE_SWAPPINESS" -eq 1 ] && echo "${SWAPPINESS_VALUE:-auto}" || echo invariato)" \
     "$([ "$ENABLE_TOUCH" -eq 1 ] && echo si || echo no)" \
-    "$([ "$WANT_CHROMIUM" -eq 1 ] && echo si || echo no)"
+    "$([ "$WANT_CHROMIUM" -eq 1 ] && echo si || echo no)" \
+    "$([ "$WANT_QPDFVIEW" -eq 1 ] && echo si || echo no)"
 
 # -----------------------------------------------------------------------------
 # Installazione pacchetti
@@ -754,8 +782,9 @@ install_browser_extensions() {
 
     if [ -r "$policy_file" ] &&
         grep -q 'ddkjiahejlhfcafbddmgiahcphecmpfh' "$policy_file" &&
-        grep -q 'pkehgijcmpdhfbdbbnkijodmdjhbjlgp' "$policy_file"; then
-        info "uBlock Origin Lite e Privacy Badger gia' configurate: nessuna modifica."
+        grep -q 'pkehgijcmpdhfbdbbnkijodmdjhbjlgp' "$policy_file" &&
+        grep -q 'omkfmpieigblcllmkgbflkikinpkodlk' "$policy_file"; then
+        info "uBlock Origin Lite, Privacy Badger ed enhanced-h264ify gia' configurate: nessuna modifica."
         return 0
     fi
 
@@ -767,7 +796,10 @@ install_browser_extensions() {
     sudo install -d -m 0755 "$policy_dir"
     # Policy Chromium: force_installed scarica le estensioni dal Chrome Web Store
     # al primo avvio. ddkjiahejlhfcafbddmgiahcphecmpfh = uBlock Origin Lite,
-    # pkehgijcmpdhfbdbbnkijodmdjhbjlgp = Privacy Badger.
+    # pkehgijcmpdhfbdbbnkijodmdjhbjlgp = Privacy Badger,
+    # omkfmpieigblcllmkgbflkikinpkodlk = enhanced-h264ify.
+    # enhanced-h264ify blocca AV1 e VP9 di default: YouTube serve H.264 (avc1),
+    # decodificabile in hardware anche su GPU vecchie. I 60fps restano attivi.
     sudo tee "$policy_file" >/dev/null <<'EOF'
 {
   "ExtensionSettings": {
@@ -778,12 +810,16 @@ install_browser_extensions() {
     "pkehgijcmpdhfbdbbnkijodmdjhbjlgp": {
       "installation_mode": "force_installed",
       "update_url": "https://clients2.google.com/service/update2/crx"
+    },
+    "omkfmpieigblcllmkgbflkikinpkodlk": {
+      "installation_mode": "force_installed",
+      "update_url": "https://clients2.google.com/service/update2/crx"
     }
   }
 }
 EOF
     sudo chmod 0644 "$policy_file"
-    ok "Chromium: uBlock Origin Lite e Privacy Badger installate da policy al primo avvio."
+    ok "Chromium: uBlock Origin Lite, Privacy Badger ed enhanced-h264ify installate da policy al primo avvio."
 }
 
 # Rimuove i pacchetti dell'altra shell, se presenti. Usata dopo aver scelto
@@ -952,6 +988,19 @@ if [ "$WANT_CHROMIUM" -eq 1 ]; then
     fi
 else
     info "Chromium ed estensioni non richiesti: nessuna modifica."
+fi
+
+if [ "$WANT_QPDFVIEW" -eq 1 ]; then
+    if have qpdfview; then
+        info "qpdfview gia' installato: non viene reinstallato."
+    elif [ "$SKIP_APT" -eq 1 ]; then
+        warn "qpdfview non installato e --skip-apt attivo: nessuna modifica."
+    else
+        log "Installazione qpdfview (lettore PDF leggero)..."
+        install_packages qpdfview
+    fi
+else
+    info "qpdfview non richiesto: nessuna modifica."
 fi
 
 required_cmds=(labwc foot python3)
@@ -1663,6 +1712,7 @@ SWAPPINESS_ENABLED=$ENABLE_SWAPPINESS
 SWAPPINESS_VALUE=$SWAPPINESS_VALUE
 THEME=$THEME
 CHROMIUM=$WANT_CHROMIUM
+QPDFVIEW=$WANT_QPDFVIEW
 KEYBOARD=$XKB_LAYOUT
 KEEP_TDM=$keep_tdm
 EOF
@@ -1724,7 +1774,8 @@ ${C_GREEN}${C_BOLD}Installazione completata.${C_RESET}
   Preferite .......... $CONFIG/labwc/favorites.tsv
   zram ............... $ZRAM_STATE (pannello nel menu)
   swappiness ......... $([ "$ENABLE_SWAPPINESS" -eq 1 ] && echo "$SWAPPINESS_VALUE" || echo "invariato")
-  Chromium ........... $(if have chromium || have chromium-browser; then echo "installato con estensioni (uBlock Origin Lite, Privacy Badger)"; else echo "non installato"; fi)
+  Chromium ........... $(if have chromium || have chromium-browser; then echo "installato con estensioni (uBlock Origin Lite, Privacy Badger, enhanced-h264ify)"; else echo "non installato"; fi)
+  qpdfview ........... $(if have qpdfview; then echo "installato"; else echo "non installato"; fi)
   Backup ............. $BACKUP_DIR
   Log sessione ....... $STATE/session.log
 

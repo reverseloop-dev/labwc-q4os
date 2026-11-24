@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.15.0**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.16.0**
 
 ---
 
@@ -98,7 +98,8 @@ un ambiente sobrio.**
   può seguire automaticamente i colori dello sfondo.
 - **App nel menu Labwc** e **App in Fuzzel**: aggiungi, organizza o rimuovi le
   applicazioni con selezione icona; le voci di sistema restano protette.
-- **Chromium** con **uBlock Origin Lite** e **Privacy Badger**; supporto
+- **Chromium** con **uBlock Origin Lite**, **Privacy Badger** ed
+  **enhanced-h264ify**; **qpdfview** come lettore PDF leggero; supporto
   **touchscreen** con tastiera su schermo e gesti.
 - **ZRAM**, **Labwc Doctor**, **Preferenze**, desktop 1–4 e guida integrata in
   italiano.
@@ -110,9 +111,9 @@ un ambiente sobrio.**
 i parametri (no = aggiornamento rapido con le scelte salvate), poi layout
 tastiera, zram, swappiness, touchscreen, LookSwitcher (solo con Trinity),
 shell (Waybar + Fuzzel o Noctalia v5), display manager se serve, tema iniziale
-e Chromium (solo se manca qualcosa). Poi esegue l'installazione. Ogni domanda
-ha un flag corrispondente (`--keyboard`, `--zram`, `--touch`,
-`--lookswitcher`, `--shell`, `--sddm`, `--theme`, `--chromium`);
+Chromium (solo se manca qualcosa) e qpdfview. Poi esegue l'installazione. Ogni
+domanda ha un flag corrispondente (`--keyboard`, `--zram`, `--touch`,
+`--lookswitcher`, `--shell`, `--sddm`, `--theme`, `--chromium`, `--qpdfview`);
 `--quick` e `--configure` forzano aggiornamento rapido o configurazione.
 
 ---
@@ -129,6 +130,10 @@ Ogni sfondo riporta la firma discreta `reverseloop-dev` in basso a destra.
 
 ## Correzioni recenti
 
+- **enhanced-h264ify** aggiunto alle estensioni Chromium: blocca AV1/VP9 e
+  lascia H.264, più leggero su CPU e GPU vecchie. Testato dal vivo su Debian
+  13: YouTube ha servito `avc1.4D401E` con AV1 e VP9 bloccati.
+- **qpdfview** proposto come lettore PDF leggero, installato solo se manca.
 - **LookSwitcher per Trinity** (opzionale, solo sessione Trinity): selettore
   temi Q4OS; labwc resta sui suoi tre temi.
 - **Login Plasma/Breeze gestito**: drop-in `zz-labwc-q4os.conf` e wrapper di
@@ -146,8 +151,13 @@ Ogni sfondo riporta la firma discreta `reverseloop-dev` in basso a destra.
   con selezione icona; le app di sistema restano protette.
 - Tutte le app del progetto seguono il tema attivo con il colore di riferimento.
 - Tastiera **IT** predefinita al login (SDDM/X11 e sessione labwc).
-- Chromium installato se assente, con **uBlock Origin Lite** e **Privacy Badger**
-  forzate via policy `/etc/chromium/policies/managed/labwc-q4os-extensions.json`.
+- Chromium installato se assente, con **uBlock Origin Lite**, **Privacy Badger**
+  ed **enhanced-h264ify** forzate via policy
+  `/etc/chromium/policies/managed/labwc-q4os-extensions.json`.
+- **enhanced-h264ify** blocca AV1 e VP9: YouTube usa H.264 (`avc1`), più
+  leggero sulle CPU/GPU vecchie. I 60fps restano attivi; si bloccano
+  dall'icona dell'estensione solo se il PC fatica ancora.
+- **qpdfview** proposto come lettore PDF leggero, installato solo se manca.
 - Rilevamento touchscreen, con tastiera su schermo **wvkbd** e gesti **lisgd**
   (swipe dal basso), scaling Qt 1.25, font e pulsanti più grandi.
 - Popup nuova versione: si chiude dopo **15 secondi**, con **Chiudi**,
@@ -273,26 +283,41 @@ mantenendo Trinity/Plasma selezionabili al login. Con `--keep-tdm` il display
 manager non viene toccato; in tal caso si può avviare Labwc da TTY con
 `dbus-run-session labwc`.
 
-### Chromium ed estensioni
+### Chromium, estensioni e qpdfview
 
 Chromium **non viene reinstallato a ogni esecuzione**. L'installer controlla
 prima cosa manca:
 
-- Chromium assente → chiede se installarlo con **uBlock Origin Lite** e
-  **Privacy Badger**; se rispondi no, non installa né Chromium né addon;
+- Chromium assente → chiede se installarlo con **uBlock Origin Lite**,
+  **Privacy Badger** ed **enhanced-h264ify**; se rispondi no, non installa né
+  Chromium né addon;
 - Chromium presente ma policy mancante → chiede se aggiungere solo le
   estensioni mancanti;
-- Chromium e policy presenti → nessuna domanda e nessuna modifica.
+- Chromium e policy complete → nessuna domanda e nessuna modifica.
 
 La policy è `/etc/chromium/policies/managed/labwc-q4os-extensions.json` e al
 primo avvio installa dal Chrome Web Store:
 
 - **uBlock Origin Lite** (`ddkjiahejlhfcafbddmgiahcphecmpfh`);
-- **Privacy Badger** (`pkehgijcmpdhfbdbbnkijodmdjhbjlgp`).
+- **Privacy Badger** (`pkehgijcmpdhfbdbbnkijodmdjhbjlgp`);
+- **enhanced-h264ify** (`omkfmpieigblcllmkgbflkikinpkodlk`).
+
+**enhanced-h264ify** è l'addon per i video. Di default blocca **AV1**, **VP9** e
+**VP8** su YouTube: il sito serve così il flusso **H.264** (`avc1`), che quasi
+tutte le GPU degli ultimi 15 anni decodificano in hardware. I **60fps** restano
+attivi. Se il PC fatica ancora, apri l'icona dell'estensione e spunta
+**Block 60fps**. Verifica: tasto destro sul player YouTube → **Statistiche per
+nerd** → **Codecs** deve mostrare `avc1`, non `av01` o `vp09`. Se Chromium è
+aperto durante l'installazione, chiudilo e riaprilo per applicare la policy.
 
 Flag: `--chromium` (installa solo ciò che manca) e `--no-chromium` (non tocca
 nulla). Con `--skip-apt` Chromium non può essere installato, ma la policy
 viene aggiunta se Chromium è già presente.
+
+**qpdfview** è proposto come lettore PDF leggero, adatto ai PC vecchi:
+l'installer chiede se installarlo, non lo reinstalla se c'è già e non tocca le
+associazioni dei file. Flag: `--qpdfview` / `--no-qpdfview`; con `--skip-apt`
+la domanda non installa nulla.
 
 ### Touchscreen
 
@@ -415,6 +440,7 @@ cd labwc-q4os
 | `--shell waybar\|noctalia` | Barra/launcher: Waybar+Fuzzel (default) o Noctalia v5 |
 | `--lookswitcher` / `--no-lookswitcher` | Selettore temi LookSwitcher per Trinity (solo Trinity) |
 | `--chromium` / `--no-chromium` | Installa Chromium e/o le estensioni mancanti, oppure non toccare nulla |
+| `--qpdfview` / `--no-qpdfview` | Installa o esclude qpdfview, lettore PDF leggero |
 | `--quick` | Aggiorna subito con le opzioni salvate, senza domande |
 | `--configure` | Chiede comunque tutti i parametri prima di aggiornare |
 | `--swappiness N` | Imposta `vm.swappiness` a `N` (0–200) |
@@ -451,9 +477,11 @@ La **prima domanda** è: *“Vuoi modificare i parametri prima di aggiornare?”
 8. **tema iniziale** — blu Nordic Cobalt, rosso Muted Crimson o verde Sage
    Emerald.
 9. **Chromium** — solo se manca Chromium o mancano le estensioni: chiede se
-   installare Chromium con uBlock Origin Lite/Privacy Badger, oppure solo gli
-   addon mancanti. Se rispondi no, non installa nulla. Se è già tutto
-   presente, la domanda non viene mostrata.
+   installare Chromium con uBlock Origin Lite/Privacy Badger/enhanced-h264ify,
+   oppure solo gli addon mancanti. Se rispondi no, non installa nulla. Se è
+   già tutto presente, la domanda non viene mostrata.
+10. **qpdfview** — solo se non è già installato: chiede se aggiungere il lettore
+    PDF leggero. Non cambia le associazioni dei file e non reinstalla nulla.
 
 Scelta tecnica trasparente: con zram lo swap avviene in RAM compressa, quindi
 `vm.swappiness=100` è desiderabile e non consuma il disco. Senza zram il
@@ -1274,22 +1302,28 @@ un'autenticità vera.
 ## Da MentisOS a labwc-q4os
 
 labwc-q4os nasce dalle ceneri di **MentisOS**, un mio progetto precedente
-oggi abbandonato. MentisOS puntava a costruire una distribuzione completa da
-zero: una ISO dedicata, repository separati per ogni applicazione e repository
-di sistema da mantenere nel tempo. Era una strada ambiziosa, ma richiedeva un
-lavoro enorme di packaging e infrastruttura, molto superiore al tempo
-disponibile.
+oggi abbandonato.
 
-Questo script ne raccoglie l'obiettivo senza ripartire da una ISO. Invece di
-costruire una nuova distribuzione, parte da **Debian/Q4OS** e aggiunge un
-desktop labwc leggero, curato e già configurato. La sfida che affronta ora è
-far girare **web app locali** — alcune sviluppate da me, come quelle di
-[TuxLab](https://tuxlab.site) — in modo fluido e utilizzabile su **PC molto
-vecchi**, senza sacrificare grafica, semplicità o funzioni di base.
+MentisOS non era solo una distribuzione leggera e veloce. Era anche un
+contenitore di applicazioni che avevo creato: alcune funzionavano in locale,
+altre usavano API di intelligenza artificiale. Per portarlo avanti servivano
+una ISO dedicata, repository separati per ogni applicazione e repository di
+sistema da mantenere nel tempo. Era una strada ambiziosa, ma il lavoro di
+packaging e infrastruttura era troppo grande per il tempo disponibile.
 
-In breve: MentisOS voleva essere una distribuzione; labwc-q4os è lo script che
-porta lo stesso spirito su una base solida, per ridare valore a macchine che
-altrimenti finirebbero nel cassetto.
+Questo script riparte da una base solida, **Debian/Q4OS**, e aggiunge un
+desktop labwc leggero, curato e già configurato. Non costruisce una nuova
+distribuzione: la rende utilizzabile subito. Un passo alla volta, tutto quello
+che era in MentisOS — app locali e app con API IA — troverà qui la sua casa.
+
+Per ora l'obiettivo è **l'interfaccia grafica e le prestazioni**. Le web app
+locali, come quelle di [TuxLab](https://tuxlab.site), devono girare fluide su
+**PC molto vecchi**, senza rinunciare a grafica, semplicità e funzioni di base.
+
+Voglio un desktop **accessibile a tutti**. Un esempio concreto: un netbook
+Toshiba serie N di 10-15 anni o più si trova usato per 10-15 euro. Con
+labwc-q4os può tornare utile per navigare, scrivere e usare le web app. Il
+resto — nuove app e nuove funzioni — arriverà un passo alla volta.
 
 ---
 

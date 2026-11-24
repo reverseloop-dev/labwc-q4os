@@ -2,6 +2,19 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.16.0]
+
+- Aggiunta **enhanced-h264ify** alle estensioni Chromium installate da policy.
+  Blocca AV1, VP9 e VP8 su YouTube: il flusso passa a H.264 (`avc1`), più
+  leggero sulle macchine vecchie. I 60fps restano attivi.
+- Installazione **qpdfview** proposta dall'installer, solo se manca, con flag
+  `--qpdfview` / `--no-qpdfview` e opzione salvata per gli aggiornamenti.
+- Test dal vivo su VM Debian 13: YouTube ha servito `avc1.4D401E` con AV1/VP9
+  bloccati; `block_60fps=false`.
+- README aggiornato con estensioni, verifica Codecs, lettore PDF e storia di
+  MentisOS (app locali, API IA, netbook Toshiba da 10–15 euro).
+- `validate.sh` controlla che `CHANGELOG.md` contenga la versione in `VERSION`.
+
 ## [1.15.0]
 
 - Aggiornamento incrementale: il bootstrap usa una cache e scarica solo le modifiche

@@ -50,6 +50,12 @@ else
     bad "labwc-power-menu --action (dry-run)"
 fi
 if [ -s VERSION ]; then pass "VERSION"; else bad "VERSION"; fi
+if [ -s CHANGELOG.md ] &&
+   grep -q "^## \[$(tr -d '[:space:]' < VERSION)\]" CHANGELOG.md; then
+    pass "CHANGELOG con la versione corrente"
+else
+    bad "CHANGELOG.md manca la sezione della versione in VERSION"
+fi
 # Integrita' del repository: manifest, ancora in bootstrap e copertura file.
 if sha256sum -c --strict --quiet SHA256SUMS >/dev/null 2>&1; then
     pass "SHA256SUMS verificato"
