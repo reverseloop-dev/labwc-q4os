@@ -36,6 +36,11 @@ install -d -m 0755 "$(dirname "$dest")"
 rm -rf "$dest"
 mv "$stage" "$dest"
 chmod -R a+rX "$dest"
+# QML mette in cache i file compilati per percorso: senza invalidarla il
+# greeter puo' mostrare il layout del tema precedente con i nuovi colori.
+find "$dest" -type f -exec touch {} + 2>/dev/null || true
+rm -rf /var/lib/sddm/.cache/sddm-greeter-qt6/qmlcache 2>/dev/null || true
+rm -rf /var/lib/sddm/.cache/qtshadercache-x86_64-little_endian-lp64 2>/dev/null || true
 
 conf="/etc/sddm.conf.d/zz-labwc-q4os.conf"
 install -d -m 0755 /etc/sddm.conf.d
