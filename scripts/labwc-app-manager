@@ -155,6 +155,15 @@ class AppManager:
         buttons.pack_start(close_button, False, False, 0)
         outer.pack_end(buttons, False, False, 0)
 
+        hint = Gtk.Label(
+            label="Suggerimento: fai clic con il pulsante destro su un'app "
+                  "per aprire le opzioni (preferiti, categoria, rimozione).",
+            xalign=0,
+        )
+        hint.set_line_wrap(True)
+        hint.get_style_context().add_class("footer")
+        outer.pack_end(hint, False, False, 0)
+
         signature = Gtk.Label(label="reverseloop-dev", xalign=1)
         signature.set_halign(Gtk.Align.END)
         signature.set_opacity(0.45)

@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.14.0**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.14.1**
 
 ---
 
@@ -621,8 +621,9 @@ Qui il **tasto destro su una riga** permette di:
 - **Rimuovere dai preferiti**;
 - **Ripristinare la categoria automatica**.
 
-Nella sezione **★ App preferite** del menu desktop è presente anche
-**“Rimuovi dai preferiti...”**, per eliminare una voce senza aprire l'editor.
+La rimozione delle preferite si fa **solo da questa app**: il sottomenu
+“Rimuovi dai preferiti...” è stato rimosso dal menu desktop. In basso
+nell'app c'è il promemoria: *pulsante destro su un'app per le opzioni*.
 
 ### Preferenze della scrivania e desktop
 
@@ -1134,8 +1135,8 @@ controlla che `lxpolkit` sia attivo e che il servizio `polkit` sia in esecuzione
 **Non riesco ad aggiungere/rimuovere un'app dal menu**
 Usa **App nel menu Labwc** col tasto destro sulla riga, oppure
 **TOOL reverseloop → Gestisci app e preferite**. Fuzzel non ha un menu
-contestuale per voce. Le preferite si rimuovono anche da **★ App preferite →
-Rimuovi dai preferiti...**.
+contestuale per voce. Le preferite si rimuovono dalla stessa app, con il
+**pulsante destro sulla riga** e “Rimuovi dai preferiti”.
 
 **La sessione Labwc non compare nel display manager**
 Verifica che esista `/usr/share/wayland-sessions/labwc.desktop`. Il display

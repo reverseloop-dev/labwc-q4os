@@ -464,11 +464,6 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     if favorites:
         for _, label, command in favorites:
             favorites_body += item(label, command)
-        remove_body = ""
-        for desktop_id, label, _command in favorites:
-            remove_body += item(label, helper("labwc-menu-editor", f"remove-id {desktop_id}"))
-        favorites_body += "    <separator />\n"
-        favorites_body += submenu("favorites-remove-menu", "Rimuovi dai preferiti...", remove_body)
     else:
         favorites_body += item(
             "Nessuna preferita: aggiungine una...", helper("labwc-menu-editor", "add")

@@ -125,8 +125,9 @@ APP IN FUZZEL (aggiungi/rimuovi con icona):
     labwc-fuzzel-apps --add "Nome" --exec /percorso/app --icon icona
     labwc-fuzzel-apps --remove nome.desktop
 
-Rimozione rapida di una preferita:
-  tasto destro sul desktop > "★ App preferite" > "Rimuovi dai preferiti..."
+Rimozione di una preferita:
+  tasto destro > "TOOL reverseloop" > "Gestisci app e preferite"
+  poi pulsante destro sulla riga dell'app > "Rimuovi dai preferiti"
 
 L'editor legge i file .desktop da:
   /usr/share/applications
@@ -436,7 +437,7 @@ Mostra:
   • Il pulsante sessione di Waybar non fa nulla: deve aprire
     labwc-power-menu; verifica che lxpolkit sia attivo.
   • Non riesco ad aggiungere/rimuovere un'app: usa "App nel menu Labwc"
-    (tasto destro sulla riga) oppure "Rimuovi dai preferiti...".
+    (pulsante destro sulla riga) oppure "Gestisci app e preferite".
   • Il menu non cambia: usa "Ricarica menu e desktop" oppure
     labwc --reconfigure.
   • Waybar non appare: controlla il log e il JSON; poi Super+Shift+R.
