@@ -524,8 +524,18 @@ Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 8 * s
-        text: "labwc-q4os · login moderno · reverseloop-dev"
+        text: "labwc-q4os · login moderno"
         color: Qt.rgba(muted.r, muted.g, muted.b, 0.4)
+        font.family: "Inter"
+        font.pixelSize: 10 * s
+    }
+    Text {
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 18 * s
+        text: "reverseloop-dev"
+        opacity: 0.35
+        color: muted
         font.family: "Inter"
         font.pixelSize: 10 * s
     }

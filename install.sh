@@ -48,6 +48,7 @@ ENABLE_ZRAM=""
 ENABLE_SWAPPINESS=""
 ENABLE_TOUCH=""
 WANT_LOOKSWITCHER=""
+WANT_CHROMIUM=""
 SWAPPINESS_VALUE=""
 SKIP_APT=0
 FORCE_OS=0
@@ -74,6 +75,8 @@ Opzioni:
   --no-touch          Disattiva la configurazione touchscreen
   --lookswitcher      Installa LookSwitcher, selettore temi per Trinity (solo Trinity)
   --no-lookswitcher   Non proporre/installare LookSwitcher
+  --chromium          Installa Chromium e/o le estensioni mancanti senza chiedere
+  --no-chromium       Non installare Chromium né le estensioni
   --shell NOME        Shell desktop: waybar|noctalia (default: waybar)
   --swappiness N      Imposta vm.swappiness a N (0-200)
   --no-swappiness     Non modificare vm.swappiness
@@ -111,6 +114,8 @@ while [ "$#" -gt 0 ]; do
         --no-touch) ENABLE_TOUCH=0; shift ;;
         --lookswitcher) WANT_LOOKSWITCHER=1; shift ;;
         --no-lookswitcher) WANT_LOOKSWITCHER=0; shift ;;
+        --chromium) WANT_CHROMIUM=1; shift ;;
+        --no-chromium) WANT_CHROMIUM=0; shift ;;
         --shell)
             [ "$#" -ge 2 ] || die "--shell richiede un valore (waybar|noctalia)"
             WANT_SHELL="$2"; shift 2 ;;
@@ -285,14 +290,6 @@ printf '\n%s%s labwc-q4os %s\n' "$C_BOLD" "$C_CYAN" "$C_RESET"
 printf '%sDesktop Wayland moderno per Q4OS / Debian%s\n' "$C_DIM" "$C_RESET"
 printf '%sreverseloop-dev · https://github.com/reverseloop-dev/labwc-q4os%s\n\n' "$C_DIM" "$C_RESET"
 
-log "Richiesta privilegi sudo (solo per apt e file di sistema)..."
-sudo -v || die "Impossibile ottenere sudo."
-# rinnova il timestamp sudo durante l'installazione
-( while true; do sudo -n true; sleep 50; kill -0 "$$" 2>/dev/null || exit; done ) 2>/dev/null &
-SUDO_KEEPALIVE_PID=$!
-trap 'kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true' EXIT
-trap 'err_trap $LINENO' ERR
-
 # -----------------------------------------------------------------------------
 # Scelte prestazioni
 # -----------------------------------------------------------------------------
@@ -438,12 +435,54 @@ if [ -z "$THEME" ]; then
     fi
 fi
 
-printf '\n%sRiepilogo:%s tema %s, shell %s, zram %s, swappiness %s, touchscreen %s\n\n' \
+if [ -z "$WANT_CHROMIUM" ]; then
+    chromium_installed=0
+    if have chromium || have chromium-browser; then
+        chromium_installed=1
+    fi
+    chromium_policy="/etc/chromium/policies/managed/labwc-q4os-extensions.json"
+    addons_ok=0
+    if [ -r "$chromium_policy" ] &&
+        grep -q 'ddkjiahejlhfcafbddmgiahcphecmpfh' "$chromium_policy" &&
+        grep -q 'pkehgijcmpdhfbdbbnkijodmdjhbjlgp' "$chromium_policy"; then
+        addons_ok=1
+    fi
+    if [ "$chromium_installed" -eq 1 ] && [ "$addons_ok" -eq 1 ]; then
+        WANT_CHROMIUM=0
+        info "Chromium e le estensioni sono gia' presenti: nessuna reinstallazione."
+    elif [ "$ASSUME_YES" -eq 1 ]; then
+        WANT_CHROMIUM=1
+    elif [ "$chromium_installed" -eq 1 ]; then
+        if ask_yes_no "Chromium e' installato ma mancano uBlock Origin Lite/Privacy Badger. Installare solo le estensioni mancanti?" yes; then
+            WANT_CHROMIUM=1
+        else
+            WANT_CHROMIUM=0
+        fi
+    else
+        if ask_yes_no "Chromium non e' installato. Installare Chromium con uBlock Origin Lite e Privacy Badger?" yes; then
+            WANT_CHROMIUM=1
+        else
+            WANT_CHROMIUM=0
+            info "Chromium non verra' installato e le estensioni non verranno aggiunte."
+        fi
+    fi
+fi
+
+log "Scelte acquisite. Richiesta privilegi sudo (solo per apt e file di sistema)..."
+sudo -v || die "Impossibile ottenere sudo."
+# rinnova il timestamp sudo durante l'installazione
+( while true; do sudo -n true; sleep 50; kill -0 "$$" 2>/dev/null || exit; done ) 2>/dev/null &
+SUDO_KEEPALIVE_PID=$!
+trap 'kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true' EXIT
+trap 'err_trap $LINENO' ERR
+
+printf '\n%sRiepilogo:%s tema %s, shell %s, zram %s, swappiness %s, touchscreen %s, chromium %s\n\n' \
     "$C_BOLD" "$C_RESET" "$(theme_label "$THEME")" \
     "$([ "$WANT_SHELL" = "noctalia" ] && echo "Noctalia v5" || echo "Waybar + Fuzzel")" \
     "$([ "$ENABLE_ZRAM" -eq 1 ] && echo attivo || echo no)" \
     "$([ "$ENABLE_SWAPPINESS" -eq 1 ] && echo "${SWAPPINESS_VALUE:-auto}" || echo invariato)" \
-    "$([ "$ENABLE_TOUCH" -eq 1 ] && echo si || echo no)"
+    "$([ "$ENABLE_TOUCH" -eq 1 ] && echo si || echo no)" \
+    "$([ "$WANT_CHROMIUM" -eq 1 ] && echo si || echo no)"
 
 # -----------------------------------------------------------------------------
 # Installazione pacchetti
@@ -472,7 +511,6 @@ CORE_PKGS=(
     gvfs
     xwayland
     xauth
-    chromium
     xdg-desktop-portal
     curl
     python3-pil
@@ -635,6 +673,13 @@ install_browser_extensions() {
 
     if ! have chromium && ! have chromium-browser; then
         warn "Chromium non installato: estensioni non configurate."
+        return 0
+    fi
+
+    if [ -r "$policy_file" ] &&
+        grep -q 'ddkjiahejlhfcafbddmgiahcphecmpfh' "$policy_file" &&
+        grep -q 'pkehgijcmpdhfbdbbnkijodmdjhbjlgp' "$policy_file"; then
+        info "uBlock Origin Lite e Privacy Badger gia' configurate: nessuna modifica."
         return 0
     fi
 
@@ -812,8 +857,26 @@ elif [ "$WANT_SHELL" = "noctalia" ]; then
     warn "Noctalia scelto con --skip-apt: Waybar/Fuzzel non vengono rimossi (non verranno avviati)."
 fi
 
-log "Configurazione Chromium ed estensioni (uBlock Origin Lite, Privacy Badger)..."
-install_browser_extensions
+if [ "$WANT_CHROMIUM" -eq 1 ]; then
+    if ! have chromium && ! have chromium-browser; then
+        if [ "$SKIP_APT" -eq 1 ]; then
+            warn "Chromium non installato e --skip-apt attivo: estensioni non configurate."
+        else
+            log "Installazione Chromium (solo se mancante)..."
+            install_packages chromium
+        fi
+    else
+        info "Chromium gia' installato: non viene reinstallato."
+    fi
+    if have chromium || have chromium-browser; then
+        log "Configurazione estensioni Chromium mancanti..."
+        install_browser_extensions
+    else
+        warn "Chromium assente: estensioni non installate."
+    fi
+else
+    info "Chromium ed estensioni non richiesti: nessuna modifica."
+fi
 
 required_cmds=(labwc foot python3)
 if [ "$WANT_SHELL" = "waybar" ]; then
@@ -1443,8 +1506,12 @@ EOF
 
     if [ "$ENABLE_ZRAM" -eq 1 ]; then
         zram_started=0
+        sudo modprobe zram >/dev/null 2>&1 || true
         if command -v systemctl >/dev/null 2>&1; then
-            if sudo systemctl enable --now zramswap.service >/dev/null 2>&1; then
+            sudo systemctl enable --now zramswap.service >/dev/null 2>&1 || true
+            if command -v zramctl >/dev/null 2>&1 && [ -n "$(zramctl 2>/dev/null)" ]; then
+                zram_started=1
+            elif [ -e /dev/zram0 ]; then
                 zram_started=1
             else
                 warn "zramswap.service non avviato: verifica con 'systemctl status zramswap'."

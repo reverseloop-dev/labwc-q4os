@@ -437,6 +437,17 @@ Rectangle {
         }
     }
 
+    Text {
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 16 * s
+        text: "reverseloop-dev"
+        opacity: 0.38
+        color: muted
+        font.family: "Inter"
+        font.pixelSize: 10 * s
+    }
+
     Connections {
         target: sddm
         function onLoginFailed() {
