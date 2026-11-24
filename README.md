@@ -2,6 +2,10 @@
 
 **Una seconda vita per i PC che il mercato considera vecchi.**
 
+**labwc-q4os è lo script “resuscita morti” per i computer che il mercato
+considera da buttare:** li riporta a un sistema Debian completo, veloce e
+amministrabile, senza cambiare hardware.
+
 Ogni anno milioni di computer ancora perfettamente funzionanti vengono
 dismessi solo perché il sistema operativo di serie è diventato lento, pesante
 o non più aggiornato. **labwc-q4os** nasce per loro: trasforma un PC di qualche
@@ -34,6 +38,9 @@ sistema **Debian perfettamente funzionante, veloce, intuitivo e facile da
 amministrare**, reattivo anche su macchine con **1 GB di RAM**, senza perdere
 grafica, sessioni esistenti o possibilità di scelta.
 
+> **RAM consigliata:** scegli **Waybar + Fuzzel** se la VM ha **1–2 GB**;
+> **Noctalia** solo se vuoi testarla con più RAM.
+
 > ### Riuso, stabilità, prestazioni
 >
 > **Meno rifiuti elettronici, più computer utili.** labwc-q4os non richiede
@@ -50,7 +57,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.11.0**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.11.1**
 
 ---
 
