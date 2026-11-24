@@ -2,34 +2,33 @@
 
 **Una seconda vita per i PC che il mercato considera vecchi.**
 
-**labwc-q4os è lo script “resuscita morti” per i computer che il mercato
-considera da buttare:** li riporta a un sistema Debian completo, veloce e
-amministrabile, senza cambiare hardware.
+**labwc-q4os è lo script “resuscita morti”:** riporta a un sistema Debian
+completo, veloce e amministrabile macchine che altrimenti sarebbero state
+sostituite, senza cambiare hardware.
 
 Ogni anno milioni di computer ancora perfettamente funzionanti vengono
-dismessi solo perché il sistema operativo di serie è diventato lento, pesante
-o non più aggiornato. **labwc-q4os** nasce per loro: trasforma un PC di qualche
-anno fa in una postazione veloce, moderna e sicura, senza cambiare hardware.
+dismessi solo perché il software di serie è diventato lento, pesante o non più
+aggiornato. **labwc-q4os** li trasforma in postazioni veloci, moderne e sicure,
+senza cambiare hardware.
 
-L'idea è il **riuso consapevole**. Non serve un computer nuovo per navigare,
+L'idea è il **riuso consapevole**. Non serve una macchina nuova per navigare,
 scrivere, lavorare o studiare: serve un sistema costruito bene. Per questo il
 progetto parte dalla solidità di **Debian**, aggiunge la configurazione pronta
 e collaudata di **Q4OS** e usa **labwc su Wayland** come desktop: un compositor
 essenziale che consuma poche risorse, riduce il carico di CPU e RAM e rende
-l'interazione più immediata, anche su macchine con pochi gigabyte di memoria.
+l'interazione più immediata, anche con pochi gigabyte di memoria.
 
 Il risultato è un desktop curato e completo, con tre temi coordinati, un login
 moderno e tutti gli strumenti di uso quotidiano già configurati. Le sessioni
 Trinity e Plasma restano disponibili: labwc-q4os **aggiunge** una sessione,
 non impone una sostituzione.
 
-**Non è l'ennesima “distro veloce”.** È uno **script che resuscita PC**:
-installato sopra una base già solida, restituisce un sistema completo a
-macchine che il mercato considera da buttare. L'installazione è pensata per
-**Q4OS 6** (la configurazione collaudata oggi) e per una **Debian pura**
-(supporto in fase di test): in entrambi i casi aggiunge il desktop leggero,
-gli strumenti di amministrazione e tutto ciò che serve per usare il computer
-ogni giorno.
+**Non è l'ennesima “distro veloce”.** È un intervento mirato: installato sopra
+una base già solida, restituisce un sistema completo senza toccare l'hardware.
+L'installazione è pensata per **Q4OS 6** (la configurazione collaudata oggi) e
+per una **Debian pura** (supporto in fase di test): in entrambi i casi aggiunge
+il desktop leggero, gli strumenti di amministrazione e tutto ciò che serve per
+lavorare ogni giorno.
 
 **Scegli la tua base, aggiungi il desktop leggero.** Q4OS, Debian o la
 distribuzione Debian-derivata che preferisci: lo script si occupa di labwc,
@@ -57,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.11.3**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.11.4**
 
 ---
 
@@ -1277,7 +1276,7 @@ far girare **web app locali** — alcune sviluppate da me, come quelle di
 vecchi**, senza sacrificare grafica, semplicità o funzioni di base.
 
 In breve: MentisOS voleva essere una distribuzione; labwc-q4os è lo script che
-porta lo stesso spirito su una base solida, per resuscitare computer che
+porta lo stesso spirito su una base solida, per ridare valore a macchine che
 altrimenti finirebbero nel cassetto.
 
 ---
