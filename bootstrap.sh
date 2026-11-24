@@ -18,7 +18,7 @@ REPO_URL="https://github.com/reverseloop-dev/labwc-q4os.git"
 REPO_HTTPS="https://github.com/reverseloop-dev/labwc-q4os"
 # Hash del file SHA256SUMS del repository (aggiornato a ogni release da
 # scripts/make-checksums). Se un file viene modificato, la verifica fallisce.
-MANIFEST_SHA256="de01ebb47c1626f769c1cb707d50eaf0d5d2b26d3a6d48c175bac805daed0e03"
+MANIFEST_SHA256="0eb97568d05760552bbe20d2ed9fbc8cc32d57525a6122e26159f53d8eef58f2"
 
 die() { printf '[labwc-q4os] ERRORE: %s\n' "$*" >&2; exit 1; }
 
