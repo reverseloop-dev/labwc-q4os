@@ -450,7 +450,7 @@ Mostra:
     sessione esegue ora una ricarica automatica dopo 3 s (un solo avviso).
     Log: ~/.local/state/labwc-q4os/session.log
   • Login Plasma/Breeze e labwc senza barra o con menu minimo: l'installer
-    scrive /etc/sddm.conf.d/99-labwc-q4os.conf e usa il wrapper
+    scrive /etc/sddm.conf.d/zz-labwc-q4os.conf e usa il wrapper
     /usr/local/libexec/labwc-q4os/labwc-session, che ripara la configurazione.
     Log: ~/.local/state/labwc-q4os/session.log
     Dopo l'installazione: sudo systemctl restart sddm

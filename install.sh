@@ -1294,11 +1294,13 @@ install_sddm_theme() {
     sudo install -d -m 0755 /etc/sddm.conf.d
     # 99- vince sui drop-in di Plasma (kde_settings.conf, 90-...) e sul tema
     # Breeze gia' selezionato. DisplayServer=x11 e' quello supportato dal tema.
-    sudo rm -f /etc/sddm.conf.d/90-labwc-q4os.conf
+    sudo rm -f /etc/sddm.conf.d/90-labwc-q4os.conf \
+        /etc/sddm.conf.d/99-labwc-q4os.conf \
+        /etc/sddm.conf.d/zz-labwc-q4os.conf
     if [ "$PLASMA_LOGIN" -eq 1 ]; then
         warn "Login SDDM/Plasma rilevato: forzo tema labwc-q4os e sessione Labwc."
     fi
-    sudo tee /etc/sddm.conf.d/99-labwc-q4os.conf >/dev/null <<'EOF'
+    sudo tee /etc/sddm.conf.d/zz-labwc-q4os.conf >/dev/null <<'EOF'
 # Generato da labwc-q4os — https://github.com/reverseloop-dev/labwc-q4os
 # Deve restare l'ultimo drop-in: vince sui temi Plasma/Breeze.
 [General]
@@ -1312,7 +1314,7 @@ DefaultSession=labwc.desktop
 RememberLastSession=true
 ReuseSession=true
 EOF
-    sudo chmod 0644 /etc/sddm.conf.d/99-labwc-q4os.conf
+    sudo chmod 0644 /etc/sddm.conf.d/zz-labwc-q4os.conf
 
     sudo install -d -m 0755 /var/lib/sddm
     if [ ! -f "$state_file" ] || [ "$WANT_SDDM" -eq 1 ]; then

@@ -35,7 +35,7 @@ non impone una sostituzione.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.10.1**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.10.2**
 
 ---
 
@@ -106,7 +106,7 @@ Ogni sfondo riporta la firma discreta `reverseloop-dev` in basso a destra.
 
 - **LookSwitcher per Trinity** (opzionale, solo sessione Trinity): selettore
   temi Q4OS; labwc resta sui suoi tre temi.
-- **Login Plasma/Breeze gestito**: drop-in `99-labwc-q4os.conf` e wrapper di
+- **Login Plasma/Breeze gestito**: drop-in `zz-labwc-q4os.conf` e wrapper di
   sessione che garantiscono tema, sessione e configurazione labwc.
 - **Desktop ripristinato**: `labwc` usa `-C` per la cartella config, quindi
   tornano menu col tasto destro e doppio clic sinistro su aiuto/scorciatoie.
@@ -203,7 +203,7 @@ sudo localectl set-keyboard-layout it
 ### Se il login era Plasma o Breeze
 
 Se SDDM era configurato dal desktop **Plasma** (tema Breeze o greeter Wayland),
-l'installer lo rileva e scrive `/etc/sddm.conf.d/99-labwc-q4os.conf`: essendo
+l'installer lo rileva e scrive `/etc/sddm.conf.d/zz-labwc-q4os.conf`: essendo
 l'ultimo drop-in, prevale sui file di Plasma e forza tema `labwc-q4os`,
 `DisplayServer=x11` e sessione `labwc.desktop`.
 

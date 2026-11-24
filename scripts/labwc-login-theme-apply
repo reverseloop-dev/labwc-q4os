@@ -37,7 +37,7 @@ rm -rf "$dest"
 mv "$stage" "$dest"
 chmod -R a+rX "$dest"
 
-conf="/etc/sddm.conf.d/90-labwc-q4os.conf"
+conf="/etc/sddm.conf.d/zz-labwc-q4os.conf"
 install -d -m 0755 /etc/sddm.conf.d
 if [ -r "$conf" ] && grep -q '^\[Theme\]' "$conf"; then
     if grep -q '^Current=' "$conf"; then
