@@ -4,7 +4,7 @@ Desktop Wayland moderno per Q4OS / Debian
 https://github.com/reverseloop-dev/labwc-q4os
 
 Questa guida e' sempre disponibile con:
-  • tasto destro sul desktop > "Labwc & Desktop" > "Aiuto, scorciatoie e sistema"
+  • tasto destro sul desktop > "TOOL reverseloop" > "Aiuto, scorciatoie e sistema"
   • Super + Shift + H
   • comando: labwc-help
 
@@ -102,10 +102,10 @@ Il menu e' organizzato in:
   ★ App preferite ....... scelte da te, sempre in cima
   Categorie ............. Internet, Multimedia, Grafica, Ufficio,
                           Sviluppo, Giochi, Sistema, Accessori...
-  Labwc & Desktop ....... strumenti, tema, aiuto, sessione
+  TOOL reverseloop ....... strumenti, tema, aiuto, sessione
 
 Per aggiungere o rimuovere programmi:
-  tasto destro > "Labwc & Desktop" > "Gestisci app e preferite"
+  tasto destro > "TOOL reverseloop" > "Gestisci app e preferite"
   (labwc-app-manager, con menu contestuale tasto destro)
   oppure "Editor rapido del menu" / Super + Shift + M.
 
@@ -115,7 +115,7 @@ tasto destro sulla riga per aggiungerla ai preferiti, spostarla in categoria
 (es. Multimedia) o rimuoverla.
 
 APP IN FUZZEL (aggiungi/rimuovi con icona):
-  tasto destro > "Labwc & Desktop" > "App in Fuzzel"
+  tasto destro > "TOOL reverseloop" > "App in Fuzzel"
   • aggiungi: nome, comando (con sfoglia file), commento e icona
   • icona: scegli dal set installato oppure un file PNG/SVG
   • rimuovi: solo le voci create dall'utente in ~/.local/share/applications
@@ -146,7 +146,7 @@ Se vuoi comunque ispezionarlo:
 riapplica le decorazioni e riavvia Waybar.
 
 Preferenze della scrivania:
-  tasto destro > "Labwc & Desktop" > "Preferenze della scrivania Labwc"
+  tasto destro > "TOOL reverseloop" > "Preferenze della scrivania Labwc"
   • tema (blu / rosso / verde), icone e sfondo
   • tastiera it / us / it,us
   • desktop 1–4
@@ -156,7 +156,7 @@ Desktop 1–4:
   • indicatori in Waybar: [1] 2 3 4; click per selezionare
   • Super + 1..4
   • rotellina sul desktop
-  • menu Labwc & Desktop > Desktop 1–4
+  • menu TOOL reverseloop > Desktop 1–4
 
 
 4. TEMI E SFONDI
@@ -169,7 +169,7 @@ Tre temi completi, ognuno con sfondo coordinato e firma discreta
   3. Sage Emerald ........ verde salvia / petrolio (#1b2624, #4d9375)
 
 Cambio tema:
-  tasto destro > "Labwc & Desktop" > "Cambia tema"
+  tasto destro > "TOOL reverseloop" > "Cambia tema"
   oppure Super + Shift + T
   oppure: labwc-theme-switcher nordic-cobalt
 
@@ -181,7 +181,7 @@ Ogni tema ha icone SVG coordinate (labwc-q4os): terminale, cartelle, browser,
 Il symlink ~/.local/share/icons/labwc-q4os punta al set del tema attivo.
 
 Sfondi: ~/.local/share/labwc-q4os/wallpapers/
-Per rigenerarli: menu > Labwc & Desktop > Cambia tema > "Genera di nuovo
+Per rigenerarli: menu > TOOL reverseloop > Cambia tema > "Genera di nuovo
 gli sfondi" oppure il comando labwc-generate-wallpapers.
 
 
@@ -286,7 +286,7 @@ Il login SDDM di labwc-q4os offre tre schermate con layout diversi:
 Tutte mostrano utente, sessione TDM/Labwc preselezionata, tastiera IT e
 pulsanti di spegnimento.
 Cambio login:
-  tasto destro > Labwc & Desktop > Schermata di login
+  tasto destro > TOOL reverseloop > Schermata di login
   oppure: labwc-login-theme
 Nelle Preferenze lo switch "Login con gli stessi colori dello sfondo" fa
 seguire al login il tema del desktop (blu, rosso o verde).
@@ -327,7 +327,7 @@ Ricarica senza uscire:
 9. CONTROLLI DI SISTEMA — ZRAM E AGGIORNAMENTI
 ---------------------------
 zram comprime la RAM e la usa come swap veloce. Si gestisce dal menu:
-  tasto destro > "Labwc & Desktop" > "ZRAM — memoria compressa"
+  tasto destro > "TOOL reverseloop" > "ZRAM — memoria compressa"
 
 La finestra mostra in tempo reale:
   • stato attivo / non attivo e avvio automatico;
@@ -353,7 +353,7 @@ Con zram attivo e' consigliato vm.swappiness=100; senza zram vm.swappiness=10.
 Lo script di installazione imposta questi valori se accetti l'ottimizzazione.
 
 AGGIORNAMENTI SCRIPT (pannello separato da ZRAM):
-  tasto destro > "Labwc & Desktop" > "Controlli aggiornamenti script labwc-q4os"
+  tasto destro > "TOOL reverseloop" > "Controlli aggiornamenti script labwc-q4os"
   • l'utente normale puo' disattivare subito il controllo
   • per riattivarlo serve la password di root (pkexec)
   • intervallo predefinito 6 ore, modificabile da 1 a 24 ore
@@ -414,7 +414,7 @@ LOOKSWITCHER PER TRINITY (solo Trinity):
 Controlla: comandi, XML/JSON, tema, sfondo, menu, Waybar, Fuzzel,
 Mako, helper, sessione nel display manager, XWayland, portali,
 processi attivi, zram, swappiness e log recente.
-Dal menu: "Labwc & Desktop" > "Diagnostica e ripara desktop".
+Dal menu: "TOOL reverseloop" > "Diagnostica e ripara desktop".
 
 11. INFORMAZIONI DI SISTEMA
 ---------------------------

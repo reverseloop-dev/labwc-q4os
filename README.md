@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.11.5**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.12.0**
 
 ---
 
@@ -587,7 +587,7 @@ Il menu e' generato dinamicamente da `scripts/render-menu.py` leggendo i file
 1. **★ App preferite** — scelte dall'utente, in cima al menu.
 2. **Categorie** — Internet, Multimedia, Grafica, Ufficio, Sviluppo, Giochi,
    Istruzione, Scienza, Sistema, Impostazioni, Accessori, Altre applicazioni.
-3. **Labwc & Desktop** — preferenze della scrivania, desktop 1–4, gestione
+3. **TOOL reverseloop** — preferenze della scrivania, desktop 1–4, gestione
    app/preferite, cambio tema, editor rapido Fuzzel, ricarica, aiuto,
    screenshot, pannello ZRAM, controlli aggiornamenti, diagnostica, blocco
    schermo e menu sessione.
@@ -599,7 +599,7 @@ un'app dentro Fuzzel non può essere intercettato. Per ottenere la stessa
 funzione c'è **App nel menu Labwc** (`labwc-app-manager`), apribile da:
 
 - tasto destro sull'icona launcher di Waybar;
-- menu desktop → **Labwc & Desktop → Gestisci app e preferite**;
+- menu desktop → **TOOL reverseloop → Gestisci app e preferite**;
 - ricerca Fuzzel: “App nel menu Labwc”.
 
 Qui il **tasto destro su una riga** permette di:
@@ -615,7 +615,7 @@ Nella sezione **★ App preferite** del menu desktop è presente anche
 
 ### Preferenze della scrivania e desktop
 
-Tasto destro → **Labwc & Desktop → Preferenze della scrivania Labwc** apre un unico
+Tasto destro → **TOOL reverseloop → Preferenze della scrivania Labwc** apre un unico
 pannello per:
 
 - scegliere il tema e quindi icone, Waybar, Fuzzel, sfondo;
@@ -637,7 +637,7 @@ sostituiscano la barra con decorazioni client-side.
 
 ### Aggiungere o rimuovere app
 
-Tasto destro → **Labwc & Desktop** → **Gestisci app e preferite**
+Tasto destro → **TOOL reverseloop** → **Gestisci app e preferite**
 (oppure `Super + Shift + M` per l'editor rapido Fuzzel).
 
 L'editor usa Fuzzel (`--dmenu`) su Wayland, con fallback a Zenity e Whiptail.
@@ -723,7 +723,7 @@ sudo dpkg-reconfigure keyboard-configuration
 
 ## ZRAM — memoria compressa
 
-Pannello grafico: tasto destro → **Labwc & Desktop** → **ZRAM — memoria
+Pannello grafico: tasto destro → **TOOL reverseloop** → **ZRAM — memoria
 compressa**, oppure `labwc-zram`.
 
 Mostra in tempo reale:
@@ -794,7 +794,7 @@ notifica Mako persistente.
 ![Popup di aggiornamento](preview/update-popup.png)
 
 Il controllo ha un pannello dedicato:
-tasto destro → **Labwc & Desktop → Controlli aggiornamenti script labwc-q4os**
+tasto destro → **TOOL reverseloop → Controlli aggiornamenti script labwc-q4os**
 (`labwc-update-gui`), separato da ZRAM.
 
 ![Pannello aggiornamenti](preview/update-gui.png)
@@ -859,7 +859,7 @@ Verifica:
 
 `--fix` ripristina i file utente mancanti dai template, rigenera tema e menu,
 ricrea lo sfondo e ricarica il desktop. `--fix-system` ripristina anche la
-sessione Wayland con `sudo`. Dal menu: **Labwc & Desktop → Diagnostica e
+sessione Wayland con `sudo`. Dal menu: **TOOL reverseloop → Diagnostica e
 ripara desktop**.
 
 ---
@@ -915,7 +915,7 @@ scelta="$(printf 'Si\nNo\n' | fuzzel --dmenu --prompt='Confermi? ')"
 ### Aggiungere o togliere un link in Fuzzel
 
 Fuzzel mostra i link come normali applicazioni `.desktop`. L'app **App in
-Fuzzel** (`labwc-fuzzel-apps`, tasto destro → *Labwc & Desktop → App in Fuzzel*)
+Fuzzel** (`labwc-fuzzel-apps`, tasto destro → *TOOL reverseloop → App in Fuzzel*)
 fa tutto dalla grafica: nome, comando con selettore file, commento e **scelta
 dell'icona** dal set installato o da un PNG/SVG.
 
@@ -1113,7 +1113,7 @@ labwc-doctor --fix-system
 
 Il doctor controlla configurazioni, permessi, sessione, barra, tema, menu,
 zram, portali, XWayland e log, e ripara i file utente mancanti. Dal menu:
-**Labwc & Desktop → Diagnostica e ripara desktop**.
+**TOOL reverseloop → Diagnostica e ripara desktop**.
 
 **Il pulsante sessione di Waybar non faceva nulla**
 Corretto: ora apre `labwc-power-menu` (Fuzzel/Zenity) con blocco, uscita,
@@ -1122,7 +1122,7 @@ controlla che `lxpolkit` sia attivo e che il servizio `polkit` sia in esecuzione
 
 **Non riesco ad aggiungere/rimuovere un'app dal menu**
 Usa **App nel menu Labwc** col tasto destro sulla riga, oppure
-**Labwc & Desktop → Gestisci app e preferite**. Fuzzel non ha un menu
+**TOOL reverseloop → Gestisci app e preferite**. Fuzzel non ha un menu
 contestuale per voce. Le preferite si rimuovono anche da **★ App preferite →
 Rimuovi dai preferiti...**.
 

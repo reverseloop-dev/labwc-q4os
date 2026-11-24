@@ -420,7 +420,7 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     parts: list[str] = []
     parts.append('<?xml version="1.0" encoding="UTF-8"?>\n')
     parts.append("<!-- Generato da render-menu.py - non modificare a mano. -->\n")
-    parts.append("<!-- Per personalizzare: tasto destro > Labwc & Desktop > App nel menu. -->\n")
+    parts.append("<!-- Per personalizzare: tasto destro > TOOL reverseloop > App nel menu. -->\n")
     parts.append("<openbox_menu>\n\n")
 
     # Menu della finestra (tasto destro sul titolo)
@@ -508,7 +508,7 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
         desktops_body += item(f"Desktop {n}", helper("labwc-desktop", str(n)))
     desktop_body += submenu("desktop-switcher-menu", "Desktop 1–4", desktops_body)
 
-    parts.append(submenu("desktop-menu", "Labwc & Desktop", desktop_body))
+    parts.append(submenu("desktop-menu", "TOOL reverseloop", desktop_body))
 
     parts.append("  </menu>\n\n")
     parts.append("</openbox_menu>\n")
