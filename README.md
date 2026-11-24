@@ -57,7 +57,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.11.2**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.11.3**
 
 ---
 
@@ -1257,6 +1257,28 @@ sha256sum -c --quiet SHA256SUMS
 
 Firme GPG/minisign delle release sono il passo successivo consigliato per
 un'autenticità vera.
+
+---
+
+## Da MentisOS a labwc-q4os
+
+labwc-q4os nasce dalle ceneri di **MentisOS**, un mio progetto precedente
+oggi abbandonato. MentisOS puntava a costruire una distribuzione completa da
+zero: una ISO dedicata, repository separati per ogni applicazione e repository
+di sistema da mantenere nel tempo. Era una strada ambiziosa, ma richiedeva un
+lavoro enorme di packaging e infrastruttura, molto superiore al tempo
+disponibile.
+
+Questo script ne raccoglie l'obiettivo senza ripartire da una ISO. Invece di
+costruire una nuova distribuzione, parte da **Debian/Q4OS** e aggiunge un
+desktop labwc leggero, curato e già configurato. La sfida che affronta ora è
+far girare **web app locali** — alcune sviluppate da me, come quelle di
+[TuxLab](https://tuxlab.site) — in modo fluido e utilizzabile su **PC molto
+vecchi**, senza sacrificare grafica, semplicità o funzioni di base.
+
+In breve: MentisOS voleva essere una distribuzione; labwc-q4os è lo script che
+porta lo stesso spirito su una base solida, per resuscitare computer che
+altrimenti finirebbero nel cassetto.
 
 ---
 
