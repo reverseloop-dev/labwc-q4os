@@ -336,6 +336,27 @@ if xmllint --noout "$TMP/.config/labwc/menu.xml"; then
 else
     bad "menu.xml XML non valido"
 fi
+if python3 - "$TMP/.config/labwc/menu.xml" <<'PY'
+import sys, unicodedata, xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+skip = {"root-menu", "client-menu", "client-send-to-desktop-menu"}
+def key(text):
+    normalized = unicodedata.normalize("NFKD", text.casefold())
+    return "".join(c for c in normalized if not unicodedata.combining(c))
+def walk(menu):
+    labels = [child.get("label", "") for child in menu if child.tag in ("item", "menu")]
+    if menu.get("id") not in skip and labels != sorted(labels, key=key):
+        raise SystemExit(1)
+    for child in menu:
+        if child.tag == "menu":
+            walk(child)
+walk(root)
+PY
+then
+    pass "tutti i sottomenu in ordine alfabetico"
+else
+    bad "sottomenu non in ordine alfabetico"
+fi
 if HOME="$TMP" python3 scripts/render-menu.py --json | jq -e '.categories|length > 0' >/dev/null; then
     pass "render-menu.py --json"
 else

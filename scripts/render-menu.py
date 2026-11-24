@@ -23,9 +23,16 @@ import re
 import shlex
 import shutil
 import sys
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from xml.sax.saxutils import escape
+
+
+def menu_sort_key(label: str) -> str:
+    """Ordine alfabetico stabile, senza distinguere maiuscole o accenti."""
+    normalized = unicodedata.normalize("NFKD", label.casefold())
+    return "".join(char for char in normalized if not unicodedata.combining(char))
 
 HOME = Path.home()
 CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME", HOME / ".config"))
@@ -126,7 +133,7 @@ class App:
 
     @property
     def sort_key(self) -> str:
-        return self.name.casefold()
+        return menu_sort_key(self.name)
 
 
 def desktop_dirs() -> list[Path]:
@@ -453,7 +460,7 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     parts.append("    <separator />\n")
 
     favorites_body = ""
-    favorites = sorted(favorites, key=lambda row: row[1].casefold())
+    favorites = sorted(favorites, key=lambda row: menu_sort_key(row[1]))
     if favorites:
         for _, label, command in favorites:
             favorites_body += item(label, command)
@@ -474,11 +481,11 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
         for category in CATEGORY_ORDER
         if groups.get(category)
     ]
-    category_groups.sort(key=lambda row: row[0].casefold())
+    category_groups.sort(key=lambda row: menu_sort_key(row[0]))
     for category, cat_apps in category_groups:
         body = "".join(
             item(app.name, app.command)
-            for app in sorted(cat_apps, key=lambda app: app.name.casefold())
+            for app in sorted(cat_apps, key=lambda app: menu_sort_key(app.name))
         )
         menu_id = "cat-" + re.sub(r"[^a-z0-9]+", "-", category.casefold()).strip("-")
         parts.append(submenu(menu_id, category, body))
@@ -509,7 +516,7 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     theme_entries.append(
         ("Genera di nuovo gli sfondi", item("Genera di nuovo gli sfondi", helper("labwc-generate-wallpapers")))
     )
-    theme_entries.sort(key=lambda row: row[0].casefold())
+    theme_entries.sort(key=lambda row: menu_sort_key(row[0]))
     theme_body = "".join(body for _label, body in theme_entries)
     tool_entries.append(("Cambia tema", submenu("theme-menu", "Cambia tema", theme_body)))
 
@@ -520,7 +527,7 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
         ("Desktop 1–4", submenu("desktop-switcher-menu", "Desktop 1–4", desktops_body))
     )
 
-    tool_entries.sort(key=lambda row: row[0].casefold())
+    tool_entries.sort(key=lambda row: menu_sort_key(row[0]))
     desktop_body = "".join(body for _label, body in tool_entries)
     parts.append(submenu("desktop-menu", "TOOL reverseloop", desktop_body))
 
