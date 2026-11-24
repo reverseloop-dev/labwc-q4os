@@ -359,6 +359,31 @@ def update_database(user_dir: Path) -> None:
         pass
 
 
+def refresh_desktop_menu() -> None:
+    """Rigenera menu.xml e ricarica labwc dopo modifiche alle app."""
+    render = SHARE / "scripts" / "render-menu.py"
+    if render.is_file():
+        try:
+            subprocess.run(
+                [sys.executable, str(render), "--render"],
+                capture_output=True,
+                timeout=60,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            pass
+    if os.environ.get("WAYLAND_DISPLAY") and shutil.which("labwc"):
+        try:
+            subprocess.run(
+                ["labwc", "--reconfigure"],
+                capture_output=True,
+                timeout=15,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            pass
+
+
 class FuzzelApps:
     def __init__(self) -> None:
         import gi
@@ -670,6 +695,7 @@ class FuzzelApps:
             self.status.set_text(f"Errore: {exc}")
             return
         update_database(user_app_dir())
+        refresh_desktop_menu()
         self.status.set_text(f"Aggiunta: {path.name}")
         for entry in (
             self.name_entry,
@@ -710,6 +736,7 @@ class FuzzelApps:
             self.status.set_text(f"Errore: {exc}")
             return
         update_database(user_app_dir())
+        refresh_desktop_menu()
         self.status.set_text(f"Rimossa: {entry['name']}")
         self.refresh()
 
@@ -753,6 +780,7 @@ def cli_add(args: argparse.Namespace) -> int:
         print(f"Errore: {exc}", file=sys.stderr)
         return 2
     update_database(user_app_dir())
+    refresh_desktop_menu()
     print(path)
     return 0
 
@@ -764,6 +792,7 @@ def cli_remove(args: argparse.Namespace) -> int:
         print(f"Errore: {exc}", file=sys.stderr)
         return 2
     update_database(user_app_dir())
+    refresh_desktop_menu()
     message = f"Rimosso: {args.remove}"
     if shadow:
         message += " (la voce di sistema con lo stesso nome torna visibile)"

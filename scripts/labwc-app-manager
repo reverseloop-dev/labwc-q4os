@@ -379,7 +379,23 @@ class AppManager:
             dialog.destroy()
             return
         self.status.set_text(message.splitlines()[-1] if message else "Menu aggiornato")
+        self.reconfigure_desktop()
         self.refresh()
+
+    def reconfigure_desktop(self) -> None:
+        """Il menu.xml è stato riscritto: labwc deve rileggerlo subito."""
+        if not os.environ.get("WAYLAND_DISPLAY") or not shutil.which("labwc"):
+            return
+        try:
+            subprocess.run(
+                ["labwc", "--reconfigure"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=15,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            pass
 
     def open_app(self, app: dict) -> None:
         app_id = app.get("id", "")
