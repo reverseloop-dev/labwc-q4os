@@ -255,6 +255,12 @@ class UpdateWindow:
         footer.get_style_context().add_class("subtitle")
         outer.pack_end(footer, False, False, 0)
 
+        signature = Gtk.Label(label="reverseloop-dev", xalign=1)
+        signature.set_halign(Gtk.Align.END)
+        signature.set_opacity(0.45)
+        signature.get_style_context().add_class("subtitle")
+        outer.pack_end(signature, False, False, 0)
+
         self.window.show_all()
 
     def on_upgrade(self, _button) -> None:
@@ -562,7 +568,7 @@ class UpdatePopup:
             )
 
         self.window = Gtk.Window(title="Labwc Q4OS — aggiornamento disponibile")
-        self.window.set_default_size(560, 320)
+        self.window.set_default_size(560, 340)
         self.window.set_resizable(False)
         self.window.set_border_width(16)
         self.window.set_position(Gtk.WindowPosition.CENTER)
@@ -601,6 +607,12 @@ class UpdatePopup:
         buttons.pack_start(copy_button, False, False, 0)
         buttons.pack_end(open_button, False, False, 0)
         outer.pack_end(buttons, False, False, 0)
+
+        signature = Gtk.Label(label="reverseloop-dev", xalign=1)
+        signature.set_halign(Gtk.Align.END)
+        signature.set_opacity(0.45)
+        signature.get_style_context().add_class("subtitle")
+        outer.pack_end(signature, False, False, 0)
 
         self.window.show_all()
         self.timer = GLib.timeout_add_seconds(1, self.tick)

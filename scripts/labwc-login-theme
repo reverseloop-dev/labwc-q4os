@@ -337,6 +337,12 @@ def gui() -> int:
     actions.pack_end(close_button, False, False, 0)
     outer.pack_start(actions, False, False, 0)
 
+    signature = Gtk.Label(label="reverseloop-dev", xalign=1)
+    signature.set_halign(Gtk.Align.END)
+    signature.set_opacity(0.45)
+    signature.get_style_context().add_class("subtitle")
+    outer.pack_end(signature, False, False, 0)
+
     def selected_variant() -> str:
         for variant_id, button in buttons.items():
             if button.get_active():

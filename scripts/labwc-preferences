@@ -197,6 +197,12 @@ class Preferences:
         close.connect("clicked", lambda _b: self.window.destroy())
         outer.pack_end(close, False, False, 0)
 
+        signature = Gtk.Label(label="reverseloop-dev", xalign=1)
+        signature.set_halign(Gtk.Align.END)
+        signature.set_opacity(0.45)
+        signature.get_style_context().add_class("subtitle")
+        outer.pack_end(signature, False, False, 0)
+
         self.window.show_all()
 
     def css(self, c: dict[str, str]) -> str:

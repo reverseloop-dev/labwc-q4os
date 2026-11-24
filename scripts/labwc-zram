@@ -657,6 +657,12 @@ def run_gui() -> int:
             footer.get_style_context().add_class("footer")
             outer.pack_end(footer, False, False, 0)
 
+            signature = Gtk.Label(label="reverseloop-dev", xalign=1)
+            signature.set_halign(Gtk.Align.END)
+            signature.set_opacity(0.45)
+            signature.get_style_context().add_class("footer")
+            outer.pack_end(signature, False, False, 0)
+
             self.refresh()
             GLib.timeout_add_seconds(2, self.refresh)
 
