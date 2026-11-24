@@ -1,0 +1,83 @@
+# Changelog — labwc-q4os
+
+Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
+
+## [1.15.0]
+
+- Aggiornamento incrementale: il bootstrap usa una cache e scarica solo le modifiche
+  (`git fetch --depth 1`), poi pulisce i file extra e verifica SHA256SUMS.
+- `LABWC_Q4OS_FRESH=1` per forzare un clone pulito.
+- Nuova finestra **Storico versioni** nel pannello aggiornamenti.
+- Quando è disponibile una nuova versione, la finestra mostra **Cosa c'è di nuovo**.
+- `CHANGELOG.md` installato e letto dall'app; storico versioni sempre consultabile.
+
+## [1.14.1]
+
+- Rimozione delle app preferite solo da **Gestisci app e preferite** (tasto destro sulla riga).
+- Rimosso il sottomenu “Rimuovi dai preferiti” dal menu desktop.
+- Aggiunto il promemoria del tasto destro nel footer dell’app.
+
+## [1.14.0]
+
+- Sfondi 2560×1440 pre-generati nel repository: l’installazione li copia in pochi istanti
+  invece di rigenerarli (prima ~109 secondi).
+- Firma ASCII `by Reverseloop-dev` a fine installazione e aggiornamento.
+
+## [1.13.0]
+
+- Prima domanda: modificare i parametri o aggiornare subito con le opzioni salvate.
+- Aggiornamento rapido senza domande, solo password `sudo`; flag `--quick` e `--configure`.
+
+## [1.12.3]
+
+- Ordinamento alfabetico garantito in tutti i sottomenu, ignorando maiuscole e accenti.
+- Validazione automatica dell’ordine del menu.
+
+## [1.12.2]
+
+- Sottomenu, categorie, preferite e strumenti ordinati alfabeticamente.
+
+## [1.12.1]
+
+- Il menu viene ricaricato alla chiusura delle Preferenze e dopo modifiche da App nel menu/Fuzzel.
+
+## [1.12.0]
+
+- Nuovo sottomenu **TOOL reverseloop** con tutti gli strumenti del progetto.
+
+## [1.11.5]
+
+- Cambio layout del tema di login corretto: invalidazione cache QML di SDDM.
+
+## [1.11.0]
+
+- Tutte le domande dell’installer all’inizio.
+- Chromium installato solo se manca o se mancano gli addon, con consenso; niente reinstallazioni.
+
+## [1.10.x]
+
+- Login Noctalia rapido: `offline_mode`, nessun timeout DNS.
+- Bluetooth mascherato se non c’è adattatore (eliminati 25 s di attesa).
+- SDDM Qt6: `QtVersion=6` e drop-in `zz-labwc-q4os.conf`.
+- Tastiera virtuale solo con touchscreen.
+- Firma semitrasparente nelle app.
+
+## [1.9.x]
+
+- Bootstrap con verifica SHA256SUMS e ancora di fiducia.
+- Controllo origin del repository.
+- Rimozione helper root non necessario; fix permessi e quoting.
+
+## [1.5 – 1.8]
+
+- Shell esclusiva: Noctalia oppure Waybar + Fuzzel, con rimozione dei pacchetti dell’altra shell.
+- Sfondi del progetto nella galleria Noctalia.
+- Aggiornamento interattivo nel terminale.
+- Doppia/una ricarica automatica dopo il login e watchdog per barra/sfondo.
+- Fix `labwc -C` (directory configurazione).
+
+## [1.0 – 1.4]
+
+- Prima release con labwc, Waybar, Fuzzel, temi, tre login SDDM, ZRAM, Doctor e aggiornamenti.
+- Touchscreen con wvkbd/lisgd.
+- Chromium con uBlock Origin Lite e Privacy Badger.

@@ -1122,6 +1122,7 @@ python3 "$REPO_DIR/scripts/generate-icons.py" --all \
     --themes-dir "$SHARE/themes" --output "$SHARE/icons" >/dev/null
 ok "Icone generate in $SHARE/icons"
 install -m 0644 "$REPO_DIR/VERSION" "$SHARE/VERSION"
+install -m 0644 "$REPO_DIR/CHANGELOG.md" "$SHARE/CHANGELOG.md"
 printf 'version=%s\ninstalled=%s\nrepo=%s\n' \
     "$(head -n1 "$REPO_DIR/VERSION" | tr -d '[:space:]')" \
     "$(date -Iseconds)" \

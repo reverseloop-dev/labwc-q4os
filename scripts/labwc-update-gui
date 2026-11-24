@@ -15,6 +15,7 @@ import fcntl
 import getpass
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -43,6 +44,11 @@ ROOT_HELPER = Path("/usr/local/libexec/labwc-q4os/update-toggle")
 POPUP_SECONDS = 15
 STATUS = STATE / "update-status.json"
 REPO = "https://github.com/reverseloop-dev/labwc-q4os"
+CHANGELOG = SHARE / "CHANGELOG.md"
+CHANGELOG_CACHE = STATE / "changelog.md"
+CHANGELOG_URL = (
+    "https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/CHANGELOG.md"
+)
 COMMAND = (
     "curl -fsSL --proto '=https' --proto-redir '=https' --tlsv1.2 "
     "https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh | bash"
@@ -79,6 +85,69 @@ def acquire_single_instance() -> bool:
         pass
     return True
 
+
+
+def version_tuple(value: str) -> tuple[int, ...]:
+    parts = re.findall(r"\d+", value)
+    return tuple(int(part) for part in parts) if parts else (0,)
+
+
+def read_changelog() -> str:
+    for path in (CHANGELOG, CHANGELOG_CACHE):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if text.strip():
+            return text
+    return ""
+
+
+def fetch_changelog() -> None:
+    """Scarica lo storico aggiornato; non blocca l'aggiornamento se fallisce."""
+    try:
+        result = subprocess.run(
+            [
+                "curl", "-fsSL", "--proto", "=https", "--proto-redir", "=https",
+                "--max-time", "8", CHANGELOG_URL,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=12,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return
+    if result.returncode != 0 or not result.stdout.strip():
+        return
+    try:
+        STATE.mkdir(parents=True, exist_ok=True)
+        CHANGELOG_CACHE.write_text(result.stdout, encoding="utf-8")
+    except OSError:
+        pass
+
+
+def changelog_since(installed: str) -> str:
+    text = read_changelog()
+    if not text:
+        return "Storico versioni non disponibile."
+    current = version_tuple(installed)
+    sections = re.findall(
+        r"^## \[([^\]]+)\]\s*$\n?(.*?)(?=^## \[|\Z)",
+        text,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    newer = [
+        (version, body.strip())
+        for version, body in sections
+        if re.search(r"\d", version) and version_tuple(version) > current
+    ]
+    if not newer:
+        return f"Nessuna nota disponibile per versioni successive alla {installed}."
+    chunks = []
+    for version, body in newer:
+        chunks.append(f"Versione {version}\n{body}")
+    return "\n\n".join(chunks)
 
 
 def theme_colors() -> dict[str, str]:
@@ -236,12 +305,15 @@ class UpdateWindow:
         copy_button.connect("clicked", self.on_copy)
         repo_button = Gtk.Button(label="Apri repository")
         repo_button.connect("clicked", self.on_repo)
+        history_button = Gtk.Button(label="Storico versioni")
+        history_button.connect("clicked", self.on_history)
         close_button = Gtk.Button(label="Chiudi")
         close_button.connect("clicked", lambda _b: self.window.destroy())
         buttons.pack_start(self.upgrade_button, False, False, 0)
         buttons.pack_start(self.check_button, False, False, 0)
         buttons.pack_start(copy_button, False, False, 0)
         buttons.pack_start(repo_button, False, False, 0)
+        buttons.pack_start(history_button, False, False, 0)
         buttons.pack_end(close_button, False, False, 0)
         outer.pack_start(buttons, False, False, 0)
 
@@ -285,6 +357,8 @@ class UpdateWindow:
             except (OSError, subprocess.SubprocessError):
                 pass
             data = self.read_status()
+            if data.get("available"):
+                fetch_changelog()
             self.GLib.idle_add(self.after_update_check, data)
 
         threading.Thread(target=worker, daemon=True).start()
@@ -346,7 +420,7 @@ class UpdateWindow:
             transient_for=self.window,
             modal=True,
         )
-        dialog.set_default_size(560, 240)
+        dialog.set_default_size(680, 560)
         dialog.set_border_width(16)
         box = dialog.get_content_area()
         heading = Gtk.Label(xalign=0)
@@ -364,6 +438,20 @@ class UpdateWindow:
         detail.get_style_context().add_class("subtitle")
         box.pack_start(heading, False, False, 0)
         box.pack_start(detail, False, False, 0)
+
+        news_title = Gtk.Label(label="Cosa c'è di nuovo", xalign=0)
+        news_title.set_markup("<b>Cosa c'è di nuovo</b>")
+        box.pack_start(news_title, False, False, 0)
+        news_scroll = Gtk.ScrolledWindow()
+        news_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        news_scroll.set_vexpand(True)
+        news_view = Gtk.TextView()
+        news_view.set_editable(False)
+        news_view.set_cursor_visible(False)
+        news_view.set_monospace(True)
+        news_view.get_buffer().set_text(changelog_since(installed))
+        news_scroll.add(news_view)
+        box.pack_start(news_scroll, True, True, 0)
 
         dialog.add_button("Annulla", Gtk.ResponseType.CANCEL)
         copy_button = dialog.add_button("Copia comando", Gtk.ResponseType.APPLY)
@@ -533,6 +621,35 @@ class UpdateWindow:
 
     def on_repo(self, _button) -> None:
         subprocess.Popen(["xdg-open", REPO], start_new_session=True)
+
+    def on_history(self, _button) -> None:
+        Gtk = self.Gtk
+        text = read_changelog()
+        if not text:
+            fetch_changelog()
+            text = read_changelog() or "Storico versioni non disponibile."
+        dialog = Gtk.Dialog(
+            title="Storico versioni labwc-q4os",
+            transient_for=self.window,
+            modal=True,
+        )
+        dialog.set_default_size(760, 560)
+        dialog.set_border_width(12)
+        box = dialog.get_content_area()
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_vexpand(True)
+        view = Gtk.TextView()
+        view.set_editable(False)
+        view.set_cursor_visible(False)
+        view.set_monospace(True)
+        view.get_buffer().set_text(text)
+        scroll.add(view)
+        box.pack_start(scroll, True, True, 0)
+        dialog.add_button("Chiudi", Gtk.ResponseType.CLOSE)
+        dialog.show_all()
+        dialog.run()
+        dialog.destroy()
 
     def present_window(self) -> bool:
         self.window.present()

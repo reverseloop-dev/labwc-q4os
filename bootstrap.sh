@@ -2,23 +2,16 @@
 # =============================================================================
 #  labwc-q4os — bootstrap per installazione one-liner
 #
-#  Clona il repository in una directory temporanea privata, verifica che i
-#  file non siano stati modificati (SHA256SUMS con hash del manifest fissato
-#  qui sotto) e lancia install.sh.
-#
-#  ATTENZIONE: questa e' una verifica di INTEGRITA', non di autenticita'.
-#  Se il repository main e questo bootstrap vengono compromessi insieme,
-#  l'ancora di fiducia e' compromessa. Per la massima sicurezza scarica il
-#  bootstrap da una release firmata e confronta il suo SHA256 con quello
-#  pubblicato ufficialmente, poi eseguilo.
+#  Usa una copia cache del repository e scarica solo le modifiche (fetch
+#  incrementale). Verifica sempre origin, SHA256SUMS e ancora di fiducia.
+#  Con LABWC_Q4OS_FRESH=1 ignora la cache e clona in una directory temporanea.
 # =============================================================================
 set -euo pipefail
 
 REPO_URL="https://github.com/reverseloop-dev/labwc-q4os.git"
 REPO_HTTPS="https://github.com/reverseloop-dev/labwc-q4os"
-# Hash del file SHA256SUMS del repository (aggiornato a ogni release da
-# scripts/make-checksums). Se un file viene modificato, la verifica fallisce.
-MANIFEST_SHA256="1000afa26a015d2a42b55afc9def8f730ded065f4179ab6c3f2447abfd57cedb"
+CACHE="${LABWC_Q4OS_CACHE:-$HOME/.cache/labwc-q4os-src}"
+MANIFEST_SHA256="__MANIFEST_SHA256__"
 
 die() { printf '[labwc-q4os] ERRORE: %s\n' "$*" >&2; exit 1; }
 
@@ -29,17 +22,48 @@ if ! command -v sha256sum >/dev/null 2>&1; then
     die "sha256sum non trovato (pacchetto coreutils)."
 fi
 
-# Directory temporanea privata: nessun riuso di cache scrivibile, nessun
-# rischio di cancellare una directory esistente indicata dall'utente.
-WORK="$(mktemp -d "${TMPDIR:-/tmp}/labwc-q4os.XXXXXX")"
-chmod 0700 "$WORK"
-cleanup() { rm -rf "$WORK"; }
+WORK=""
+cleanup() { [ -n "$WORK" ] && rm -rf "$WORK"; }
 trap cleanup EXIT
-DEST="$WORK/src"
 
-printf '[labwc-q4os] Download sorgenti verificati...\n'
-git clone --depth 1 --branch main "$REPO_URL" "$DEST" ||
-    die "clone del repository non riuscito."
+cache_usable=0
+if [ "${LABWC_Q4OS_FRESH:-0}" != "1" ] && [ -d "$CACHE/.git" ]; then
+    cache_origin="$(git -C "$CACHE" remote get-url origin 2>/dev/null || true)"
+    case "$cache_origin" in
+        "$REPO_URL"|"$REPO_HTTPS"|"$REPO_HTTPS.git") cache_usable=1 ;;
+    esac
+fi
+
+if [ "$cache_usable" -eq 1 ]; then
+    DEST="$CACHE"
+    printf '[labwc-q4os] Aggiornamento incrementale dalla cache...\n'
+    git -c core.hooksPath=/dev/null -c core.fsmonitor=false \
+        -C "$DEST" fetch --depth 1 origin main >/dev/null 2>&1 ||
+        die "fetch incrementale non riuscito (usa LABWC_Q4OS_FRESH=1)."
+    git -c core.hooksPath=/dev/null -c core.fsmonitor=false \
+        -C "$DEST" reset --hard FETCH_HEAD >/dev/null 2>&1 ||
+        die "reset della cache non riuscito."
+    git -C "$DEST" clean -fdx >/dev/null 2>&1 || true
+else
+    if [ ! -e "$CACHE" ]; then
+        mkdir -p "$(dirname "$CACHE")"
+        printf '[labwc-q4os] Primo download sorgenti verificati...\n'
+        if git clone --depth 1 --branch main "$REPO_URL" "$CACHE"; then
+            DEST="$CACHE"
+        else
+            rm -rf "$CACHE"
+            DEST=""
+        fi
+    fi
+    if [ -z "${DEST:-}" ]; then
+        WORK="$(mktemp -d "${TMPDIR:-/tmp}/labwc-q4os.XXXXXX")"
+        chmod 0700 "$WORK"
+        DEST="$WORK/src"
+        printf '[labwc-q4os] Download sorgenti verificati...\n'
+        git clone --depth 1 --branch main "$REPO_URL" "$DEST" ||
+            die "clone del repository non riuscito."
+    fi
+fi
 
 origin="$(git -C "$DEST" remote get-url origin 2>/dev/null || true)"
 case "$origin" in
