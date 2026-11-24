@@ -57,7 +57,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.11.1**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.11.2**
 
 ---
 
@@ -107,10 +107,12 @@ un ambiente sobrio.**
   chiusura dopo 15 s e aggiornamento nel terminale che rifà le domande.
 - zram e swappiness configurabili durante l'installazione.
 
-**In sintesi, l'installer chiede:** se il PC ha un touchscreen, quale shell
-usare (Waybar + Fuzzel o Noctalia v5), se installare LookSwitcher per Trinity
-(solo se Trinity è presente) e, quando serve, se passare a SDDM. Ogni domanda
-ha un flag corrispondente (`--touch`, `--shell`, `--lookswitcher`, `--sddm`).
+**In sintesi, l'installer chiede tutto all'inizio:** layout tastiera, zram,
+swappiness, touchscreen, LookSwitcher (solo con Trinity), shell (Waybar +
+Fuzzel o Noctalia v5), display manager se serve, tema iniziale e Chromium
+(solo se manca qualcosa). Poi esegue l'installazione. Ogni domanda ha un flag
+corrispondente (`--keyboard`, `--zram`, `--touch`, `--lookswitcher`,
+`--shell`, `--sddm`, `--theme`, `--chromium`).
 
 ---
 
@@ -272,15 +274,24 @@ manager non viene toccato; in tal caso si può avviare Labwc da TTY con
 
 ### Chromium ed estensioni
 
-Se **Chromium** non è presente, l'installer lo installa da apt. Scrive poi la
-policy `/etc/chromium/policies/managed/labwc-q4os-extensions.json`, che al
+Chromium **non viene reinstallato a ogni esecuzione**. L'installer controlla
+prima cosa manca:
+
+- Chromium assente → chiede se installarlo con **uBlock Origin Lite** e
+  **Privacy Badger**; se rispondi no, non installa né Chromium né addon;
+- Chromium presente ma policy mancante → chiede se aggiungere solo le
+  estensioni mancanti;
+- Chromium e policy presenti → nessuna domanda e nessuna modifica.
+
+La policy è `/etc/chromium/policies/managed/labwc-q4os-extensions.json` e al
 primo avvio installa dal Chrome Web Store:
 
 - **uBlock Origin Lite** (`ddkjiahejlhfcafbddmgiahcphecmpfh`);
 - **Privacy Badger** (`pkehgijcmpdhfbdbbnkijodmdjhbjlgp`).
 
-Le estensioni risultano installate dall'amministratore: non serve aggiungerle
-a mano. Con `--skip-apt` la policy viene scritta solo se Chromium esiste già.
+Flag: `--chromium` (installa solo ciò che manca) e `--no-chromium` (non tocca
+nulla). Con `--skip-apt` Chromium non può essere installato, ma la policy
+viene aggiunta se Chromium è già presente.
 
 ### Touchscreen
 
@@ -402,6 +413,7 @@ cd labwc-q4os
 | `--touch` / `--no-touch` | Installa o esclude tastiera su schermo e gesti touch |
 | `--shell waybar\|noctalia` | Barra/launcher: Waybar+Fuzzel (default) o Noctalia v5 |
 | `--lookswitcher` / `--no-lookswitcher` | Selettore temi LookSwitcher per Trinity (solo Trinity) |
+| `--chromium` / `--no-chromium` | Installa Chromium e/o le estensioni mancanti, oppure non toccare nulla |
 | `--swappiness N` | Imposta `vm.swappiness` a `N` (0–200) |
 | `--no-swappiness` | Non modificare `vm.swappiness` |
 | `--sddm` | Installa e attiva SDDM se TDM non supporta Wayland |
@@ -410,20 +422,30 @@ cd labwc-q4os
 | `--force-os` | Procede anche su distribuzioni non Debian |
 | `--help` | Aiuto |
 
-Durante l'esecuzione lo script chiede:
+**Tutte le domande sono all'inizio**, prima di `sudo` e di qualsiasi modifica.
+Dopo il riepilogo parte l'installazione con le scelte fatte; con `--yes` non
+viene chiesto nulla e si usano i default.
 
-1. **zram** — RAM compressa con `zstd`, 50% della RAM. Migliora la reattività
-   su macchine con 4–8 GB.
-2. **swappiness** — parametri `vm.swappiness` e `vm.vfs_cache_pressure`
+1. **layout tastiera** — rilevato dal sistema (`it`, `us`, `it,us`), saltato
+   con `--keyboard` o `--yes`.
+2. **zram** — RAM compressa con `zstd`, 50% della RAM. Migliora la reattività
+   soprattutto su macchine con 2–8 GB.
+3. **swappiness** — parametri `vm.swappiness` e `vm.vfs_cache_pressure`
    persistenti in `/etc/sysctl.d/99-labwc-performance.conf`.
-3. **touchscreen** — se il PC ha un pannello touch, installa tastiera su
+4. **touchscreen** — se il PC ha un pannello touch, installa tastiera su
    schermo e gesti (default sì se viene rilevato).
-4. **shell desktop** — Waybar + Fuzzel (default, leggero) oppure Noctalia v5
-   (shell integrata, più risorse; repository APT di terze parti).
 5. **LookSwitcher** — solo se Trinity è installato: selettore di temi per la
-   sessione Trinity; non tocca labwc (saltata con `--skip-apt`).
-6. **display manager** — solo se è attivo TDM: propone SDDM per rendere
+   sessione Trinity; non tocca labwc.
+6. **shell desktop** — Waybar + Fuzzel (default, leggero) oppure Noctalia v5
+   (shell integrata, più risorse; repository APT di terze parti).
+7. **display manager** — solo se è attivo TDM: propone SDDM per rendere
    Labwc selezionabile al login (TDM resta installato).
+8. **tema iniziale** — blu Nordic Cobalt, rosso Muted Crimson o verde Sage
+   Emerald.
+9. **Chromium** — solo se manca Chromium o mancano le estensioni: chiede se
+   installare Chromium con uBlock Origin Lite/Privacy Badger, oppure solo gli
+   addon mancanti. Se rispondi no, non installa nulla. Se è già tutto
+   presente, la domanda non viene mostrata.
 
 Scelta tecnica trasparente: con zram lo swap avviene in RAM compressa, quindi
 `vm.swappiness=100` è desiderabile e non consuma il disco. Senza zram il
