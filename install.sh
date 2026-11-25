@@ -1753,6 +1753,10 @@ do
     install -m 0755 "$REPO_DIR/scripts/$helper" "$BIN/$helper"
 done
 
+# Migrazione: il vecchio visualizzatore "YouTube leggero" e' stato sostituito
+# da gtk-pipe-viewer. Rimuove i residui delle versioni precedenti.
+rm -f "$BIN/labwc-youtube" "$APPDATA/labwc-youtube.desktop"
+
 # -----------------------------------------------------------------------------
 # Configurazioni utente
 # -----------------------------------------------------------------------------

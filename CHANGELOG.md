@@ -2,6 +2,13 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.19.2]
+
+- Rimossi i residui del vecchio **YouTube leggero** (`labwc-youtube` e la sua
+  voce .desktop) anche dagli aggiornamenti esistenti.
+- **gtk-pipe-viewer** resta incluso nello script, con configurazione 360p e
+  massima efficienza; la voce compare nel menu applicazioni.
+
 ## [1.19.1]
 
 - Corretto il crash del wizard alla voce “Sì” (`trinity_present` non
