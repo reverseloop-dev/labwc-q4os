@@ -206,17 +206,5 @@ if command -v xdg-user-dirs-update >/dev/null 2>&1 && [ ! -f "$CONFIG/user-dirs.
     xdg-user-dirs-update || true
 fi
 
-# Una sola ricarica automatica dopo il login: su alcuni login (Plasma/SDDM)
-# Waybar e lo sfondo falliscono il primo avvio; il reload li riavvia.
-# Una sola per mostrare un solo avviso "Desktop ricaricato".
-if [ "${LABWC_Q4OS_NO_AUTO_RELOAD:-0}" != "1" ] &&
-    pgrep -x labwc >/dev/null 2>&1 && [ -x "$HOME/.local/bin/labwc-reload" ]; then
-    (
-        sleep 3
-        "$HOME/.local/bin/labwc-reload" >>"$LOG" 2>&1 || true
-        printf 'auto-reload: desktop ricaricato\n'
-    ) &
-fi
-
 printf '===== sessione pronta =====\n'
 exit 0

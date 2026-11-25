@@ -48,6 +48,8 @@ Finestre:
 
 Mouse:
   • Tasto destro sul desktop ....... menu completo labwc
+  • File manager > RIDOTTO AD ICONA .. finestre ridotte; clic per ripristinare
+  • YouTube leggero ................ GUI mpv + yt-dlp, senza browser
   • Doppio clic sinistro sul desktop guida, scorciatoie e informazioni di sistema
   • Tasto destro sul titolo ........ menu della finestra
   • Rotellina sul desktop .......... cambia desktop
@@ -447,9 +449,9 @@ Mostra:
     contenere solo nordic-cobalt, muted-crimson o sage-emerald.
   • Schermo nero dopo il login Wayland: verifica i driver Mesa e
     riprova con un'altra sessione dal display manager.
-  • Se barra e sfondo compaiono solo dopo "Ricarica menu e desktop", la
-    sessione esegue ora una ricarica automatica dopo 3 s (un solo avviso).
-    Log: ~/.local/state/labwc-q4os/session.log
+  • Se barra e sfondo non compaiono, usa "Ricarica menu e desktop"
+    (Super+Shift+R). La vecchia ricarica automatica con popup è stata
+    rimossa. Log: ~/.local/state/labwc-q4os/session.log
   • Login Plasma/Breeze e labwc senza barra o con menu minimo: l'installer
     scrive /etc/sddm.conf.d/zz-labwc-q4os.conf e usa il wrapper
     /usr/local/libexec/labwc-q4os/labwc-session, che ripara la configurazione.

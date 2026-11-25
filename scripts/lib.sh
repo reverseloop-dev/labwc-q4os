@@ -91,6 +91,14 @@ ask_choice() {
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
+note() {
+    if [ -r /dev/tty ]; then
+        printf '  %s\n' "$*" >/dev/tty
+    else
+        printf '  %s\n' "$*"
+    fi
+}
+
 # Prompt libero con default e validazione regex opzionale.
 ask_input() {
     local question="$1" default="$2" pattern="${3:-}" answer

@@ -48,8 +48,10 @@ ENABLE_ZRAM=""
 ENABLE_SWAPPINESS=""
 ENABLE_TOUCH=""
 WANT_LOOKSWITCHER=""
-WANT_CHROMIUM=""
+WANT_BROWSER=""
+REMOVE_BROWSER=""
 WANT_QPDFVIEW=""
+WANT_YOUTUBE=""
 QUICK_UPDATE=""
 INSTALL_OPTIONS="${LABWC_Q4OS_OPTIONS:-/etc/labwc-q4os/install-options}"
 PARAM_FLAGS=0
@@ -79,10 +81,15 @@ Opzioni:
   --no-touch          Disattiva la configurazione touchscreen
   --lookswitcher      Installa LookSwitcher, selettore temi per Trinity (solo Trinity)
   --no-lookswitcher   Non proporre/installare LookSwitcher
-  --chromium          Installa Chromium e/o le estensioni mancanti senza chiedere
-  --no-chromium       Non installare Chromium né le estensioni
+  --browser NOME      Browser: chromium|librewolf|none (default: chromium)
+  --chromium          Scegli Chromium senza chiedere (compatibilità)
+  --librewolf         Scegli LibreWolf senza chiedere
+  --no-chromium       Nessun browser (compatibilità)
+  --no-browser        Nessun browser
   --qpdfview          Installa qpdfview (lettore PDF leggero) senza chiedere
   --no-qpdfview       Non installare qpdfview
+  --youtube           Installa YouTube leggero (mpv + yt-dlp)
+  --no-youtube        Non installare YouTube leggero
   --quick             Aggiorna senza domande, usando le opzioni salvate
   --configure         Chiedi comunque tutti i parametri prima di aggiornare
   --shell NOME        Shell desktop: waybar|noctalia (default: waybar)
@@ -122,10 +129,17 @@ while [ "$#" -gt 0 ]; do
         --no-touch) ENABLE_TOUCH=0; shift ;;
         --lookswitcher) WANT_LOOKSWITCHER=1; shift ;;
         --no-lookswitcher) WANT_LOOKSWITCHER=0; shift ;;
-        --chromium) WANT_CHROMIUM=1; shift ;;
-        --no-chromium) WANT_CHROMIUM=0; shift ;;
+        --browser)
+            [ "$#" -ge 2 ] || die "--browser richiede un valore (chromium|librewolf|none)"
+            WANT_BROWSER="$2"; shift 2 ;;
+        --browser=*) WANT_BROWSER="${1#*=}"; shift ;;
+        --chromium) WANT_BROWSER=chromium; shift ;;
+        --librewolf) WANT_BROWSER=librewolf; shift ;;
+        --no-chromium|--no-browser) WANT_BROWSER=none; shift ;;
         --qpdfview) WANT_QPDFVIEW=1; shift ;;
         --no-qpdfview) WANT_QPDFVIEW=0; shift ;;
+        --youtube) WANT_YOUTUBE=1; shift ;;
+        --no-youtube) WANT_YOUTUBE=0; shift ;;
         --quick) QUICK_UPDATE=1; shift ;;
         --configure) QUICK_UPDATE=0; shift ;;
         --shell)
@@ -141,6 +155,13 @@ while [ "$#" -gt 0 ]; do
     esac
 done
 
+if [ -n "$WANT_BROWSER" ]; then
+    case "$WANT_BROWSER" in
+        chromium|librewolf|none) ;;
+        *) die "Valore --browser non valido: $WANT_BROWSER (chromium|librewolf|none)" ;;
+    esac
+fi
+
 if [ -n "$WANT_SHELL" ]; then
     case "$WANT_SHELL" in
         waybar|noctalia) ;;
@@ -148,7 +169,7 @@ if [ -n "$WANT_SHELL" ]; then
     esac
 fi
 
-if [ -n "$THEME$ENABLE_ZRAM$ENABLE_SWAPPINESS$ENABLE_TOUCH$WANT_LOOKSWITCHER$WANT_SHELL$WANT_SDDM$XKB_LAYOUT$WANT_CHROMIUM$WANT_QPDFVIEW$SWAPPINESS_VALUE" ]; then
+if [ -n "$THEME$ENABLE_ZRAM$ENABLE_SWAPPINESS$ENABLE_TOUCH$WANT_LOOKSWITCHER$WANT_SHELL$WANT_SDDM$XKB_LAYOUT$WANT_BROWSER$WANT_QPDFVIEW$WANT_YOUTUBE$SWAPPINESS_VALUE" ]; then
     PARAM_FLAGS=1
 fi
 
@@ -181,13 +202,22 @@ load_saved_options() {
     if [[ "$value" =~ ^[a-z]{2}(-[a-zA-Z0-9]+)?(,[a-z]{2}(-[a-zA-Z0-9]+)?)*$ ]]; then
         XKB_LAYOUT="$value"
     fi
-    value="$(option_value CHROMIUM || true)"
+    value="$(option_value BROWSER || true)"
     case "$value" in
-        0|1) WANT_CHROMIUM="$value" ;;
-        *) WANT_CHROMIUM=0 ;;
+        chromium|librewolf|none) WANT_BROWSER="$value" ;;
     esac
+    if [ -z "$WANT_BROWSER" ]; then
+        # Migrazione dalle vecchie opzioni: CHROMIUM=1/0.
+        value="$(option_value CHROMIUM || true)"
+        case "$value" in
+            1) WANT_BROWSER=chromium ;;
+            0) WANT_BROWSER=none ;;
+        esac
+    fi
     value="$(option_value QPDFVIEW || true)"
     case "$value" in 0|1) WANT_QPDFVIEW="$value" ;; esac
+    value="$(option_value YOUTUBE || true)"
+    case "$value" in 0|1) WANT_YOUTUBE="$value" ;; esac
     value="$(option_value KEEP_TDM || true)"
     case "$value" in
         1) WANT_SDDM=0 ;;
@@ -201,6 +231,7 @@ load_saved_options() {
 # esiste il file opzioni e si procede con la configurazione normale.
 if [ "$ASSUME_YES" -eq 0 ] && [ -z "$QUICK_UPDATE" ] && [ "$PARAM_FLAGS" -eq 0 ] &&
     [ -r "$INSTALL_OPTIONS" ] && [ -r /dev/tty ]; then
+    note "Sì: riapri le scelte. No: usa le opzioni salvate e aggiorna subito."
     if ask_yes_no "Vuoi modificare i parametri prima di aggiornare? (No = usa le opzioni salvate e aggiorna subito)" no; then
         QUICK_UPDATE=0
     else
@@ -235,6 +266,107 @@ theme_label() {
         sage-emerald) printf 'Verde salvia — Sage Emerald' ;;
         *) printf '%s' "$1" ;;
     esac
+}
+
+browser_label() {
+    case "$1" in
+        chromium) printf 'Chromium' ;;
+        librewolf) printf 'LibreWolf' ;;
+        *) printf 'nessuno' ;;
+    esac
+}
+
+# GUI unica (zenity) per le scelte di installazione. Con --yes, --quick o
+# flag espliciti non viene usata. Se zenity manca o non c'e' un display,
+# l'installer continua con le domande nella shell.
+gui_choices() {
+    local browser shell selection item touch_default
+    local chromium_here=0 librewolf_here=0
+
+    if have chromium || have chromium-browser; then chromium_here=1; fi
+    if have librewolf; then librewolf_here=1; fi
+
+    local browser_default="chromium"
+    if [ "$chromium_here" -eq 0 ] && [ "$librewolf_here" -eq 1 ]; then
+        browser_default="librewolf"
+    fi
+    local chromium_mark="FALSE" librewolf_mark="FALSE" none_mark="FALSE"
+    case "$browser_default" in
+        chromium) chromium_mark="TRUE" ;;
+        librewolf) librewolf_mark="TRUE" ;;
+        *) none_mark="TRUE" ;;
+    esac
+
+    selection="$(zenity --list --radiolist \
+        --title="labwc-q4os — Browser" \
+        --text="Scegli il browser da installare. Se è già presente non viene reinstallato." \
+        --column="Scelta" --column="Browser" --width=780 --height=330 \
+        "$chromium_mark" "chromium|Chromium — massima compatibilità con le web app; estensioni dal Chrome Web Store." \
+        "$librewolf_mark" "librewolf|LibreWolf — Firefox senza telemetria, più privacy; repository esterno e estensioni Mozilla." \
+        "$none_mark" "none|Nessuno — non installare e non modificare nessun browser." \
+        2>/dev/null)" || return 1
+    case "${selection%%|*}" in
+        chromium|librewolf|none) WANT_BROWSER="${selection%%|*}" ;;
+        *) WANT_BROWSER=none ;;
+    esac
+
+    local shell_default="${WANT_SHELL:-waybar}"
+    local waybar_mark="FALSE" noctalia_mark="FALSE"
+    [ "$shell_default" = "noctalia" ] && noctalia_mark="TRUE" || waybar_mark="TRUE"
+    selection="$(zenity --list --radiolist \
+        --title="labwc-q4os — Barra desktop" \
+        --text="Scegli la shell: Waybar+Fuzzel è la più leggera; Noctalia integra barra, launcher e notifiche." \
+        --column="Scelta" --column="Shell desktop" --width=780 --height=300 \
+        "$waybar_mark" "waybar|Waybar + Fuzzel — leggerissima, consigliata con 1–2 GB di RAM." \
+        "$noctalia_mark" "noctalia|Noctalia v5 — shell integrata, più comoda ma usa più RAM." \
+        2>/dev/null)" || return 1
+    case "${selection%%|*}" in
+        waybar|noctalia) WANT_SHELL="${selection%%|*}" ;;
+        *) WANT_SHELL=waybar ;;
+    esac
+
+    touch_default="FALSE"
+    if [ -n "$("$REPO_DIR/scripts/labwc-touchscreen" 2>/dev/null | tr -d '[:space:]' || true)" ]; then
+        touch_default="TRUE"
+    fi
+    local -a gui_rows=(
+        "TRUE" "zram|zram (RAM compressa zstd) — più reattività, soprattutto con 2–8 GB."
+        "TRUE" "swappiness|vm.swappiness e vfs_cache_pressure — swap più intelligente."
+        "$touch_default" "touch|Touchscreen — tastiera su schermo wvkbd e gesti lisgd."
+    )
+    if command -v starttde >/dev/null 2>&1 || [ -d /etc/trinity ] ||
+        dpkg -s tdebase-trinity >/dev/null 2>&1; then
+        gui_rows+=("FALSE" "lookswitcher|LookSwitcher per Trinity — selettore temi Q4OS; non cambia labwc.")
+    fi
+    gui_rows+=(
+        "TRUE" "qpdfview|qpdfview — lettore PDF leggero, senza browser."
+        "TRUE" "youtube|YouTube leggero — GUI con mpv + yt-dlp, 720p e poca RAM."
+    )
+
+    selection="$(zenity --list --checklist \
+        --title="labwc-q4os — Componenti" \
+        --text="Spunta quello che vuoi installare. Le scelte non spuntate non verranno installate." \
+        --column="Scelta" --column="Componenti da installare" --separator=";" \
+        --width=820 --height=430 "${gui_rows[@]}" 2>/dev/null)" || return 1
+
+    ENABLE_ZRAM=0
+    ENABLE_SWAPPINESS=0
+    ENABLE_TOUCH=0
+    WANT_LOOKSWITCHER=0
+    WANT_QPDFVIEW=0
+    WANT_YOUTUBE=0
+    IFS=';' read -r -a _gui_items <<< "$selection"
+    for item in "${_gui_items[@]}"; do
+        case "${item%%|*}" in
+            zram) ENABLE_ZRAM=1 ;;
+            swappiness) ENABLE_SWAPPINESS=1 ;;
+            touch) ENABLE_TOUCH=1 ;;
+            lookswitcher) WANT_LOOKSWITCHER=1 ;;
+            qpdfview) WANT_QPDFVIEW=1 ;;
+            youtube) WANT_YOUTUBE=1 ;;
+        esac
+    done
+    return 0
 }
 
 # -----------------------------------------------------------------------------
@@ -373,26 +505,42 @@ printf '\n%s%s labwc-q4os %s\n' "$C_BOLD" "$C_CYAN" "$C_RESET"
 printf '%sDesktop Wayland moderno per Q4OS / Debian%s\n' "$C_DIM" "$C_RESET"
 printf '%sreverseloop-dev · https://github.com/reverseloop-dev/labwc-q4os%s\n\n' "$C_DIM" "$C_RESET"
 
+if [ "$ASSUME_YES" -eq 0 ] && [ "$QUICK_UPDATE" != "1" ] && [ "$PARAM_FLAGS" -eq 0 ] &&
+    [ "${LABWC_Q4OS_NO_GUI:-0}" != "1" ] && [ -r /dev/tty ] &&
+    [ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ] && command -v zenity >/dev/null 2>&1; then
+    if ! gui_choices; then
+        warn "GUI non disponibile o annullata: proseguo con le domande nella shell."
+    else
+        info "Scelte della finestra acquisite."
+    fi
+fi
+
 # -----------------------------------------------------------------------------
 # Scelte prestazioni
 # -----------------------------------------------------------------------------
 if [ -z "$ENABLE_ZRAM" ]; then
     if [ "$ASSUME_YES" -eq 1 ]; then
         ENABLE_ZRAM=1
-    elif ask_yes_no "Attivare zram (RAM compressa zstd, 50%) per un sistema piu' reattivo?" yes; then
-        ENABLE_ZRAM=1
     else
-        ENABLE_ZRAM=0
+        note "zram comprime parte della RAM: più reattività su PC con poca memoria."
+        if ask_yes_no "Attivare zram (RAM compressa zstd, 50%) per un sistema piu' reattivo?" yes; then
+            ENABLE_ZRAM=1
+        else
+            ENABLE_ZRAM=0
+        fi
     fi
 fi
 
 if [ -z "$ENABLE_SWAPPINESS" ]; then
     if [ "$ASSUME_YES" -eq 1 ]; then
         ENABLE_SWAPPINESS=1
-    elif ask_yes_no "Configurare vm.swappiness e vfs_cache_pressure in modo persistente?" yes; then
-        ENABLE_SWAPPINESS=1
     else
-        ENABLE_SWAPPINESS=0
+        note "swappiness regola quanto il sistema usa lo swap; con zram conviene 100."
+        if ask_yes_no "Configurare vm.swappiness e vfs_cache_pressure in modo persistente?" yes; then
+            ENABLE_SWAPPINESS=1
+        else
+            ENABLE_SWAPPINESS=0
+        fi
     fi
 fi
 
@@ -421,10 +569,13 @@ if [ -z "$ENABLE_TOUCH" ]; then
     fi
     if [ "$ASSUME_YES" -eq 1 ]; then
         [ "$touch_default" = "yes" ] && ENABLE_TOUCH=1 || ENABLE_TOUCH=0
-    elif ask_yes_no "Il PC che stai usando ha un touchscreen? Installa tastiera su schermo e gesti touch" "$touch_default"; then
-        ENABLE_TOUCH=1
     else
-        ENABLE_TOUCH=0
+        note "Touchscreen: installa wvkbd e lisgd, con tastiera richiamabile dal basso."
+        if ask_yes_no "Il PC che stai usando ha un touchscreen? Installa tastiera su schermo e gesti touch" "$touch_default"; then
+            ENABLE_TOUCH=1
+        else
+            ENABLE_TOUCH=0
+        fi
     fi
 fi
 if [ "$ENABLE_TOUCH" -eq 1 ]; then
@@ -443,10 +594,13 @@ if [ -z "$WANT_LOOKSWITCHER" ]; then
         info "LookSwitcher: Trinity non rilevato, domanda saltata."
     elif [ "$ASSUME_YES" -eq 1 ]; then
         WANT_LOOKSWITCHER=0
-    elif ask_yes_no "Installare LookSwitcher (selettore di temi Q4OS), SOLO per la sessione Trinity? Non cambia labwc" no; then
-        WANT_LOOKSWITCHER=1
     else
-        WANT_LOOKSWITCHER=0
+        note "LookSwitcher serve solo alla sessione Trinity e non modifica labwc."
+        if ask_yes_no "Installare LookSwitcher (selettore di temi Q4OS), SOLO per la sessione Trinity? Non cambia labwc" no; then
+            WANT_LOOKSWITCHER=1
+        else
+            WANT_LOOKSWITCHER=0
+        fi
     fi
 fi
 if [ "$WANT_LOOKSWITCHER" -eq 1 ] && [ "$trinity_present" -eq 1 ]; then
@@ -475,6 +629,7 @@ if [ -z "$WANT_SHELL" ]; then
         info "     su RAM/GPU; repository APT di terze parti, solo Debian/Q4OS (amd64/arm64)."
         default_choice=1
         [ "$shell_default" = "noctalia" ] && default_choice=2
+        note "Waybar+Fuzzel è la più leggera; Noctalia integra barra, launcher e notifiche."
         choice="$(ask_choice "Shell desktop (1=Waybar+Fuzzel, 2=Noctalia v5)" "$default_choice" 1 2)"
         case "$choice" in
             1) WANT_SHELL=waybar ;;
@@ -487,10 +642,13 @@ if [ "$DM_NAME" = "tdm" ] || [ "$DM_NAME" = "tdm-trinity" ]; then
     if [ -z "$WANT_SDDM" ]; then
         if [ "$ASSUME_YES" -eq 1 ]; then
             WANT_SDDM=1
-        elif ask_yes_no "TDM non supporta Wayland. Installare e attivare SDDM per scegliere Labwc al login?" yes; then
-            WANT_SDDM=1
         else
-            WANT_SDDM=0
+            note "SDDM permette di scegliere Labwc al login; TDM resta installato."
+            if ask_yes_no "TDM non supporta Wayland. Installare e attivare SDDM per scegliere Labwc al login?" yes; then
+                WANT_SDDM=1
+            else
+                WANT_SDDM=0
+            fi
         fi
     fi
     if [ "$WANT_SDDM" -eq 0 ]; then
@@ -509,6 +667,7 @@ if [ -z "$THEME" ]; then
             muted-crimson) default_choice="2" ;;
             sage-emerald) default_choice="3" ;;
         esac
+        note "Scegli il tema iniziale: blu Nordic Cobalt, rosso Muted Crimson o verde Sage Emerald."
         choice="$(ask_choice "Tema iniziale (1=blu, 2=rosso tenue, 3=verde salvia)" "$default_choice" 1 2 3)"
         case "$choice" in
             1) THEME="nordic-cobalt" ;;
@@ -518,36 +677,47 @@ if [ -z "$THEME" ]; then
     fi
 fi
 
-if [ -z "$WANT_CHROMIUM" ]; then
-    chromium_installed=0
-    if have chromium || have chromium-browser; then
-        chromium_installed=1
-    fi
-    chromium_policy="/etc/chromium/policies/managed/labwc-q4os-extensions.json"
-    addons_ok=0
-    if [ -r "$chromium_policy" ] &&
-        grep -q 'ddkjiahejlhfcafbddmgiahcphecmpfh' "$chromium_policy" &&
-        grep -q 'pkehgijcmpdhfbdbbnkijodmdjhbjlgp' "$chromium_policy" &&
-        grep -q 'omkfmpieigblcllmkgbflkikinpkodlk' "$chromium_policy"; then
-        addons_ok=1
-    fi
-    if [ "$chromium_installed" -eq 1 ] && [ "$addons_ok" -eq 1 ]; then
-        WANT_CHROMIUM=0
-        info "Chromium e le tre estensioni sono gia' presenti: nessuna reinstallazione."
+chromium_installed=0
+librewolf_installed=0
+if have chromium || have chromium-browser; then chromium_installed=1; fi
+if have librewolf; then librewolf_installed=1; fi
+
+if [ -z "$WANT_BROWSER" ]; then
+    if [ "$QUICK_UPDATE" = "1" ]; then
+        WANT_BROWSER=none
     elif [ "$ASSUME_YES" -eq 1 ]; then
-        WANT_CHROMIUM=1
-    elif [ "$chromium_installed" -eq 1 ]; then
-        if ask_yes_no "Chromium e' installato ma mancano uBlock Origin Lite/Privacy Badger/enhanced-h264ify. Installare solo le estensioni mancanti?" yes; then
-            WANT_CHROMIUM=1
-        else
-            WANT_CHROMIUM=0
-        fi
+        WANT_BROWSER=chromium
     else
-        if ask_yes_no "Chromium non e' installato. Installare Chromium con uBlock Origin Lite, Privacy Badger ed enhanced-h264ify?" yes; then
-            WANT_CHROMIUM=1
-        else
-            WANT_CHROMIUM=0
-            info "Chromium non verra' installato e le estensioni non verranno aggiunte."
+        default_choice=1
+        if [ "$chromium_installed" -eq 0 ] && [ "$librewolf_installed" -eq 1 ]; then
+            default_choice=2
+        fi
+        printf '\n%sBrowser:%s\n' "$C_BOLD" "$C_RESET"
+        printf '  1) Chromium — motore di Chrome: massima compatibilità con le web app,\n'
+        printf '     estensioni dal Chrome Web Store. Scelta consigliata per TuxLab.\n'
+        printf '  2) LibreWolf — Firefox senza telemetria, più privacy e meno pubblicità;\n'
+        printf '     repository esterno, estensioni dal catalogo Mozilla.\n'
+        printf '  3) Nessuno — non installare e non modificare nessun browser.\n'
+        choice="$(ask_choice "Browser (1=Chromium, 2=LibreWolf, 3=Nessuno)" "$default_choice" 1 2 3)"
+        case "$choice" in
+            1) WANT_BROWSER=chromium ;;
+            2) WANT_BROWSER=librewolf ;;
+            3) WANT_BROWSER=none ;;
+        esac
+    fi
+fi
+
+# Se si sceglie un browser e l'altro e' gia' installato, chiedi se rimuoverlo.
+if [ "$ASSUME_YES" -eq 0 ]; then
+    if [ "$WANT_BROWSER" = "chromium" ] && [ "$librewolf_installed" -eq 1 ]; then
+        note "Hai scelto Chromium. LibreWolf è già installato: puoi tenerlo o rimuoverlo."
+        if ask_yes_no "LibreWolf e' gia' installato. Vuoi disinstallarlo per usare solo Chromium?" no; then
+            REMOVE_BROWSER=librewolf
+        fi
+    elif [ "$WANT_BROWSER" = "librewolf" ] && [ "$chromium_installed" -eq 1 ]; then
+        note "Hai scelto LibreWolf. Chromium è già installato: puoi tenerlo o rimuoverlo."
+        if ask_yes_no "Chromium e' gia' installato. Vuoi disinstallarlo per usare solo LibreWolf?" no; then
+            REMOVE_BROWSER=chromium
         fi
     fi
 fi
@@ -564,10 +734,32 @@ if [ -z "$WANT_QPDFVIEW" ]; then
         WANT_QPDFVIEW=0
     elif [ "$ASSUME_YES" -eq 1 ]; then
         WANT_QPDFVIEW=1
-    elif ask_yes_no "Installare anche qpdfview, lettore PDF leggero?" yes; then
-        WANT_QPDFVIEW=1
     else
-        WANT_QPDFVIEW=0
+        note "qpdfview apre i PDF senza browser ed è leggero sui PC vecchi."
+        if ask_yes_no "Installare anche qpdfview, lettore PDF leggero?" yes; then
+            WANT_QPDFVIEW=1
+        else
+            WANT_QPDFVIEW=0
+        fi
+    fi
+fi
+
+# YouTube leggero: mpv + yt-dlp, alternativa al browser per i video.
+if [ -z "$WANT_YOUTUBE" ]; then
+    if [ "$SKIP_APT" -eq 1 ]; then
+        WANT_YOUTUBE=0
+    elif [ "$QUICK_UPDATE" = "1" ]; then
+        WANT_YOUTUBE=0
+    elif [ "$ASSUME_YES" -eq 1 ]; then
+        WANT_YOUTUBE=1
+    else
+        note "YouTube leggero usa mpv + yt-dlp: 720p, H.264 quando disponibile,"
+        note "molta meno RAM di un browser. Open source e mantenuto."
+        if ask_yes_no "Installare YouTube leggero (mpv + yt-dlp)?" yes; then
+            WANT_YOUTUBE=1
+        else
+            WANT_YOUTUBE=0
+        fi
     fi
 fi
 
@@ -579,14 +771,15 @@ SUDO_KEEPALIVE_PID=$!
 trap 'kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true' EXIT
 trap 'err_trap $LINENO' ERR
 
-printf '\n%sRiepilogo:%s tema %s, shell %s, zram %s, swappiness %s, touchscreen %s, chromium %s, qpdfview %s\n\n' \
+printf '\n%sRiepilogo:%s tema %s, shell %s, zram %s, swappiness %s, touchscreen %s, browser %s, qpdfview %s, youtube %s\n\n' \
     "$C_BOLD" "$C_RESET" "$(theme_label "$THEME")" \
     "$([ "$WANT_SHELL" = "noctalia" ] && echo "Noctalia v5" || echo "Waybar + Fuzzel")" \
     "$([ "$ENABLE_ZRAM" -eq 1 ] && echo attivo || echo no)" \
     "$([ "$ENABLE_SWAPPINESS" -eq 1 ] && echo "${SWAPPINESS_VALUE:-auto}" || echo invariato)" \
     "$([ "$ENABLE_TOUCH" -eq 1 ] && echo si || echo no)" \
-    "$([ "$WANT_CHROMIUM" -eq 1 ] && echo si || echo no)" \
-    "$([ "$WANT_QPDFVIEW" -eq 1 ] && echo si || echo no)"
+    "$(browser_label "$WANT_BROWSER")" \
+    "$([ "$WANT_QPDFVIEW" -eq 1 ] && echo si || echo no)" \
+    "$([ "$WANT_YOUTUBE" -eq 1 ] && echo si || echo no)"
 
 # -----------------------------------------------------------------------------
 # Installazione pacchetti
@@ -612,6 +805,8 @@ CORE_PKGS=(
     foot-terminfo
     terminator
     pcmanfm
+    btop
+    wlrctl
     gvfs
     xwayland
     xauth
@@ -822,6 +1017,169 @@ EOF
     ok "Chromium: uBlock Origin Lite, Privacy Badger ed enhanced-h264ify installate da policy al primo avvio."
 }
 
+install_chromium_runtime() {
+    local flags_file="/etc/chromium.d/zz-labwc-q4os"
+    local ext_dir="/usr/share/labwc-q4os/chromium/youtube-360"
+
+    sudo install -d -m 0755 "$ext_dir"
+    sudo install -m 0644 "$REPO_DIR/configs/chromium/youtube-360/manifest.json" "$ext_dir/manifest.json"
+    sudo install -m 0644 "$REPO_DIR/configs/chromium/youtube-360/content.js" "$ext_dir/content.js"
+    sudo install -m 0644 "$REPO_DIR/configs/chromium/youtube-360/page.js" "$ext_dir/page.js"
+
+    mkdir -p "$BACKUP_DIR/system"
+    if [ -r "$flags_file" ]; then
+        sudo cat "$flags_file" >"$BACKUP_DIR/system/zz-labwc-q4os-chromium" 2>/dev/null || true
+    fi
+    sudo install -d -m 0755 /etc/chromium.d
+    # Wayland + decorazioni server quando disponibili. L'estensione locale
+    # imposta YouTube a 360p: meno CPU, meno RAM e decodifica più facile.
+    sudo tee "$flags_file" >/dev/null <<EOF
+# labwc-q4os: Wayland e YouTube leggero
+export CHROMIUM_FLAGS="\$CHROMIUM_FLAGS --ozone-platform-hint=auto --enable-features=WaylandWindowDecorations --load-extension=$ext_dir"
+EOF
+    sudo chmod 0644 "$flags_file"
+    ok "Chromium: Wayland, decorazioni e YouTube 360p configurati."
+}
+
+install_librewolf_extensions() {
+    # Questa build di LibreWolf applica la policy distribuita dal pacchetto;
+    # /etc/librewolf/policies non viene letta, quindi si aggiorna il file in
+    # /usr/share. Un aggiornamento del pacchetto lo sostituisce e l'installer
+    # lo ripristina alla successiva esecuzione.
+    local policy_file="/usr/share/librewolf/distribution/policies.json"
+    local policy_dir
+    policy_dir="$(dirname "$policy_file")"
+    local dist_policy="$policy_file"
+    local ext_dir="/usr/share/librewolf/distribution/extensions"
+    local xpi="$ext_dir/{9a41dee2-b924-4161-a971-7fb35c053a4a}.xpi"
+
+    if ! have librewolf; then
+        warn "LibreWolf non installato: estensioni non configurate."
+        return 0
+    fi
+    if [ -r "$policy_file" ] && [ -r "$xpi" ] &&
+        grep -q 'uBlock0@raymondhill.net' "$policy_file" &&
+        grep -q 'jid1-MnnxcxisBPnSXQ@jetpack' "$policy_file" &&
+        grep -q '9a41dee2-b924-4161-a971-7fb35c053a4a' "$policy_file"; then
+        info "LibreWolf: estensioni gia' configurate: nessuna modifica."
+        return 0
+    fi
+
+    mkdir -p "$BACKUP_DIR/system"
+    if [ -r "$policy_file" ]; then
+        sudo cat "$policy_file" >"$BACKUP_DIR/system/librewolf-distribution-policies.json" 2>/dev/null || true
+    fi
+    sudo install -d -m 0755 "$policy_dir"
+    # /etc ha priorita' sulla policy del pacchetto: parti da quella del
+    # pacchetto per non perdere le protezioni predefinite di LibreWolf.
+    sudo python3 - "$dist_policy" "$policy_file" <<'PY'
+import json
+import os
+import sys
+import tempfile
+
+dist, dst = sys.argv[1], sys.argv[2]
+data = None
+for path in (dst, dist, "/usr/lib/librewolf/distribution/policies.json"):
+    try:
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+        break
+    except (OSError, ValueError):
+        continue
+if data is None:
+    data = {}
+policies = data.setdefault("policies", {})
+extensions = policies.setdefault("ExtensionSettings", {})
+for ext_id, url in {
+    "uBlock0@raymondhill.net":
+        "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi",
+    "jid1-MnnxcxisBPnSXQ@jetpack":
+        "https://addons.mozilla.org/firefox/downloads/latest/privacy-badger17/latest.xpi",
+    "9a41dee2-b924-4161-a971-7fb35c053a4a":
+        "https://addons.mozilla.org/firefox/downloads/latest/enhanced-h264ify/latest.xpi",
+}.items():
+    extensions[ext_id] = {
+        "installation_mode": "force_installed",
+        "install_url": url,
+        "private_browsing": True,
+        "default_area": "navbar",
+    }
+fd, tmp = tempfile.mkstemp(dir=os.path.dirname(dst), prefix=".policies.")
+with os.fdopen(fd, "w", encoding="utf-8") as handle:
+    json.dump(data, handle, indent=2, ensure_ascii=False)
+    handle.write("\n")
+os.chmod(tmp, 0o644)
+os.replace(tmp, dst)
+PY
+    sudo chmod 0644 "$policy_file"
+
+    # enhanced-h264ify da policy non viene installata da questa build di
+    # LibreWolf; il file in distribution/extensions invece viene caricato.
+    local tmp_xpi
+    sudo install -d -m 0755 "$ext_dir"
+    tmp_xpi="$(mktemp)"
+    if curl -fsSL --proto '=https' --proto-redir '=https' --max-time 60 \
+        "https://addons.mozilla.org/firefox/downloads/latest/enhanced-h264ify/latest.xpi" \
+        -o "$tmp_xpi"; then
+        sudo install -m 0644 "$tmp_xpi" "$xpi"
+    else
+        warn "enhanced-h264ify non scaricata: riprova con l'aggiornamento."
+    fi
+    rm -f "$tmp_xpi"
+    ok "LibreWolf: uBlock Origin, Privacy Badger ed enhanced-h264ify installate."
+}
+
+install_librewolf() {
+    if have librewolf; then
+        info "LibreWolf gia' installato: non viene reinstallato."
+        return 0
+    fi
+    if [ "$SKIP_APT" -eq 1 ]; then
+        warn "LibreWolf non installato e --skip-apt attivo."
+        return 1
+    fi
+    log "Aggiunta del repository LibreWolf (extrepo)..."
+    install_packages extrepo
+    if ! have extrepo; then
+        warn "extrepo non disponibile: LibreWolf non installato."
+        return 1
+    fi
+    if ! sudo extrepo enable librewolf; then
+        warn "Repository LibreWolf non abilitato: browser non installato."
+        return 1
+    fi
+    sudo env DEBIAN_FRONTEND=noninteractive apt-get update -qq ||
+        warn "apt-get update dopo LibreWolf ha segnalato errori: proseguo."
+    log "Installazione LibreWolf..."
+    install_packages librewolf
+    have librewolf
+}
+
+remove_browser() {
+    local browser="$1"
+    local -a packages=()
+    local pkg
+    case "$browser" in
+        chromium) packages=(chromium chromium-browser) ;;
+        librewolf) packages=(librewolf) ;;
+        *) return 0 ;;
+    esac
+    local -a installed=()
+    for pkg in "${packages[@]}"; do
+        if dpkg -s "$pkg" >/dev/null 2>&1; then
+            installed+=("$pkg")
+        fi
+    done
+    [ "${#installed[@]}" -gt 0 ] || return 0
+    log "Disinstallazione di ${installed[*]}..."
+    if sudo env DEBIAN_FRONTEND=noninteractive apt-get remove -y "${installed[@]}"; then
+        ok "Disinstallato: ${installed[*]}"
+    else
+        warn "Disinstallazione non riuscita: ${installed[*]}"
+    fi
+}
+
 # Rimuove i pacchetti dell'altra shell, se presenti. Usata dopo aver scelto
 # e verificato la shell: Noctalia toglie Waybar/Mako/swaybg/Fuzzel; Waybar
 # toglie Noctalia. Non interrompe l'installazione se apt fallisce.
@@ -969,7 +1327,7 @@ elif [ "$WANT_SHELL" = "noctalia" ]; then
     warn "Noctalia scelto con --skip-apt: Waybar/Fuzzel non vengono rimossi (non verranno avviati)."
 fi
 
-if [ "$WANT_CHROMIUM" -eq 1 ]; then
+if [ "$WANT_BROWSER" = "chromium" ]; then
     if ! have chromium && ! have chromium-browser; then
         if [ "$SKIP_APT" -eq 1 ]; then
             warn "Chromium non installato e --skip-apt attivo: estensioni non configurate."
@@ -983,11 +1341,33 @@ if [ "$WANT_CHROMIUM" -eq 1 ]; then
     if have chromium || have chromium-browser; then
         log "Configurazione estensioni Chromium mancanti..."
         install_browser_extensions
+        install_chromium_runtime
     else
         warn "Chromium assente: estensioni non installate."
     fi
+elif [ "$WANT_BROWSER" = "librewolf" ]; then
+    install_librewolf || true
+    if have librewolf; then
+        log "Configurazione estensioni LibreWolf..."
+        install_librewolf_extensions
+    else
+        warn "LibreWolf assente: estensioni non installate."
+    fi
 else
-    info "Chromium ed estensioni non richiesti: nessuna modifica."
+    info "Nessun browser scelto: nessuna installazione."
+fi
+
+if [ -n "$REMOVE_BROWSER" ]; then
+    selected_ok=0
+    case "$WANT_BROWSER" in
+        chromium) have chromium || have chromium-browser && selected_ok=1 ;;
+        librewolf) have librewolf && selected_ok=1 ;;
+    esac
+    if [ "$selected_ok" -eq 1 ] && [ "$SKIP_APT" -ne 1 ]; then
+        remove_browser "$REMOVE_BROWSER"
+    else
+        warn "Browser scelto non disponibile: non rimuovo $REMOVE_BROWSER."
+    fi
 fi
 
 if [ "$WANT_QPDFVIEW" -eq 1 ]; then
@@ -1001,6 +1381,17 @@ if [ "$WANT_QPDFVIEW" -eq 1 ]; then
     fi
 else
     info "qpdfview non richiesto: nessuna modifica."
+fi
+
+if [ "$WANT_YOUTUBE" -eq 1 ]; then
+    if [ "$SKIP_APT" -eq 1 ]; then
+        warn "YouTube leggero non installato con --skip-apt."
+    else
+        log "Installazione YouTube leggero (mpv + yt-dlp)..."
+        install_packages mpv yt-dlp
+    fi
+else
+    info "YouTube leggero non richiesto: nessuna modifica."
 fi
 
 required_cmds=(labwc foot python3)
@@ -1203,6 +1594,8 @@ for helper in \
     labwc-touchscreen \
     labwc-login-theme \
     labwc-fuzzel-apps \
+    labwc-minimized \
+    labwc-youtube \
     labwc-session-start
 do
     install -m 0755 "$REPO_DIR/scripts/$helper" "$BIN/$helper"
@@ -1351,6 +1744,17 @@ Terminal=false
 Categories=Settings;Utility;
 Keywords=fuzzel;launcher;app;aggiungi;rimuovi;icona;
 EOF
+cat > "$APPDATA/labwc-youtube.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=YouTube leggero
+Comment=Guarda YouTube con mpv/yt-dlp, senza browser
+Exec=$HOME/.local/bin/labwc-youtube
+Icon=video-x-generic
+Terminal=false
+Categories=AudioVideo;Video;
+Keywords=youtube;video;mpv;yt-dlp;leggero;
+EOF
 cat > "$APPDATA/labwc-login-theme.desktop" <<EOF
 [Desktop Entry]
 Type=Application
@@ -1426,6 +1830,7 @@ chmod 0644 "$APPDATA/labwc-theme-switcher.desktop" \
           "$APPDATA/labwc-update-gui.desktop" \
           "$APPDATA/labwc-login-theme.desktop" \
           "$APPDATA/labwc-fuzzel-apps.desktop" \
+          "$APPDATA/labwc-youtube.desktop" \
           "$APPDATA/labwc-preferences.desktop" \
           "$APPDATA/labwc-sysinfo.desktop"
 
@@ -1711,8 +2116,9 @@ ZRAM=$ENABLE_ZRAM
 SWAPPINESS_ENABLED=$ENABLE_SWAPPINESS
 SWAPPINESS_VALUE=$SWAPPINESS_VALUE
 THEME=$THEME
-CHROMIUM=$WANT_CHROMIUM
+BROWSER=$WANT_BROWSER
 QPDFVIEW=$WANT_QPDFVIEW
+YOUTUBE=$WANT_YOUTUBE
 KEYBOARD=$XKB_LAYOUT
 KEEP_TDM=$keep_tdm
 EOF
@@ -1746,7 +2152,7 @@ for variant in nordic-cobalt muted-crimson sage-emerald; do
     [ -f "/usr/share/labwc-q4os/login-themes/$variant/Main.qml" ] ||
         die "tema login mancante: $variant"
 done
-for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-doctor labwc-app-manager labwc-update-check labwc-update-copy labwc-update-popup labwc-update-run labwc-update-gui labwc-preferences labwc-desktop labwc-desktop-state labwc-desktop-status labwc-desktop-menu labwc-power-menu labwc-sysinfo labwc-touchscreen labwc-login-theme labwc-fuzzel-apps; do
+for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-doctor labwc-app-manager labwc-update-check labwc-update-copy labwc-update-popup labwc-update-run labwc-update-gui labwc-preferences labwc-desktop labwc-desktop-state labwc-desktop-status labwc-desktop-menu labwc-power-menu labwc-sysinfo labwc-touchscreen labwc-login-theme labwc-fuzzel-apps labwc-minimized labwc-youtube; do
     [ -x "$BIN/$helper" ] || die "helper non eseguibile: $helper"
 done
 ok "Tutto in ordine."
@@ -1774,8 +2180,20 @@ ${C_GREEN}${C_BOLD}Installazione completata.${C_RESET}
   Preferite .......... $CONFIG/labwc/favorites.tsv
   zram ............... $ZRAM_STATE (pannello nel menu)
   swappiness ......... $([ "$ENABLE_SWAPPINESS" -eq 1 ] && echo "$SWAPPINESS_VALUE" || echo "invariato")
-  Chromium ........... $(if have chromium || have chromium-browser; then echo "installato con estensioni (uBlock Origin Lite, Privacy Badger, enhanced-h264ify)"; else echo "non installato"; fi)
+  Browser ............ $(browser_label "$WANT_BROWSER")$(
+      case "$WANT_BROWSER" in
+          chromium)
+              if have chromium || have chromium-browser; then
+                  echo " (uBlock Origin Lite, Privacy Badger, enhanced-h264ify)"
+              fi ;;
+          librewolf)
+              if have librewolf; then
+                  echo " (uBlock Origin, Privacy Badger, enhanced-h264ify)"
+              fi ;;
+      esac
+  )
   qpdfview ........... $(if have qpdfview; then echo "installato"; else echo "non installato"; fi)
+  YouTube leggero .... $(if have mpv && have yt-dlp; then echo "mpv + yt-dlp"; else echo "non installato"; fi)
   Backup ............. $BACKUP_DIR
   Log sessione ....... $STATE/session.log
 

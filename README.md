@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.16.0**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.17.0**
 
 ---
 
@@ -98,23 +98,26 @@ un ambiente sobrio.**
   può seguire automaticamente i colori dello sfondo.
 - **App nel menu Labwc** e **App in Fuzzel**: aggiungi, organizza o rimuovi le
   applicazioni con selezione icona; le voci di sistema restano protette.
-- **Chromium** con **uBlock Origin Lite**, **Privacy Badger** ed
-  **enhanced-h264ify**; **qpdfview** come lettore PDF leggero; supporto
-  **touchscreen** con tastiera su schermo e gesti.
+- **Chromium** oppure **LibreWolf**, con le tre estensioni
+  (**uBlock**, **Privacy Badger**, **enhanced-h264ify**); **qpdfview** come
+  lettore PDF leggero; **YouTube leggero** con GUI; **btop** per monitorare
+  il sistema.
+- **RIDOTTO AD ICONA** sotto **File manager**: pipemenu con le finestre
+  ridotte a icona; un clic le ripristina, anche con Noctalia.
 - **ZRAM**, **Labwc Doctor**, **Preferenze**, desktop 1–4 e guida integrata in
   italiano.
 - **Aggiornamenti interattivi**: controllo versione, popup di avviso con
   chiusura dopo 15 s e aggiornamento nel terminale che rifà le domande.
 - zram e swappiness configurabili durante l'installazione.
 
-**In sintesi, l'installer chiede tutto all'inizio:** prima se vuoi modificare
-i parametri (no = aggiornamento rapido con le scelte salvate), poi layout
-tastiera, zram, swappiness, touchscreen, LookSwitcher (solo con Trinity),
-shell (Waybar + Fuzzel o Noctalia v5), display manager se serve, tema iniziale
-Chromium (solo se manca qualcosa) e qpdfview. Poi esegue l'installazione. Ogni
-domanda ha un flag corrispondente (`--keyboard`, `--zram`, `--touch`,
-`--lookswitcher`, `--shell`, `--sddm`, `--theme`, `--chromium`, `--qpdfview`);
-`--quick` e `--configure` forzano aggiornamento rapido o configurazione.
+**In sintesi:** prima scegli se modificare i parametri; poi una piccola GUI
+con checkbox raccoglie le scelte di installazione (browser, shell, zram,
+swappiness, touchscreen, LookSwitcher, qpdfview, YouTube leggero). La shell
+completa con layout tastiera, display manager e tema. Poi parte
+l'installazione. Ogni domanda ha un flag corrispondente (`--keyboard`,
+`--zram`, `--touch`, `--lookswitcher`, `--shell`, `--sddm`, `--theme`,
+`--browser`, `--qpdfview`); `--quick` e `--configure` forzano aggiornamento
+rapido o configurazione.
 
 ---
 
@@ -126,10 +129,33 @@ domanda ha un flag corrispondente (`--keyboard`, `--zram`, `--touch`,
 
 Ogni sfondo riporta la firma discreta `reverseloop-dev` in basso a destra.
 
+### Le app del progetto
+
+| Preferenze della scrivania | App nel menu Labwc |
+|---|---|
+| ![Preferenze](preview/app-preferences.png) | ![App nel menu](preview/app-manager.png) |
+
+| Aggiornamenti e storico versioni | ZRAM — memoria compressa |
+|---|---|
+| ![Aggiornamenti](preview/app-update.png) | ![ZRAM](preview/app-zram.png) |
+
+Tutte le finestre usano le decorazioni di labwc con i tre pulsanti
+**riduci a icona, ingrandisci, chiudi** in alto a destra. Anche Chromium viene
+avviato con le opzioni Wayland e le decorazioni richieste.
+
 ---
 
 ## Correzioni recenti
 
+- **Scelta del browser**: Chromium o LibreWolf (o nessuno), con descrizione;
+  se l'altro browser è già installato l'installer chiede se disinstallarlo.
+  LibreWolf arriva dal repository ufficiale `extrepo` e riceve le stesse tre
+  estensioni dal catalogo Mozilla.
+- **RIDOTTO AD ICONA** sotto **File manager**: pipemenu di labwc con le
+  finestre ridotte; un clic le ripristina. Funziona anche con Noctalia.
+- **btop** installato dallo script, con la sua voce nel menu applicazioni.
+- **Ricarica automatica dopo il login rimossa**, insieme al popup: il
+  watchdog avvia solo la shell se manca.
 - **enhanced-h264ify** aggiunto alle estensioni Chromium: blocca AV1/VP9 e
   lascia H.264, più leggero su CPU e GPU vecchie. Testato dal vivo su Debian
   13: YouTube ha servito `avc1.4D401E` con AV1 e VP9 bloccati.
@@ -245,11 +271,10 @@ l'ultimo drop-in, prevale sui file di Plasma e forza tema `labwc-q4os`,
 La sessione Labwc usa anche un piccolo wrapper
 `/usr/local/libexec/labwc-q4os/labwc-session`: imposta `HOME` e le variabili
 XDG corrette, ripara la configurazione se manca (`labwc-doctor --fix`) e scrive
-l'esito in `~/.local/state/labwc-q4os/session.log`. Dopo il login esegue
-**una ricarica automatica** di menu e desktop (dopo 3 secondi), così Waybar e
-lo sfondo compaiono anche quando il primo avvio fallisce, con un solo avviso.
-Serve a evitare lo schermo nero con menu minimo quando il login non è quello
-installato dal progetto.
+l'esito in `~/.local/state/labwc-q4os/session.log`. Il watchdog avvia Waybar o
+Noctalia se non sono attive, senza ricaricare il desktop a ogni login: la
+ricarica automatica con popup è stata rimossa perché superflua. Se serve,
+**Ricarica menu e desktop** resta disponibile dal menu e con `Super+Shift+R`.
 
 Se dopo l'installazione il login mostra ancora Plasma:
 ```bash
@@ -283,41 +308,72 @@ mantenendo Trinity/Plasma selezionabili al login. Con `--keep-tdm` il display
 manager non viene toccato; in tal caso si può avviare Labwc da TTY con
 `dbus-run-session labwc`.
 
-### Chromium, estensioni e qpdfview
+### Browser, estensioni e qpdfview
 
-Chromium **non viene reinstallato a ogni esecuzione**. L'installer controlla
-prima cosa manca:
+L'installer propone tre scelte con una breve descrizione:
 
-- Chromium assente → chiede se installarlo con **uBlock Origin Lite**,
-  **Privacy Badger** ed **enhanced-h264ify**; se rispondi no, non installa né
-  Chromium né addon;
-- Chromium presente ma policy mancante → chiede se aggiungere solo le
-  estensioni mancanti;
-- Chromium e policy complete → nessuna domanda e nessuna modifica.
+1. **Chromium** — motore di Chrome, massima compatibilità con le web app;
+   estensioni dal Chrome Web Store. Consigliato per TuxLab.
+2. **LibreWolf** — Firefox senza telemetria, più privacy e meno pubblicità;
+   repository ufficiale esterno, estensioni dal catalogo Mozilla.
+3. **Nessuno** — non installa e non modifica nessun browser.
 
-La policy è `/etc/chromium/policies/managed/labwc-q4os-extensions.json` e al
-primo avvio installa dal Chrome Web Store:
+Il browser scelto **non viene reinstallato** se è già presente. Se scegli un
+browser diverso da quello già installato, l'installer chiede se **disinstallare
+l'altro** (default: no). Con `--yes` o aggiornamento rapido non viene rimosso
+nulla.
+
+**Chromium** usa la policy
+`/etc/chromium/policies/managed/labwc-q4os-extensions.json` e al primo avvio
+installa dal Chrome Web Store:
 
 - **uBlock Origin Lite** (`ddkjiahejlhfcafbddmgiahcphecmpfh`);
 - **Privacy Badger** (`pkehgijcmpdhfbdbbnkijodmdjhbjlgp`);
 - **enhanced-h264ify** (`omkfmpieigblcllmkgbflkikinpkodlk`).
+
+**LibreWolf** viene installato dal repository ufficiale con `extrepo`. La
+policy in `/usr/share/librewolf/distribution/policies.json` mantiene le
+protezioni predefinite del pacchetto e aggiunge dal catalogo Mozilla:
+
+- **uBlock Origin** (`uBlock0@raymondhill.net`);
+- **Privacy Badger** (`jid1-MnnxcxisBPnSXQ@jetpack`);
+- **enhanced-h264ify** (`9a41dee2-b924-4161-a971-7fb35c053a4a`).
 
 **enhanced-h264ify** è l'addon per i video. Di default blocca **AV1**, **VP9** e
 **VP8** su YouTube: il sito serve così il flusso **H.264** (`avc1`), che quasi
 tutte le GPU degli ultimi 15 anni decodificano in hardware. I **60fps** restano
 attivi. Se il PC fatica ancora, apri l'icona dell'estensione e spunta
 **Block 60fps**. Verifica: tasto destro sul player YouTube → **Statistiche per
-nerd** → **Codecs** deve mostrare `avc1`, non `av01` o `vp09`. Se Chromium è
+nerd** → **Codecs** deve mostrare `avc1`, non `av01` o `vp09`. Se il browser è
 aperto durante l'installazione, chiudilo e riaprilo per applicare la policy.
 
-Flag: `--chromium` (installa solo ciò che manca) e `--no-chromium` (non tocca
-nulla). Con `--skip-apt` Chromium non può essere installato, ma la policy
-viene aggiunta se Chromium è già presente.
+Flag: `--browser chromium|librewolf|none`; restano validi `--chromium`,
+`--librewolf`, `--no-chromium` e `--no-browser`. Con `--skip-apt` il browser
+non può essere installato, ma le estensioni vengono configurate se è già
+presente.
 
 **qpdfview** è proposto come lettore PDF leggero, adatto ai PC vecchi:
 l'installer chiede se installarlo, non lo reinstalla se c'è già e non tocca le
 associazioni dei file. Flag: `--qpdfview` / `--no-qpdfview`; con `--skip-apt`
 la domanda non installa nulla.
+
+### YouTube leggero
+
+L'installer propone **YouTube leggero**, una GUI basata su **zenity + mpv +
+yt-dlp**: incolli un URL o cerchi un video, scegli il risultato e mpv apre il
+video a 720p, preferendo **H.264** quando disponibile. Non serve un browser e
+la RAM resta molto più bassa.
+
+Test sulla VM Debian 13 con lo stesso video: **mpv circa 276 MiB** di RSS,
+**Chromium circa 1,5 GiB** per l'intero albero dei processi (con YouTube a 360p
+e le estensioni). I valori variano con scheda video, cache e durata; il
+visualizzatore leggero resta la scelta per i PC con 1–2 GB.
+
+In Chromium, l'estensione locale `YouTube 360p labwc` imposta YouTube a 360p
+(`medium`) all'avvio e a ogni cambio video, per ridurre CPU e RAM. Non cambia
+audio né le altre impostazioni.
+
+Flag: `--youtube` / `--no-youtube`.
 
 ### Touchscreen
 
@@ -439,8 +495,11 @@ cd labwc-q4os
 | `--touch` / `--no-touch` | Installa o esclude tastiera su schermo e gesti touch |
 | `--shell waybar\|noctalia` | Barra/launcher: Waybar+Fuzzel (default) o Noctalia v5 |
 | `--lookswitcher` / `--no-lookswitcher` | Selettore temi LookSwitcher per Trinity (solo Trinity) |
-| `--chromium` / `--no-chromium` | Installa Chromium e/o le estensioni mancanti, oppure non toccare nulla |
+| `--browser chromium\|librewolf\|none` | Sceglie il browser e le sue tre estensioni |
+| `--chromium` / `--librewolf` | Scorciatoie per `--browser chromium` / `librewolf` |
+| `--no-chromium` / `--no-browser` | Nessun browser (compatibilità) |
 | `--qpdfview` / `--no-qpdfview` | Installa o esclude qpdfview, lettore PDF leggero |
+| `--youtube` / `--no-youtube` | Installa o esclude YouTube leggero (mpv + yt-dlp) |
 | `--quick` | Aggiorna subito con le opzioni salvate, senza domande |
 | `--configure` | Chiede comunque tutti i parametri prima di aggiornare |
 | `--swappiness N` | Imposta `vm.swappiness` a `N` (0–200) |
@@ -452,8 +511,13 @@ cd labwc-q4os
 | `--help` | Aiuto |
 
 **Tutte le domande sono all'inizio**, prima di `sudo` e di qualsiasi modifica.
-Dopo il riepilogo parte l'installazione con le scelte fatte; con `--yes` non
-viene chiesto nulla e si usano i default.
+Nelle installazioni normali, se c'è un display, le scelte di installazione
+(browser, shell, zram, swappiness, touchscreen, LookSwitcher, qpdfview,
+YouTube) si fanno in una **GUI con checkbox**; la shell completa con le
+domande rimanenti. Con `--yes`, `--quick` o qualsiasi flag esplicito la GUI
+non viene aperta. Per saltarla anche in modalità grafica:
+`LABWC_Q4OS_NO_GUI=1`. Dopo il riepilogo parte l'installazione con le scelte
+fatte; con `--yes` non viene chiesto nulla e si usano i default.
 
 La **prima domanda** è: *“Vuoi modificare i parametri prima di aggiornare?”*
 - **Sì** → vengono chieste le opzioni qui sotto;
@@ -476,10 +540,10 @@ La **prima domanda** è: *“Vuoi modificare i parametri prima di aggiornare?”
    Labwc selezionabile al login (TDM resta installato).
 8. **tema iniziale** — blu Nordic Cobalt, rosso Muted Crimson o verde Sage
    Emerald.
-9. **Chromium** — solo se manca Chromium o mancano le estensioni: chiede se
-   installare Chromium con uBlock Origin Lite/Privacy Badger/enhanced-h264ify,
-   oppure solo gli addon mancanti. Se rispondi no, non installa nulla. Se è
-   già tutto presente, la domanda non viene mostrata.
+9. **browser** — Chromium, LibreWolf o nessuno, con una riga che spiega a cosa
+   serve ciascuno. Il browser scelto non viene reinstallato; se l'altro è già
+   installato, chiede se disinstallarlo (default no). Le tre estensioni vengono
+   configurate automaticamente.
 10. **qpdfview** — solo se non è già installato: chiede se aggiungere il lettore
     PDF leggero. Non cambia le associazioni dei file e non reinstalla nulla.
 
@@ -630,6 +694,14 @@ Il menu e' generato dinamicamente da `scripts/render-menu.py` leggendo i file
    app/preferite, cambio tema, editor rapido Fuzzel, ricarica, aiuto,
    screenshot, pannello ZRAM, controlli aggiornamenti, diagnostica, blocco
    schermo e menu sessione.
+
+### RIDOTTO AD ICONA
+
+Sotto **File manager** c'è la voce **RIDOTTO AD ICONA**: è un *pipemenu* di
+labwc, quindi l'elenco delle finestre ridotte compare direttamente nel menu.
+Un clic sulla voce ripristina la finestra. Funziona anche con Noctalia e
+Waybar, perché usa `wlrctl` e il protocollo foreign-toplevel di Wayland; se
+non ci sono finestre ridotte il menu mostra un messaggio.
 
 ### App nel menu, preferite e categorie
 
@@ -1029,6 +1101,8 @@ labwc-q4os/
 │   ├── labwc-zram                 # pannello GTK zram
 │   ├── labwc-app-manager          # gestore app/preferite/categorie
 │   ├── labwc-fuzzel-apps          # aggiungi/rimuovi app in Fuzzel, con icona
+│   ├── labwc-minimized            # pipemenu finestre ridotte ad icona
+│   ├── labwc-youtube              # GUI YouTube leggero (mpv + yt-dlp)
 │   ├── labwc-update-check         # controllo versione online
 │   ├── labwc-update-copy          # copia comando di aggiornamento
 │   ├── labwc-update-popup         # popup 15 s: chiudi, copia, apri GUI
@@ -1053,6 +1127,7 @@ labwc-q4os/
 │   ├── labwc-generate-wallpapers
 │   ├── help.txt                   # guida italiana
 │   └── validate.sh                # controlli statici e smoke test
+├── configs/chromium/youtube-360/  # estensione locale YouTube a 360p
 ├── preview/                       # anteprime sfondi, icone, GUI
 ├── LICENSE
 └── README.md

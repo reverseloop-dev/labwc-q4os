@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-minimized - menu delle finestre ridotte ad icona
+#
+#  --pipe     output per il pipemenu di labwc (una voce per finestra)
+#  --restore  ripristina una finestra codificata in base64
+#  senza argomenti: finestra di scelta (fallback da terminale)
+# =============================================================================
+set -u
+
+notify() {
+    if command -v notify-send >/dev/null 2>&1; then
+        notify-send -a "RIDOTTO AD ICONA" "$1" "${2:-}" >/dev/null 2>&1 || true
+    else
+        printf 'RIDOTTO AD ICONA: %s %s\n' "$1" "${2:-}" >&2
+    fi
+}
+
+if [ -z "${WAYLAND_DISPLAY:-}" ]; then
+    notify "Sessione Wayland non rilevata" "Funziona solo nella sessione Labwc."
+    exit 1
+fi
+if ! command -v wlrctl >/dev/null 2>&1; then
+    notify "wlrctl non installato" "Esegui l'installer o installa il pacchetto wlrctl."
+    exit 1
+fi
+
+restore_window() {
+    local app_id title
+    app_id="$(printf '%s' "$1" | base64 -d)"
+    title="$(printf '%s' "$2" | base64 -d)"
+    if ! wlrctl toplevel focus app_id:"$app_id" title:"$title" state:minimized; then
+        notify "Finestra non disponibile" "Potrebbe essere stata chiusa nel frattempo."
+        return 1
+    fi
+}
+
+if [ "${1:-}" = "--restore" ]; then
+    [ "$#" -ge 3 ] || exit 1
+    restore_window "$2" "$3"
+    exit $?
+fi
+
+mapfile -t windows < <(wlrctl toplevel list state:minimized 2>/dev/null | sed '/^[[:space:]]*$/d')
+
+xml_escape() {
+    local value="$1"
+    value="${value//&/&amp;}"
+    value="${value//</&lt;}"
+    value="${value//>/&gt;}"
+    value="${value//\"/&quot;}"
+    value="${value//\'/&apos;}"
+    printf '%s' "$value"
+}
+
+if [ "${1:-}" = "--pipe" ]; then
+    printf '<openbox_pipe_menu>\n'
+    if [ "${#windows[@]}" -eq 0 ]; then
+        printf '  <separator label="Nessuna finestra ridotta ad icona" />\n'
+    else
+        for line in "${windows[@]}"; do
+            app_id="${line%%:*}"
+            title="${line#*: }"
+            title="${title# }"
+            [ -n "$title" ] || title="finestra senza titolo"
+            label="$(xml_escape "${app_id:-?} — ${title}")"
+            app_b64="$(printf '%s' "$app_id" | base64 -w0)"
+            title_b64="$(printf '%s' "$title" | base64 -w0)"
+            helper_cmd="$(printf '%q' "${BASH_SOURCE[0]}")"
+            command="$(xml_escape "$helper_cmd --restore $app_b64 $title_b64")"
+            printf '  <item label="%s">\n' "$label"
+            printf '    <action name="Execute" command="%s" />\n' "$command"
+            printf '  </item>\n'
+        done
+    fi
+    printf '</openbox_pipe_menu>\n'
+    exit 0
+fi
+
+if [ "${#windows[@]}" -eq 0 ]; then
+    notify "Nessuna finestra ridotta ad icona" "Riduci una finestra e riprova."
+    exit 0
+fi
+
+rows=()
+index=0
+for line in "${windows[@]}"; do
+    index=$((index + 1))
+    app_id="${line%%:*}"
+    title="${line#*: }"
+    title="${title# }"
+    [ -n "$title" ] || title="finestra senza titolo"
+    rows+=("$index"$'\t'"${app_id:-?}"$'\t'"$title")
+done
+
+selection="$(
+    printf '%s\n' "${rows[@]}" |
+        zenity --list \
+            --title="RIDOTTO AD ICONA" \
+            --text="Scegli la finestra da ripristinare." \
+            --column="#" --column="Applicazione" --column="Finestra" \
+            --print-column=1 --width=760 --height=420 2>/dev/null
+)" || exit 0
+[ -n "$selection" ] || exit 0
+# zenity restituisce tutta la riga separata da tab, non solo la prima colonna.
+selection="${selection%%$'\t'*}"
+case "$selection" in
+    *[!0-9]*) exit 0 ;;
+esac
+index=$((selection - 1))
+if [ "$index" -lt 0 ] || [ "$index" -ge "${#windows[@]}" ]; then
+    exit 0
+fi
+
+line="${windows[$index]}"
+app_id="${line%%:*}"
+title="${line#*: }"
+title="${title# }"
+restore_window "$(printf '%s' "$app_id" | base64 -w0)" \
+    "$(printf '%s' "$title" | base64 -w0)"

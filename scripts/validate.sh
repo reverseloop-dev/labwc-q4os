@@ -174,7 +174,6 @@ sess_run() {
     HOME="$SESS_TMP/home" XDG_CONFIG_HOME="$SESS_TMP/home/.config" \
         XDG_DATA_HOME="$SESS_TMP/home/.local/share" \
         XDG_STATE_HOME="$SESS_TMP/home/.local/state" \
-        LABWC_Q4OS_NO_AUTO_RELOAD=1 \
         PATH="$SESS_STUB" "$BASH" scripts/labwc-session-start
 }
 if sess_run && grep -q 'sessione pronta' "$SESS_LOG" &&
@@ -260,7 +259,7 @@ for f in install.sh bootstrap.sh scripts/labwc-theme-apply scripts/labwc-theme-s
          scripts/labwc-update-popup scripts/labwc-update-run scripts/labwc-update-toggle \
          scripts/labwc-update-gui scripts/labwc-preferences \
          scripts/labwc-login-theme scripts/labwc-login-theme-apply scripts/labwc-session-launch \
-         scripts/labwc-fuzzel-apps \
+         scripts/labwc-fuzzel-apps scripts/labwc-minimized scripts/labwc-youtube \
          scripts/labwc-desktop scripts/labwc-desktop-state scripts/labwc-desktop-status scripts/labwc-desktop-menu \
          scripts/labwc-power-menu scripts/labwc-sysinfo \
          scripts/labwc-touchscreen \
@@ -378,6 +377,7 @@ if command -v shellcheck >/dev/null 2>&1; then
         scripts/labwc-screenshot scripts/labwc-doctor scripts/labwc-update-check \
         scripts/labwc-update-copy scripts/labwc-update-popup scripts/labwc-update-run \
         scripts/labwc-update-toggle \
+        scripts/labwc-minimized scripts/labwc-youtube \
         scripts/labwc-login-theme-apply scripts/labwc-session-launch \
         scripts/labwc-desktop scripts/labwc-desktop-state \
         scripts/labwc-desktop-status scripts/labwc-desktop-menu \

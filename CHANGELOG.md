@@ -2,6 +2,25 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.17.0]
+
+- Scelta browser **Chromium / LibreWolf / nessuno**, con descrizione e
+  rimozione opzionale dell'altro browser già installato. LibreWolf dal
+  repository `extrepo`, estensioni Mozilla (uBlock, Privacy Badger,
+  enhanced-h264ify).
+- **GUI di installazione** con checkbox (browser, shell, zram, swappiness,
+  touchscreen, LookSwitcher, qpdfview, YouTube); poi la shell continua.
+- **RIDOTTO AD ICONA** sotto File manager: pipemenu dinamico con le finestre
+  ridotte, clic per ripristinare.
+- **btop** installato dallo script.
+- **YouTube leggero** con GUI zenity + mpv + yt-dlp: 720p, H.264, molta meno
+  RAM di Chromium. Misura: ~276 MiB contro ~1,5 GiB sulla VM.
+- Chromium avviato con opzioni Wayland/decorazioni; estensione locale
+  **YouTube 360p** e pulsanti finestra visibili.
+- Rimossa la ricarica automatica del desktop con popup dopo il login.
+- README con screenshot delle app (Preferenze, App nel menu, Aggiornamenti,
+  ZRAM).
+
 ## [1.16.0]
 
 - Aggiunta **enhanced-h264ify** alle estensioni Chromium installate da policy.

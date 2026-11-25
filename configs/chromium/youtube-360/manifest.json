@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube 360p labwc",
+  "version": "1.0",
+  "description": "Imposta YouTube a 360p per ridurre CPU e RAM sui PC vecchi.",
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.youtube.com/*",
+        "*://*.youtube-nocookie.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["page.js"],
+      "matches": ["*://*.youtube.com/*", "*://*.youtube-nocookie.com/*"]
+    }
+  ]
+}
