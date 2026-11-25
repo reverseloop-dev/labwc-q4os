@@ -2,6 +2,20 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.18.0]
+
+- Nuovo **wizard GTK** colorato con il tema attivo, box arrotondati e
+  pulsanti **Indietro/Avanti**; si torna fino alla prima pagina prima di
+  installare. Le domande sì/no e le checkbox sono nella GUI.
+- **Preferito YouTube 360p** (`https://youtube.it/`) in Chromium e LibreWolf;
+  estensione locale 360p anche in LibreWolf.
+- Rimosso il vecchio YouTube leggero (mpv/yt-dlp). SMTube non viene installato:
+  ultima release 2021 e pacchetto non disponibile in Debian 13/Q4OS 6.
+- Repository esterne mantenute: LibreWolf via `extrepo` viene riconfigurato
+  anche se il browser è già presente; Noctalia resta sul suo repository APT.
+- Alla fine dell'installazione viene eseguita la ricarica del desktop, così
+  un'app disinstallata (es. Chromium) sparisce subito dal menu.
+
 ## [1.17.1]
 
 - Una sola firma finale: banner ASCII di tre righe con `created by

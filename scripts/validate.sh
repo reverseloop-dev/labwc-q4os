@@ -28,7 +28,7 @@ done < <(find . -path ./.git -prune -o -type f \( -name '*.sh' -o -path './scrip
 # --- 2. sintassi Python ------------------------------------------------------
 check "sintassi Python"
 PYCACHE_DIR="$(mktemp -d)"
-if PYTHONPYCACHEPREFIX="$PYCACHE_DIR" python3 -m py_compile scripts/generate-wallpapers.py scripts/render-menu.py scripts/labwc-zram scripts/labwc-app-manager scripts/labwc-update-gui scripts/labwc-login-theme scripts/labwc-fuzzel-apps scripts/labwc-preferences scripts/generate-icons.py; then
+if PYTHONPYCACHEPREFIX="$PYCACHE_DIR" python3 -m py_compile scripts/generate-wallpapers.py scripts/render-menu.py scripts/labwc-zram scripts/labwc-app-manager scripts/labwc-update-gui scripts/labwc-login-theme scripts/labwc-fuzzel-apps scripts/labwc-preferences scripts/labwc-install-wizard scripts/generate-icons.py; then
     pass "Python: sfondi, menu, zram, app manager, update GUI, login, fuzzel, preferences, icone"
 else
     bad "py_compile"
@@ -261,11 +261,11 @@ check "permessi eseguibili"
 for f in install.sh bootstrap.sh scripts/labwc-theme-apply scripts/labwc-theme-switcher \
          scripts/labwc-menu-editor scripts/labwc-reload scripts/labwc-generate-wallpapers \
          scripts/labwc-help scripts/labwc-screenshot scripts/labwc-zram scripts/labwc-doctor \
-         scripts/labwc-app-manager scripts/labwc-update-check scripts/labwc-update-copy \
+         scripts/labwc-app-manager scripts/labwc-install-wizard scripts/labwc-update-check scripts/labwc-update-copy \
          scripts/labwc-update-popup scripts/labwc-update-run scripts/labwc-update-toggle \
          scripts/labwc-update-gui scripts/labwc-preferences \
          scripts/labwc-login-theme scripts/labwc-login-theme-apply scripts/labwc-session-launch \
-         scripts/labwc-fuzzel-apps scripts/labwc-minimized scripts/labwc-youtube \
+         scripts/labwc-fuzzel-apps scripts/labwc-minimized scripts/labwc-install-wizard \
          scripts/labwc-desktop scripts/labwc-desktop-state scripts/labwc-desktop-status scripts/labwc-desktop-menu \
          scripts/labwc-power-menu scripts/labwc-sysinfo \
          scripts/labwc-touchscreen \
@@ -383,7 +383,7 @@ if command -v shellcheck >/dev/null 2>&1; then
         scripts/labwc-screenshot scripts/labwc-doctor scripts/labwc-update-check \
         scripts/labwc-update-copy scripts/labwc-update-popup scripts/labwc-update-run \
         scripts/labwc-update-toggle \
-        scripts/labwc-minimized scripts/labwc-youtube \
+        scripts/labwc-minimized scripts/labwc-install-wizard \
         scripts/labwc-login-theme-apply scripts/labwc-session-launch \
         scripts/labwc-desktop scripts/labwc-desktop-state \
         scripts/labwc-desktop-status scripts/labwc-desktop-menu \

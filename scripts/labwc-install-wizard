@@ -1,0 +1,537 @@
+#!/usr/bin/env python3
+"""Installer wizard for labwc-q4os: themed GTK3 pages with Back/Next."""
+
+from __future__ import annotations
+
+import argparse
+import os
+import sys
+from pathlib import Path
+
+HOME = Path.home()
+SHARE = Path(
+    os.environ.get(
+        "LABWC_Q4OS_SHARE",
+        Path(os.environ.get("XDG_DATA_HOME", HOME / ".local/share")) / "labwc-q4os",
+    )
+)
+
+DEFAULTS = {
+    "BG": "070d1a",
+    "SURFACE": "1e293b",
+    "SURFACE_ALT": "273449",
+    "ACCENT": "3b82f6",
+    "ACCENT_SOFT": "60a5fa",
+    "FG": "e2e8f0",
+    "FG_MUTED": "94a3b8",
+    "BORDER": "334155",
+    "DANGER": "f87171",
+}
+
+THEMES = [
+    ("nordic-cobalt", "Blu — Nordic Cobalt"),
+    ("muted-crimson", "Rosso tenue — Muted Crimson"),
+    ("sage-emerald", "Verde salvia — Sage Emerald"),
+]
+
+
+def colors(theme: str, themes_dir: str) -> dict[str, str]:
+    result = dict(DEFAULTS)
+    candidates = [Path(themes_dir) / theme / "theme.conf", SHARE / "themes" / theme / "theme.conf"]
+    for path in candidates:
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for raw in lines:
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'").lstrip("#")
+            if key in result and value:
+                result[key] = value
+        break
+    return result
+
+
+def make_css(c: dict[str, str]) -> str:
+    return f"""
+    window {{ background-color: #{c['BG']}; color: #{c['FG']}; }}
+    .title {{ font-size: 27px; font-weight: 800; }}
+    .subtitle {{ color: #{c['FG_MUTED']}; font-size: 12px; }}
+    .step {{ color: #{c['ACCENT_SOFT']}; font-size: 11px; font-weight: 700; }}
+    .page {{ background-color: #{c['SURFACE']}; border: 1px solid #{c['BORDER']};
+             border-radius: 18px; padding: 20px; }}
+    stack, scrolledwindow, viewport {{ background-color: transparent; }}
+    .card {{ background-color: #{c['SURFACE_ALT']}; border: 1px solid #{c['BORDER']};
+             border-radius: 14px; padding: 13px; }}
+    .card-title {{ color: #{c['ACCENT_SOFT']}; font-size: 12px; font-weight: 700;
+                   letter-spacing: 1px; }}
+    .card-hint {{ color: #{c['FG_MUTED']}; font-size: 11px; }}
+    .choice {{ background-color: #{c['SURFACE_ALT']}; border: 1px solid #{c['BORDER']};
+               border-radius: 12px; padding: 10px 14px; }}
+    .choice:hover {{ border-color: #{c['ACCENT']}; }}
+    button {{ background-image: none; background-color: #{c['SURFACE_ALT']};
+              color: #{c['FG']}; border: 1px solid #{c['BORDER']};
+              border-radius: 11px; padding: 9px 18px; font-weight: 700; }}
+    button:hover {{ background-image: none; border-color: #{c['ACCENT']}; }}
+    button.suggested {{ background-image: none; background-color: #{c['ACCENT']};
+                        border-color: #{c['ACCENT_SOFT']}; color: #{c['FG']}; }}
+    button:disabled {{ color: #{c['FG_MUTED']}; border-color: #{c['BORDER']}; }}
+    checkbutton {{ color: #{c['FG']}; }}
+    checkbutton check {{ background-image: none; background-color: #{c['SURFACE_ALT']};
+                         border: 1px solid #{c['BORDER']}; border-radius: 5px; }}
+    checkbutton check:checked {{ background-image: none; background-color: #{c['ACCENT']}; }}
+    radiobutton {{ color: #{c['FG']}; }}
+    combobox, combobox button {{ background-image: none; color: #{c['FG']};
+                                 background-color: #{c['SURFACE_ALT']};
+                                 border-radius: 9px; }}
+    label {{ color: #{c['FG']}; }}
+    .muted {{ color: #{c['FG_MUTED']}; font-size: 11px; }}
+    .danger {{ color: #{c['DANGER']}; font-weight: 700; }}
+    scrollbar {{ background-color: #{c['BG']}; }}
+    """
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--quick-prompt", action="store_true")
+    parser.add_argument("--theme", default="nordic-cobalt")
+    parser.add_argument("--themes-dir", default="")
+    parser.add_argument("--keyboard", default="it")
+    parser.add_argument("--browser", default="")
+    parser.add_argument("--shell", default="waybar")
+    parser.add_argument("--zram", default="1")
+    parser.add_argument("--swappiness", default="1")
+    parser.add_argument("--touch", default="0")
+    parser.add_argument("--lookswitcher", default="0")
+    parser.add_argument("--lookswitcher-available", default="0")
+    parser.add_argument("--qpdfview", default="1")
+    parser.add_argument("--sddm", default="0")
+    parser.add_argument("--sddm-available", default="0")
+    parser.add_argument("--chromium-installed", default="0")
+    parser.add_argument("--librewolf-installed", default="0")
+    return parser.parse_args()
+
+
+def bool_arg(value: str) -> bool:
+    return str(value).strip().lower() in {"1", "yes", "true", "on"}
+
+
+def main() -> int:
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("Gdk", "3.0")
+        from gi.repository import Gdk, Gtk
+    except (ImportError, ValueError) as error:
+        print(f"GTK3 non disponibile: {error}", file=sys.stderr)
+        return 2
+
+    if not Gtk.init_check(sys.argv):
+        print("Display grafico non disponibile.", file=sys.stderr)
+        return 2
+
+    args = parse_args()
+    c = colors(args.theme, args.themes_dir)
+    provider = Gtk.CssProvider()
+    provider.load_from_data(make_css(c).encode("utf-8"))
+    screen = Gdk.Screen.get_default()
+    if screen is not None:
+        Gtk.StyleContext.add_provider_for_screen(
+            screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+
+    window = Gtk.Window(title="Installa labwc-q4os" if not args.quick_prompt else "labwc-q4os")
+    window.set_position(Gtk.WindowPosition.CENTER)
+    window.set_default_size(920, 700)
+
+    if args.quick_prompt:
+        result = {"quick": 0, "chosen": False}
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+        box.set_border_width(24)
+        window.add(box)
+        title = Gtk.Label(label="labwc-q4os", xalign=0)
+        title.get_style_context().add_class("title")
+        text = Gtk.Label(
+            label="Ci sono opzioni salvate. Vuoi aggiornare subito senza domande "
+                  "oppure modificare i parametri?",
+            xalign=0,
+        )
+        text.set_line_wrap(True)
+        box.pack_start(title, False, False, 0)
+        box.pack_start(text, False, False, 0)
+        buttons = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        quick = Gtk.Button(label="Aggiorna subito")
+        quick.get_style_context().add_class("suggested")
+        quick.set_can_default(True)
+        modify = Gtk.Button(label="Modifica parametri")
+        buttons.pack_end(modify, False, False, 0)
+        buttons.pack_end(quick, False, False, 0)
+        box.pack_end(buttons, False, False, 0)
+
+        def quick_clicked(_b) -> None:
+            result["quick"] = 1
+            result["chosen"] = True
+            window.destroy()
+
+        def modify_clicked(_b) -> None:
+            result["quick"] = 0
+            result["chosen"] = True
+            window.destroy()
+
+        quick.connect("clicked", quick_clicked)
+        modify.connect("clicked", modify_clicked)
+        window.connect("destroy", Gtk.main_quit)
+        window.show_all()
+        window.set_default(quick)
+        Gtk.main()
+        if result["chosen"]:
+            print(f"QUICK={result['quick']}")
+            return 0
+        return 1
+
+    root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+    root.set_border_width(18)
+    window.add(root)
+
+    title = Gtk.Label(label="Installa labwc-q4os", xalign=0)
+    title.get_style_context().add_class("title")
+    subtitle = Gtk.Label(
+        label="Scegli i componenti. Puoi tornare indietro prima di installare.",
+        xalign=0,
+    )
+    subtitle.get_style_context().add_class("subtitle")
+    root.pack_start(title, False, False, 0)
+    root.pack_start(subtitle, False, False, 0)
+
+    stack = Gtk.Stack()
+    stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
+    stack.set_transition_duration(180)
+    root.pack_start(stack, True, True, 0)
+
+    step_label = Gtk.Label(xalign=1)
+    step_label.get_style_context().add_class("step")
+    nav = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    root.pack_start(step_label, False, False, 0)
+    root.pack_start(nav, False, False, 0)
+
+    pages: list[tuple[str, str, Gtk.Widget]] = []
+
+    def page_shell(page_title: str, hint: str):
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        page.get_style_context().add_class("page")
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_vexpand(True)
+        scroll.add(page)
+        heading = Gtk.Label(label=page_title, xalign=0)
+        heading.get_style_context().add_class("title")
+        heading.set_margin_bottom(2)
+        sub = Gtk.Label(label=hint, xalign=0)
+        sub.set_line_wrap(True)
+        sub.get_style_context().add_class("subtitle")
+        page.pack_start(heading, False, False, 0)
+        page.pack_start(sub, False, False, 0)
+        return page, scroll
+
+    def add_page(name: str, label: str, widget: Gtk.Widget) -> None:
+        pages.append((name, label, widget))
+        stack.add_named(widget, name)
+
+    def card(title_text: str, hint_text: str = "") -> Gtk.Box:
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
+        box.get_style_context().add_class("card")
+        label = Gtk.Label(label=title_text, xalign=0)
+        label.get_style_context().add_class("card-title")
+        box.pack_start(label, False, False, 0)
+        if hint_text:
+            hint = Gtk.Label(label=hint_text, xalign=0)
+            hint.set_line_wrap(True)
+            hint.get_style_context().add_class("card-hint")
+            box.pack_start(hint, False, False, 0)
+        return box
+
+    def check(text: str, active: bool, hint: str = "") -> Gtk.CheckButton:
+        button = Gtk.CheckButton(label=text)
+        button.set_active(active)
+        if hint:
+            button.set_tooltip_text(hint)
+        return button
+
+    # --- browser page -----------------------------------------------------
+    browser_page, browser_scroll = page_shell(
+        "Browser",
+        "Scegli il browser. Le estensioni vengono configurate automaticamente.",
+    )
+    browser_card = card("BROWSER")
+    browser_group: Gtk.RadioButton | None = None
+    browser_buttons: dict[str, Gtk.RadioButton] = {}
+
+    def add_browser(key: str, label: str, description: str) -> None:
+        nonlocal browser_group
+        button = Gtk.RadioButton.new_with_label_from_widget(browser_group, label)
+        if browser_group is None:
+            browser_group = button
+        button.get_style_context().add_class("choice")
+        button.connect("toggled", lambda _b: refresh_summary())
+        browser_buttons[key] = button
+        browser_card.pack_start(button, False, False, 0)
+        hint = Gtk.Label(label=description, xalign=0)
+        hint.set_line_wrap(True)
+        hint.get_style_context().add_class("card-hint")
+        browser_card.pack_start(hint, False, False, 0)
+
+    add_browser("chromium", "Chromium", "Motore Chrome: massima compatibilità con le web app; estensioni dal Chrome Web Store.")
+    add_browser("librewolf", "LibreWolf", "Firefox senza telemetria: più privacy; repository esterno e estensioni Mozilla.")
+    add_browser("none", "Nessuno", "Non installare e non modificare nessun browser.")
+    browser_page.pack_start(browser_card, False, False, 0)
+
+    remove_check = Gtk.CheckButton(label="Disinstalla l'altro browser, se presente")
+    if bool_arg(args.chromium_installed) or bool_arg(args.librewolf_installed):
+        browser_page.pack_start(remove_check, False, False, 0)
+    add_page("browser", "Browser", browser_scroll)
+
+    # --- shell page -------------------------------------------------------
+    shell_page, shell_scroll = page_shell(
+        "Barra desktop",
+        "Waybar + Fuzzel è la più leggera; Noctalia integra barra, launcher e notifiche.",
+    )
+    shell_card = card("SHELL")
+    shell_group: Gtk.RadioButton | None = None
+    shell_buttons: dict[str, Gtk.RadioButton] = {}
+    for key, label, description in [
+        ("waybar", "Waybar + Fuzzel", "Leggerissima, consigliata con 1–2 GB di RAM."),
+        ("noctalia", "Noctalia v5", "Shell integrata, più comoda ma usa più RAM."),
+    ]:
+        button = Gtk.RadioButton.new_with_label_from_widget(shell_group, label)
+        if shell_group is None:
+            shell_group = button
+        button.get_style_context().add_class("choice")
+        shell_buttons[key] = button
+        shell_card.pack_start(button, False, False, 0)
+        hint = Gtk.Label(label=description, xalign=0)
+        hint.get_style_context().add_class("card-hint")
+        shell_card.pack_start(hint, False, False, 0)
+    shell_page.pack_start(shell_card, False, False, 0)
+    add_page("shell", "Barra desktop", shell_scroll)
+
+    # --- performance page -------------------------------------------------
+    perf_page, perf_scroll = page_shell(
+        "Prestazioni",
+        "Scelte per rendere più reattivo il PC, anche con poca RAM.",
+    )
+    perf_card = card("MEMORIA")
+    zram_check = check("zram — RAM compressa con zstd (consigliato)", bool_arg(args.zram))
+    swappiness_check = check("Ottimizza vm.swappiness e vfs_cache_pressure", bool_arg(args.swappiness))
+    perf_card.pack_start(zram_check, False, False, 0)
+    perf_card.pack_start(swappiness_check, False, False, 0)
+    perf_page.pack_start(perf_card, False, False, 0)
+    add_page("perf", "Prestazioni", perf_scroll)
+
+    # --- touch / LookSwitcher page ---------------------------------------
+    touch_page, touch_scroll = page_shell(
+        "Touchscreen e Trinity",
+        "Aggiungi la tastiera su schermo se il PC ha un pannello touch.",
+    )
+    touch_card = card("TOUCHSCREEN")
+    touch_check = check("Installa tastiera su schermo e gesti touch (wvkbd + lisgd)", bool_arg(args.touch))
+    touch_card.pack_start(touch_check, False, False, 0)
+    touch_page.pack_start(touch_card, False, False, 0)
+    if bool_arg(args.lookswitcher_available):
+        look_card = card("TRINITY")
+        look_check = check("Installa LookSwitcher per la sessione Trinity", bool_arg(args.lookswitcher))
+        look_card.pack_start(look_check, False, False, 0)
+        touch_page.pack_start(look_card, False, False, 0)
+    else:
+        look_check = None
+    add_page("touch", "Touchscreen", touch_scroll)
+
+    # --- extra applications ----------------------------------------------
+    extra_page, extra_scroll = page_shell(
+        "Applicazioni",
+        "Spunta solo quello che vuoi installare.",
+    )
+    extra_card = card("APPLICAZIONI OPZIONALI")
+    pdf_check = check("qpdfview — lettore PDF leggero", bool_arg(args.qpdfview))
+    extra_card.pack_start(pdf_check, False, False, 0)
+    extra_page.pack_start(extra_card, False, False, 0)
+    add_page("extra", "Applicazioni", extra_scroll)
+
+    # --- theme page -------------------------------------------------------
+    theme_page, theme_scroll = page_shell(
+        "Tema",
+        "Il tema colora finestre, menu, barra e questa procedura.",
+    )
+    theme_card = card("TEMA E COLORI")
+    theme_group: Gtk.RadioButton | None = None
+    theme_buttons: dict[str, Gtk.RadioButton] = {}
+    for key, label in THEMES:
+        button = Gtk.RadioButton.new_with_label_from_widget(theme_group, label)
+        if theme_group is None:
+            theme_group = button
+        button.get_style_context().add_class("choice")
+        theme_buttons[key] = button
+        theme_card.pack_start(button, False, False, 0)
+    theme_page.pack_start(theme_card, False, False, 0)
+    add_page("theme", "Tema", theme_scroll)
+
+    # --- keyboard page ----------------------------------------------------
+    keyboard_page, keyboard_scroll = page_shell(
+        "Tastiera",
+        "Layout per la sessione Labwc e per il login.",
+    )
+    keyboard_card = card("LAYOUT TASTIERA")
+    keyboard_combo = Gtk.ComboBoxText()
+    keyboard_values = ["it", "us", "it,us"]
+    if args.keyboard and args.keyboard not in keyboard_values:
+        keyboard_values.append(args.keyboard)
+    for value in keyboard_values:
+        keyboard_combo.append_text(value)
+    keyboard_card.pack_start(keyboard_combo, False, False, 0)
+    keyboard_page.pack_start(keyboard_card, False, False, 0)
+    add_page("keyboard", "Tastiera", keyboard_scroll)
+
+    # --- SDDM page --------------------------------------------------------
+    if bool_arg(args.sddm_available):
+        sddm_page, sddm_scroll = page_shell(
+            "Display manager",
+            "SDDM permette di scegliere Labwc al login. TDM resta installato.",
+        )
+        sddm_card = card("LOGIN")
+        sddm_check = check("Installa e attiva SDDM", bool_arg(args.sddm))
+        sddm_card.pack_start(sddm_check, False, False, 0)
+        sddm_page.pack_start(sddm_card, False, False, 0)
+        add_page("sddm", "Display manager", sddm_scroll)
+    else:
+        sddm_check = None
+
+    # --- summary page -----------------------------------------------------
+    summary_page, summary_scroll = page_shell(
+        "Riepilogo",
+        "Controlla le scelte. Puoi tornare indietro fino alla prima pagina.",
+    )
+    summary_card = card("RIEPILOGO")
+    summary_label = Gtk.Label(xalign=0)
+    summary_label.set_line_wrap(True)
+    summary_card.pack_start(summary_label, False, False, 0)
+    summary_page.pack_start(summary_card, False, False, 0)
+    add_page("summary", "Riepilogo", summary_scroll)
+
+    # --- initial state ----------------------------------------------------
+    initial_browser = args.browser
+    if initial_browser not in browser_buttons:
+        if bool_arg(args.chromium_installed):
+            initial_browser = "chromium"
+        elif bool_arg(args.librewolf_installed):
+            initial_browser = "librewolf"
+        else:
+            initial_browser = "chromium"
+    browser_buttons[initial_browser].set_active(True)
+    shell_buttons["noctalia" if args.shell == "noctalia" else "waybar"].set_active(True)
+    theme_buttons[args.theme if args.theme in theme_buttons else "nordic-cobalt"].set_active(True)
+    keyboard_combo.set_active(max(0, keyboard_values.index(args.keyboard)) if args.keyboard in keyboard_values else 0)
+
+    back = Gtk.Button(label="Indietro")
+    cancel = Gtk.Button(label="Annulla")
+    forward = Gtk.Button(label="Avanti")
+    forward.get_style_context().add_class("suggested")
+    forward.set_can_default(True)
+    nav.pack_start(cancel, False, False, 0)
+    nav.pack_end(forward, False, False, 0)
+    nav.pack_end(back, False, False, 0)
+
+    current = {"index": 0}
+    finished = {"value": False}
+
+    def selected_browser() -> str:
+        for key, button in browser_buttons.items():
+            if button.get_active():
+                return key
+        return "chromium"
+
+    def selected_shell() -> str:
+        return "noctalia" if shell_buttons["noctalia"].get_active() else "waybar"
+
+    def selected_theme() -> str:
+        for key, button in theme_buttons.items():
+            if button.get_active():
+                return key
+        return "nordic-cobalt"
+
+    def refresh_summary() -> None:
+        if "summary" not in [name for name, _label, _widget in pages]:
+            return
+        browser = selected_browser()
+        lines = [
+            f"Browser: {browser if browser != 'none' else 'nessuno'}",
+            f"Shell: {'Noctalia v5' if selected_shell() == 'noctalia' else 'Waybar + Fuzzel'}",
+            f"zram: {'sì' if zram_check.get_active() else 'no'}",
+            f"Swappiness: {'sì' if swappiness_check.get_active() else 'no'}",
+            f"Touchscreen: {'sì' if touch_check.get_active() else 'no'}",
+            f"qpdfview: {'sì' if pdf_check.get_active() else 'no'}",
+            f"Tema: {selected_theme()}",
+            f"Tastiera: {keyboard_combo.get_active_text() or 'it'}",
+        ]
+        if look_check is not None:
+            lines.append(f"LookSwitcher: {'sì' if look_check.get_active() else 'no'}")
+        if sddm_check is not None:
+            lines.append(f"SDDM: {'sì' if sddm_check.get_active() else 'no'}")
+        if remove_check.get_parent() is not None and remove_check.get_active():
+            lines.append("L'altro browser verrà disinstallato")
+        summary_label.set_text("\n".join(lines))
+
+    def show(index: int) -> None:
+        current["index"] = max(0, min(index, len(pages) - 1))
+        name, _label, widget = pages[current["index"]]
+        stack.set_visible_child(widget)
+        step_label.set_text(f"Passo {current['index'] + 1} di {len(pages)}")
+        back.set_sensitive(current["index"] > 0)
+        if current["index"] == len(pages) - 1:
+            refresh_summary()
+            forward.set_label("Installa")
+        else:
+            forward.set_label("Avanti")
+
+    def finish() -> None:
+        browser = selected_browser()
+        remove = ""
+        if remove_check.get_parent() is not None and remove_check.get_active():
+            if browser == "chromium":
+                remove = "librewolf"
+            elif browser == "librewolf":
+                remove = "chromium"
+        values = [
+            f"BROWSER={browser}",
+            f"REMOVE_BROWSER={remove}",
+            f"SHELL={selected_shell()}",
+            f"ZRAM={1 if zram_check.get_active() else 0}",
+            f"SWAPPINESS={1 if swappiness_check.get_active() else 0}",
+            f"TOUCH={1 if touch_check.get_active() else 0}",
+            f"LOOKSWITCHER={1 if look_check is not None and look_check.get_active() else 0}",
+            f"QPDFVIEW={1 if pdf_check.get_active() else 0}",
+            f"THEME={selected_theme()}",
+            f"KEYBOARD={keyboard_combo.get_active_text() or 'it'}",
+            f"SDDM={1 if sddm_check is not None and sddm_check.get_active() else 0}",
+        ]
+        print("\n".join(values))
+        finished["value"] = True
+        window.destroy()
+
+    forward.connect("clicked", lambda _b: finish() if current["index"] == len(pages) - 1 else show(current["index"] + 1))
+    back.connect("clicked", lambda _b: show(current["index"] - 1))
+    cancel.connect("clicked", lambda _b: window.destroy())
+    window.connect("destroy", Gtk.main_quit)
+
+    show(0)
+    window.show_all()
+    window.set_default(forward)
+    Gtk.main()
+    return 0 if finished["value"] else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

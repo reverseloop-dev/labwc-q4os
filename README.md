@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.17.1**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.18.0**
 
 ---
 
@@ -100,8 +100,12 @@ un ambiente sobrio.**
   applicazioni con selezione icona; le voci di sistema restano protette.
 - **Chromium** oppure **LibreWolf**, con le tre estensioni
   (**uBlock**, **Privacy Badger**, **enhanced-h264ify**); **qpdfview** come
-  lettore PDF leggero; **YouTube leggero** con GUI; **btop** per monitorare
-  il sistema.
+  lettore PDF leggero; **btop** per monitorare il sistema.
+- **Wizard di installazione** GTK: pagine colorate con il tema, angoli
+  arrotondati, scelte sì/no e **Indietro/Avanti** fino alla prima pagina.
+- **Preferito YouTube 360p** in Chromium e LibreWolf; aggiornamenti delle app
+  esterne (LibreWolf, Noctalia) tramite i loro repository APT.
+- **RIDOTTO AD ICONA** sotto **File manager**: pipemenu con le finestre
 - **RIDOTTO AD ICONA** sotto **File manager**: pipemenu con le finestre
   ridotte a icona; un clic le ripristina, anche con Noctalia.
 - **ZRAM**, **Labwc Doctor**, **Preferenze**, desktop 1–4 e guida integrata in
@@ -112,7 +116,7 @@ un ambiente sobrio.**
 
 **In sintesi:** prima scegli se modificare i parametri; poi una piccola GUI
 con checkbox raccoglie le scelte di installazione (browser, shell, zram,
-swappiness, touchscreen, LookSwitcher, qpdfview, YouTube leggero). La shell
+swappiness, touchscreen, LookSwitcher, qpdfview). La shell
 completa con layout tastiera, display manager e tema. Poi parte
 l'installazione. Ogni domanda ha un flag corrispondente (`--keyboard`,
 `--zram`, `--touch`, `--lookswitcher`, `--shell`, `--sddm`, `--theme`,
@@ -339,6 +343,10 @@ protezioni predefinite del pacchetto e aggiunge dal catalogo Mozilla:
 - **Privacy Badger** (`jid1-MnnxcxisBPnSXQ@jetpack`);
 - **enhanced-h264ify** (`9a41dee2-b924-4161-a971-7fb35c053a4a`).
 
+Entrambi i browser ricevono il preferito **YouTube 360p** (`https://youtube.it/`).
+In Chromium l'estensione locale imposta la qualità a 360p; in LibreWolf viene
+installata la stessa estensione come XPI nella cartella `distribution`.
+
 **enhanced-h264ify** è l'addon per i video. Di default blocca **AV1**, **VP9** e
 **VP8** su YouTube: il sito serve così il flusso **H.264** (`avc1`), che quasi
 tutte le GPU degli ultimi 15 anni decodificano in hardware. I **60fps** restano
@@ -352,28 +360,19 @@ Flag: `--browser chromium|librewolf|none`; restano validi `--chromium`,
 non può essere installato, ma le estensioni vengono configurate se è già
 presente.
 
+**SMTube** non viene installato: l’ultima release è ferma al 2021 e il
+pacchetto non è disponibile in Debian 13/Q4OS 6. Al suo posto resta il browser
+con YouTube a 360p e le estensioni già configurate.
+
+Le app con repository esterna restano aggiornabili con il sistema: LibreWolf
+usa `extrepo` (la fonte viene riconfigurata anche se il browser è già
+installato) e Noctalia usa il repository APT del progetto. Dopo un
+`apt update && apt upgrade` si aggiornano anche browser e shell.
+
 **qpdfview** è proposto come lettore PDF leggero, adatto ai PC vecchi:
 l'installer chiede se installarlo, non lo reinstalla se c'è già e non tocca le
 associazioni dei file. Flag: `--qpdfview` / `--no-qpdfview`; con `--skip-apt`
 la domanda non installa nulla.
-
-### YouTube leggero
-
-L'installer propone **YouTube leggero**, una GUI basata su **zenity + mpv +
-yt-dlp**: incolli un URL o cerchi un video, scegli il risultato e mpv apre il
-video a 720p, preferendo **H.264** quando disponibile. Non serve un browser e
-la RAM resta molto più bassa.
-
-Test sulla VM Debian 13 con lo stesso video: **mpv circa 276 MiB** di RSS,
-**Chromium circa 1,5 GiB** per l'intero albero dei processi (con YouTube a 360p
-e le estensioni). I valori variano con scheda video, cache e durata; il
-visualizzatore leggero resta la scelta per i PC con 1–2 GB.
-
-In Chromium, l'estensione locale `YouTube 360p labwc` imposta YouTube a 360p
-(`medium`) all'avvio e a ogni cambio video, per ridurre CPU e RAM. Non cambia
-audio né le altre impostazioni.
-
-Flag: `--youtube` / `--no-youtube`.
 
 ### Touchscreen
 
@@ -499,7 +498,6 @@ cd labwc-q4os
 | `--chromium` / `--librewolf` | Scorciatoie per `--browser chromium` / `librewolf` |
 | `--no-chromium` / `--no-browser` | Nessun browser (compatibilità) |
 | `--qpdfview` / `--no-qpdfview` | Installa o esclude qpdfview, lettore PDF leggero |
-| `--youtube` / `--no-youtube` | Installa o esclude YouTube leggero (mpv + yt-dlp) |
 | `--quick` | Aggiorna subito con le opzioni salvate, senza domande |
 | `--configure` | Chiede comunque tutti i parametri prima di aggiornare |
 | `--swappiness N` | Imposta `vm.swappiness` a `N` (0–200) |
@@ -513,7 +511,7 @@ cd labwc-q4os
 **Tutte le domande sono all'inizio**, prima di `sudo` e di qualsiasi modifica.
 Nelle installazioni normali, se c'è un display, le scelte di installazione
 (browser, shell, zram, swappiness, touchscreen, LookSwitcher, qpdfview,
-YouTube) si fanno in una **GUI con checkbox**; la shell completa con le
+qpdfview) si fanno in un **wizard GTK**: pagine colorate, checkbox e pulsanti Indietro/Avanti; la shell completa con le
 domande rimanenti. Con `--yes`, `--quick` o qualsiasi flag esplicito la GUI
 non viene aperta. Per saltarla anche in modalità grafica:
 `LABWC_Q4OS_NO_GUI=1`. Dopo il riepilogo parte l'installazione con le scelte
@@ -1102,7 +1100,7 @@ labwc-q4os/
 │   ├── labwc-app-manager          # gestore app/preferite/categorie
 │   ├── labwc-fuzzel-apps          # aggiungi/rimuovi app in Fuzzel, con icona
 │   ├── labwc-minimized            # pipemenu finestre ridotte ad icona
-│   ├── labwc-youtube              # GUI YouTube leggero (mpv + yt-dlp)
+│   ├── labwc-install-wizard        # wizard GTK colorato, avanti/indietro
 │   ├── labwc-update-check         # controllo versione online
 │   ├── labwc-update-copy          # copia comando di aggiornamento
 │   ├── labwc-update-popup         # popup 15 s: chiudi, copia, apri GUI
@@ -1127,7 +1125,8 @@ labwc-q4os/
 │   ├── labwc-generate-wallpapers
 │   ├── help.txt                   # guida italiana
 │   └── validate.sh                # controlli statici e smoke test
-├── configs/chromium/youtube-360/  # estensione locale YouTube a 360p
+├── configs/chromium/youtube-360/  # estensione locale YouTube a 360p (Chromium)
+├── configs/firefox/youtube-360/   # estensione locale YouTube a 360p (LibreWolf)
 ├── preview/                       # anteprime sfondi, icone, GUI
 ├── LICENSE
 └── README.md

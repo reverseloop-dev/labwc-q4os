@@ -49,7 +49,6 @@ Finestre:
 Mouse:
   • Tasto destro sul desktop ....... menu completo labwc
   • File manager > RIDOTTO AD ICONA .. finestre ridotte; clic per ripristinare
-  • YouTube leggero ................ GUI mpv + yt-dlp, senza browser
   • Doppio clic sinistro sul desktop guida, scorciatoie e informazioni di sistema
   • Tasto destro sul titolo ........ menu della finestra
   • Rotellina sul desktop .......... cambia desktop

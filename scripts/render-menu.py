@@ -457,7 +457,6 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
         f'    <menu id="minimized-menu" label="RIDOTTO AD ICONA" '
         f'execute="{x(helper("labwc-minimized") + " --pipe")}" />\n'
     )
-    parts.append(item("YouTube leggero", helper("labwc-youtube")))
     if shell_mode() == "noctalia":
         parts.append(item("Cerca applicazioni (Noctalia)", "noctalia msg panel-toggle launcher"))
     else:

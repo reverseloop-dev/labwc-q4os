@@ -38,7 +38,8 @@ if pgrep -x mako >/dev/null 2>&1 && command -v makoctl >/dev/null 2>&1; then
     makoctl reload >/dev/null 2>&1 || true
 fi
 
-if command -v notify-send >/dev/null 2>&1 && [ -n "${WAYLAND_DISPLAY:-}" ]; then
+if [ "${LABWC_Q4OS_SILENT:-0}" != "1" ] &&
+    command -v notify-send >/dev/null 2>&1 && [ -n "${WAYLAND_DISPLAY:-}" ]; then
     notify-send -a "Labwc" "Desktop ricaricato" "Menu, temi e barra aggiornati" || true
 fi
 
