@@ -265,7 +265,7 @@ for f in install.sh bootstrap.sh scripts/labwc-theme-apply scripts/labwc-theme-s
          scripts/labwc-update-popup scripts/labwc-update-run scripts/labwc-update-toggle \
          scripts/labwc-update-gui scripts/labwc-preferences \
          scripts/labwc-login-theme scripts/labwc-login-theme-apply scripts/labwc-session-launch \
-         scripts/labwc-fuzzel-apps scripts/labwc-minimized scripts/labwc-install-wizard scripts/labwc-cage scripts/labwc-freetube \
+         scripts/labwc-fuzzel-apps scripts/labwc-minimized scripts/labwc-install-wizard scripts/labwc-cage scripts/labwc-freetube scripts/labwc-cage-help \
          scripts/labwc-desktop scripts/labwc-desktop-state scripts/labwc-desktop-status scripts/labwc-desktop-menu \
          scripts/labwc-power-menu scripts/labwc-sysinfo \
          scripts/labwc-touchscreen \
@@ -383,7 +383,7 @@ if command -v shellcheck >/dev/null 2>&1; then
         scripts/labwc-screenshot scripts/labwc-doctor scripts/labwc-update-check \
         scripts/labwc-update-copy scripts/labwc-update-popup scripts/labwc-update-run \
         scripts/labwc-update-toggle \
-        scripts/labwc-minimized scripts/labwc-install-wizard scripts/labwc-cage scripts/labwc-freetube \
+        scripts/labwc-minimized scripts/labwc-install-wizard scripts/labwc-cage scripts/labwc-freetube scripts/labwc-cage-help \
         scripts/labwc-login-theme-apply scripts/labwc-session-launch \
         scripts/labwc-desktop scripts/labwc-desktop-state \
         scripts/labwc-desktop-status scripts/labwc-desktop-menu \

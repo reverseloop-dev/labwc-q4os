@@ -5,13 +5,15 @@
 set -u
 FREETUBE="io.freetubeapp.FreeTube"
 
-if ! command -v flatpak >/dev/null 2>&1 ||
-    ! flatpak info "$FREETUBE" >/dev/null 2>&1; then
-    if command -v notify-send >/dev/null 2>&1; then
-        notify-send -a "FreeTube" "FreeTube non installato" \
-            "Esegui l'installer e scegli FreeTube." >/dev/null 2>&1 || true
-    fi
-    exit 1
+if command -v flatpak >/dev/null 2>&1 &&
+    flatpak info "$FREETUBE" >/dev/null 2>&1; then
+    exec "$HOME/.local/bin/labwc-cage" --ask -- flatpak run "$FREETUBE"
 fi
-
-exec "$HOME/.local/bin/labwc-cage" --ask -- flatpak run "$FREETUBE"
+if command -v freetube >/dev/null 2>&1; then
+    exec "$HOME/.local/bin/labwc-cage" --ask -- freetube
+fi
+if command -v notify-send >/dev/null 2>&1; then
+    notify-send -a "FreeTube" "FreeTube non installato" \
+        "Esegui l'installer e scegli FreeTube." >/dev/null 2>&1 || true
+fi
+exit 1

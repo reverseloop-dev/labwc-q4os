@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.20.0**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.21.0**
 
 ---
 
@@ -364,6 +364,18 @@ presente.
 **SMTube** non viene installato: l’ultima release è ferma al 2021 e il
 pacchetto non è disponibile in Debian 13/Q4OS 6. Al suo posto viene proposto
 **FreeTube**, client YouTube con GUI, installato da Flathub.
+
+### Tasti volume e AVVIA CAGE
+
+I tasti **volume su/giù/mute** vengono intercettati da `keyd` e funzionano
+anche dentro Cage. Nel menu **TOOL reverseloop** la voce **AVVIA CAGE** apre
+una console con gli esempi:
+```
+labwc-cage -- chromium
+labwc-cage -- librewolf
+labwc-cage -- flatpak run io.freetubeapp.FreeTube
+```
+Si chiude l’app per tornare a labwc.
 
 ### FreeTube e Cage
 
@@ -1121,6 +1133,7 @@ labwc-q4os/
 │   ├── labwc-install-wizard        # wizard GTK colorato, avanti/indietro
 │   ├── labwc-cage                  # app in Cage a schermo intero
 │   ├── labwc-freetube              # FreeTube: Cage/Labwc/Annulla
+│   ├── labwc-cage-help             # console AVVIA CAGE con esempi
 │   ├── labwc-update-check         # controllo versione online
 │   ├── labwc-update-copy          # copia comando di aggiornamento
 │   ├── labwc-update-popup         # popup 15 s: chiudi, copia, apri GUI

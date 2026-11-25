@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-audio-key - cambia volume dal demone keyd, anche in Cage.
+#
+#  keyd gira come root e non ha il bus PipeWire dell'utente: questo helper
+#  trova la sessione grafica attiva e esegue wpctl/pactl come utente.
+# =============================================================================
+set -u
+
+action="${1:-}"
+case "$action" in
+    up|down|mute) ;;
+    *) exit 2 ;;
+esac
+
+# Sessione grafica attiva (seat0), indipendente dal nome utente.
+session_user="$(loginctl list-sessions --no-legend 2>/dev/null |
+    awk '$4 == "seat0" { print $3; exit }')"
+[ -n "$session_user" ] || exit 0
+uid="$(id -u "$session_user" 2>/dev/null)" || exit 0
+runtime="/run/user/$uid"
+[ -d "$runtime" ] || exit 0
+
+run_as_user() {
+    if command -v runuser >/dev/null 2>&1; then
+        runuser -u "$session_user" -- env \
+            XDG_RUNTIME_DIR="$runtime" \
+            DBUS_SESSION_BUS_ADDRESS="unix:path=$runtime/bus" \
+            PULSE_SERVER="unix:$runtime/pulse/native" "$@"
+    else
+        sudo -u "$session_user" env \
+            XDG_RUNTIME_DIR="$runtime" \
+            DBUS_SESSION_BUS_ADDRESS="unix:path=$runtime/bus" \
+            PULSE_SERVER="unix:$runtime/pulse/native" "$@"
+    fi
+}
+
+if run_as_user sh -c 'command -v wpctl >/dev/null 2>&1'; then
+    case "$action" in
+        up) run_as_user wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+ ;;
+        down) run_as_user wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%- ;;
+        mute) run_as_user wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
+    esac
+elif run_as_user sh -c 'command -v pactl >/dev/null 2>&1'; then
+    case "$action" in
+        up) run_as_user pactl set-sink-volume @DEFAULT_SINK@ +5% ;;
+        down) run_as_user pactl set-sink-volume @DEFAULT_SINK@ -5% ;;
+        mute) run_as_user pactl set-sink-mute @DEFAULT_SINK@ toggle ;;
+    esac
+fi

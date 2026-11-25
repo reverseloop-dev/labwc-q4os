@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-cage-help - console di avvio Cage con istruzioni
+# =============================================================================
+set -u
+cat <<'EOF'
+
+  AVVIA CAGE
+  ==========
+  Cage apre l'app a schermo intero sopra labwc; alla chiusura dell'app
+  torni subito al desktop. Salva i documenti aperti prima di iniziare.
+
+  Esempi:
+    labwc-cage -- chromium
+    labwc-cage -- librewolf
+    labwc-cage -- flatpak run io.freetubeapp.FreeTube
+    labwc-cage -- firefox
+
+  Per un'altra app, sostituisci il comando dopo --.
+  Per tornare a labwc: chiudi l'app aperta in Cage.
+
+  Tasti volume: vengono gestiti da keyd anche dentro Cage.
+
+EOF
+exec "${SHELL:-/bin/bash}" -i

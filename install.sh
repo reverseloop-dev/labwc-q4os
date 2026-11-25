@@ -1074,6 +1074,45 @@ EOF
     ok "Chromium: Wayland, decorazioni e YouTube 360p configurati."
 }
 
+install_audio_keys() {
+    local keyd_conf="/etc/keyd/default.conf"
+    local helper="/usr/local/bin/labwc-audio-key"
+
+    if [ "$SKIP_APT" -eq 1 ]; then
+        warn "Tasti volume non configurati con --skip-apt."
+        return 1
+    fi
+    install_packages keyd
+    if ! command -v keyd >/dev/null 2>&1 && ! command -v keyd.rvaiya >/dev/null 2>&1; then
+        warn "keyd non disponibile: tasti volume non mappati."
+        return 1
+    fi
+
+    sudo install -d -m 0755 /etc/keyd
+    if [ -r "$keyd_conf" ] && ! grep -q 'labwc-q4os' "$keyd_conf"; then
+        mkdir -p "$BACKUP_DIR/system"
+        sudo cat "$keyd_conf" >"$BACKUP_DIR/system/keyd-default.conf" 2>/dev/null || true
+        warn "keyd: config personale salvata; non la sovrascrivo."
+    elif [ ! -r "$keyd_conf" ]; then
+        sudo tee "$keyd_conf" >/dev/null <<'EOF'
+# labwc-q4os: tasti volume, anche dentro Cage
+[ids]
+*
+
+[main]
+volumeup = command(/usr/local/bin/labwc-audio-key up)
+volumedown = command(/usr/local/bin/labwc-audio-key down)
+mute = command(/usr/local/bin/labwc-audio-key mute)
+EOF
+        sudo chmod 0644 "$keyd_conf"
+    fi
+
+    sudo install -m 0755 "$REPO_DIR/scripts/labwc-audio-key" "$helper"
+    sudo systemctl enable keyd >/dev/null 2>&1 || true
+    sudo systemctl restart keyd >/dev/null 2>&1 || warn "keyd non riavviato."
+    ok "Tasti volume mappati con keyd (anche in Cage)."
+}
+
 install_freetube() {
     if [ "$SKIP_APT" -eq 1 ]; then
         warn "FreeTube non installato con --skip-apt."
@@ -1330,6 +1369,7 @@ Aggiorna a Q4OS 6 oppure usa una release Debian 13 o successiva."
     fi
     log "Installazione pacchetti opzionali consigliati..."
     install_packages "${OPTIONAL_PKGS[@]}"
+    install_audio_keys || true
 
     if [ "$ENABLE_TOUCH" -eq 1 ]; then
         log "Installazione componenti touchscreen (wvkbd, lisgd, libinput-tools)..."
@@ -1708,6 +1748,7 @@ for helper in \
     labwc-install-wizard \
     labwc-cage \
     labwc-freetube \
+    labwc-cage-help \
     labwc-session-start
 do
     install -m 0755 "$REPO_DIR/scripts/$helper" "$BIN/$helper"
@@ -2312,7 +2353,7 @@ for variant in nordic-cobalt muted-crimson sage-emerald; do
     [ -f "/usr/share/labwc-q4os/login-themes/$variant/Main.qml" ] ||
         die "tema login mancante: $variant"
 done
-for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-doctor labwc-app-manager labwc-update-check labwc-update-copy labwc-update-popup labwc-update-run labwc-update-gui labwc-preferences labwc-desktop labwc-desktop-state labwc-desktop-status labwc-desktop-menu labwc-power-menu labwc-sysinfo labwc-touchscreen labwc-login-theme labwc-fuzzel-apps labwc-minimized labwc-install-wizard labwc-cage labwc-freetube; do
+for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-doctor labwc-app-manager labwc-update-check labwc-update-copy labwc-update-popup labwc-update-run labwc-update-gui labwc-preferences labwc-desktop labwc-desktop-state labwc-desktop-status labwc-desktop-menu labwc-power-menu labwc-sysinfo labwc-touchscreen labwc-login-theme labwc-fuzzel-apps labwc-minimized labwc-install-wizard labwc-cage labwc-freetube labwc-cage-help; do
     [ -x "$BIN/$helper" ] || die "helper non eseguibile: $helper"
 done
 ok "Tutto in ordine."

@@ -492,6 +492,7 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     parts.append("    <separator />\n")
 
     tool_entries: list[tuple[str, str]] = [
+        ("AVVIA CAGE", item("AVVIA CAGE", f"terminator --fullscreen -e {helper('labwc-cage-help')}")),
         ("Gestisci app e preferite", item("Gestisci app e preferite", helper("labwc-app-manager"))),
         ("Editor rapido del menu", item("Editor rapido del menu", helper("labwc-menu-editor"))),
         ("Ricarica menu e desktop", item("Ricarica menu e desktop", helper("labwc-reload"))),

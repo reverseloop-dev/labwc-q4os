@@ -2,6 +2,16 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.21.0]
+
+- **Tasti volume** mappati con `keyd` e helper `/usr/local/bin/labwc-audio-key`:
+  funzionano anche in Cage.
+- Voce **AVVIA CAGE** nel menu TOOL: apre la console con esempi per lanciare
+  Chromium, LibreWolf, FreeTube o altre app con `labwc-cage`.
+- FreeTube può usare Flatpak o l’AppImage presente nel sistema; popup a tre
+  scelte Cage / Labwc / Annulla.
+- Link browser normali e `(cage)` per Chromium e LibreWolf.
+
 ## [1.20.0]
 
 - **FreeTube** da Flathub al posto di gtk-pipe-viewer, con popup a tre scelte:
