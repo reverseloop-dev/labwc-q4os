@@ -85,8 +85,7 @@ if [ ! -f "$wallpaper" ]; then
     wallpaper="$SHARE/wallpapers/nordic-cobalt.png"
 fi
 if [ "$use_noctalia" -eq 0 ] && [ -f "$wallpaper" ] && command -v swaybg >/dev/null 2>&1; then
-    pkill -x swaybg >/dev/null 2>&1 || true
-    sleep 0.15
+    if pkill -x swaybg >/dev/null 2>&1; then sleep 0.15; fi
     setsid -f swaybg -m fill -i "$wallpaper"
     printf 'sfondo: %s\n' "$wallpaper"
 fi
@@ -125,8 +124,7 @@ fi
 
 # Barra e notifiche
 if [ "$use_noctalia" -eq 0 ] && command -v waybar >/dev/null 2>&1; then
-    pkill -x waybar >/dev/null 2>&1 || true
-    sleep 0.25
+    if pkill -x waybar >/dev/null 2>&1; then sleep 0.25; fi
     setsid -f waybar -c "$CONFIG/waybar/config.jsonc" -s "$CONFIG/waybar/style.css"
     printf 'avviato: waybar\n'
 fi

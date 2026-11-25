@@ -166,8 +166,7 @@ check_once() {
 startup_watch() {
     local interval
     while enabled; do
-        if online_version >/dev/null 2>&1; then
-            check_once 0
+        if check_once 0; then
             interval="$(interval_seconds)"
             # Attesa a piccoli passi per reagire subito a una disattivazione.
             local slept=0

@@ -23,8 +23,7 @@ fi
 
 if [ "$use_noctalia" -eq 0 ] && [ -n "${WAYLAND_DISPLAY:-}" ] && command -v waybar >/dev/null 2>&1; then
     pkill -x noctalia >/dev/null 2>&1 || true
-    pkill -x waybar >/dev/null 2>&1 || true
-    sleep 0.25
+    if pkill -x waybar >/dev/null 2>&1; then sleep 0.25; fi
     setsid -f waybar -c "$CONFIG/waybar/config.jsonc" -s "$CONFIG/waybar/style.css" \
         >>"$STATE/session.log" 2>&1 || true
 fi

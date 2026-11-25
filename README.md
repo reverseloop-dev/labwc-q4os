@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.18.0**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.19.0**
 
 ---
 
@@ -100,7 +100,8 @@ un ambiente sobrio.**
   applicazioni con selezione icona; le voci di sistema restano protette.
 - **Chromium** oppure **LibreWolf**, con le tre estensioni
   (**uBlock**, **Privacy Badger**, **enhanced-h264ify**); **qpdfview** come
-  lettore PDF leggero; **btop** per monitorare il sistema.
+  lettore PDF leggero; **gtk-pipe-viewer** per YouTube a 360p; **btop** per
+  monitorare il sistema.
 - **Wizard di installazione** GTK: pagine colorate con il tema, angoli
   arrotondati, scelte sì/no e **Indietro/Avanti** fino alla prima pagina.
 - **Preferito YouTube 360p** in Chromium e LibreWolf; aggiornamenti delle app
@@ -361,8 +362,18 @@ non può essere installato, ma le estensioni vengono configurate se è già
 presente.
 
 **SMTube** non viene installato: l’ultima release è ferma al 2021 e il
-pacchetto non è disponibile in Debian 13/Q4OS 6. Al suo posto resta il browser
-con YouTube a 360p e le estensioni già configurate.
+pacchetto non è disponibile in Debian 13/Q4OS 6. Al suo posto viene proposto
+**gtk-pipe-viewer**, client GTK mantenuto e leggero, configurato a 360p.
+
+### gtk-pipe-viewer
+
+Il client viene compilato dal sorgente ufficiale GitHub (versione pinnata
+0.5.9, checksum verificato) perché non esiste un pacchetto APT per Debian 13.
+Configurazione predefinita: **360p**, mpv, MP4/H.264, AV1 ignorato, HFR e DASH
+disattivati. Non parte nessun browser e il consumo resta basso.
+
+Flag: `--pipeviewer` / `--no-pipeviewer`. Il programma si installa in
+`/usr/local` e la configurazione in `~/.config/pipe-viewer/gtk-pipe-viewer.conf`.
 
 Le app con repository esterna restano aggiornabili con il sistema: LibreWolf
 usa `extrepo` (la fonte viene riconfigurata anche se il browser è già
@@ -498,6 +509,7 @@ cd labwc-q4os
 | `--chromium` / `--librewolf` | Scorciatoie per `--browser chromium` / `librewolf` |
 | `--no-chromium` / `--no-browser` | Nessun browser (compatibilità) |
 | `--qpdfview` / `--no-qpdfview` | Installa o esclude qpdfview, lettore PDF leggero |
+| `--pipeviewer` / `--no-pipeviewer` | Installa o esclude gtk-pipe-viewer (YouTube GTK) |
 | `--quick` | Aggiorna subito con le opzioni salvate, senza domande |
 | `--configure` | Chiede comunque tutti i parametri prima di aggiornare |
 | `--swappiness N` | Imposta `vm.swappiness` a `N` (0–200) |

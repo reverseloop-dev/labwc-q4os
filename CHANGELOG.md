@@ -2,6 +2,17 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.19.0]
+
+- **gtk-pipe-viewer** proposto e compilato dal sorgente GitHub pinnato 0.5.9
+  (checksum), con configurazione 360p, H.264/MP4, AV1 ignorato e HFR/DASH
+  disattivati.
+- Reattività login: niente attese dopo `pkill` quando il processo non esiste;
+  sfondi non ricopiati se identici; controllo aggiornamenti senza doppia
+  richiesta di rete.
+- README aggiornato con pipe-viewer e nota SMTube non mantenuto.
+- Preferiti YouTube 360p e ricarica desktop finale restano invariati.
+
 ## [1.18.0]
 
 - Nuovo **wizard GTK** colorato con il tema attivo, box arrotondati e

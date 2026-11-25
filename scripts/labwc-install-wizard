@@ -109,6 +109,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lookswitcher", default="0")
     parser.add_argument("--lookswitcher-available", default="0")
     parser.add_argument("--qpdfview", default="1")
+    parser.add_argument("--pipeviewer", default="1")
     parser.add_argument("--sddm", default="0")
     parser.add_argument("--sddm-available", default="0")
     parser.add_argument("--chromium-installed", default="0")
@@ -357,7 +358,9 @@ def main() -> int:
     )
     extra_card = card("APPLICAZIONI OPZIONALI")
     pdf_check = check("qpdfview — lettore PDF leggero", bool_arg(args.qpdfview))
+    pipe_check = check("gtk-pipe-viewer — YouTube GTK leggero, 360p", bool_arg(args.pipeviewer))
     extra_card.pack_start(pdf_check, False, False, 0)
+    extra_card.pack_start(pipe_check, False, False, 0)
     extra_page.pack_start(extra_card, False, False, 0)
     add_page("extra", "Applicazioni", extra_scroll)
 
@@ -473,6 +476,7 @@ def main() -> int:
             f"Swappiness: {'sì' if swappiness_check.get_active() else 'no'}",
             f"Touchscreen: {'sì' if touch_check.get_active() else 'no'}",
             f"qpdfview: {'sì' if pdf_check.get_active() else 'no'}",
+            f"pipe-viewer: {'sì' if pipe_check.get_active() else 'no'}",
             f"Tema: {selected_theme()}",
             f"Tastiera: {keyboard_combo.get_active_text() or 'it'}",
         ]
@@ -513,6 +517,7 @@ def main() -> int:
             f"TOUCH={1 if touch_check.get_active() else 0}",
             f"LOOKSWITCHER={1 if look_check is not None and look_check.get_active() else 0}",
             f"QPDFVIEW={1 if pdf_check.get_active() else 0}",
+            f"PIPEVIEWER={1 if pipe_check.get_active() else 0}",
             f"THEME={selected_theme()}",
             f"KEYBOARD={keyboard_combo.get_active_text() or 'it'}",
             f"SDDM={1 if sddm_check is not None and sddm_check.get_active() else 0}",

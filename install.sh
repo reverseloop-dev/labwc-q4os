@@ -52,6 +52,7 @@ WANT_BROWSER=""
 REMOVE_BROWSER=""
 GUI_CHOICES=0
 WANT_QPDFVIEW=""
+WANT_PIPEVIEWER=""
 QUICK_UPDATE=""
 INSTALL_OPTIONS="${LABWC_Q4OS_OPTIONS:-/etc/labwc-q4os/install-options}"
 PARAM_FLAGS=0
@@ -88,6 +89,8 @@ Opzioni:
   --no-browser        Nessun browser
   --qpdfview          Installa qpdfview (lettore PDF leggero) senza chiedere
   --no-qpdfview       Non installare qpdfview
+  --pipeviewer        Installa gtk-pipe-viewer (YouTube GTK, 360p)
+  --no-pipeviewer     Non installare gtk-pipe-viewer
   --quick             Aggiorna senza domande, usando le opzioni salvate
   --configure         Chiedi comunque tutti i parametri prima di aggiornare
   --shell NOME        Shell desktop: waybar|noctalia (default: waybar)
@@ -136,6 +139,8 @@ while [ "$#" -gt 0 ]; do
         --no-chromium|--no-browser) WANT_BROWSER=none; shift ;;
         --qpdfview) WANT_QPDFVIEW=1; shift ;;
         --no-qpdfview) WANT_QPDFVIEW=0; shift ;;
+        --pipeviewer) WANT_PIPEVIEWER=1; shift ;;
+        --no-pipeviewer) WANT_PIPEVIEWER=0; shift ;;
         --quick) QUICK_UPDATE=1; shift ;;
         --configure) QUICK_UPDATE=0; shift ;;
         --shell)
@@ -165,7 +170,7 @@ if [ -n "$WANT_SHELL" ]; then
     esac
 fi
 
-if [ -n "$THEME$ENABLE_ZRAM$ENABLE_SWAPPINESS$ENABLE_TOUCH$WANT_LOOKSWITCHER$WANT_SHELL$WANT_SDDM$XKB_LAYOUT$WANT_BROWSER$WANT_QPDFVIEW$SWAPPINESS_VALUE" ]; then
+if [ -n "$THEME$ENABLE_ZRAM$ENABLE_SWAPPINESS$ENABLE_TOUCH$WANT_LOOKSWITCHER$WANT_SHELL$WANT_SDDM$XKB_LAYOUT$WANT_BROWSER$WANT_QPDFVIEW$WANT_PIPEVIEWER$SWAPPINESS_VALUE" ]; then
     PARAM_FLAGS=1
 fi
 
@@ -212,6 +217,8 @@ load_saved_options() {
     fi
     value="$(option_value QPDFVIEW || true)"
     case "$value" in 0|1) WANT_QPDFVIEW="$value" ;; esac
+    value="$(option_value PIPEVIEWER || true)"
+    case "$value" in 0|1) WANT_PIPEVIEWER="$value" ;; esac
     value="$(option_value KEEP_TDM || true)"
     case "$value" in
         1) WANT_SDDM=0 ;;
@@ -323,7 +330,7 @@ run_install_wizard() {
         --browser "$browser_default" --shell "$shell_default" \
         --zram 1 --swappiness 1 --touch "$touch_now" \
         --lookswitcher "$look_default" --lookswitcher-available "$trinity_present" \
-        --qpdfview 1 \
+        --qpdfview 1 --pipeviewer 1 \
         --sddm "$sddm_default" --sddm-available "$sddm_available" \
         --chromium-installed "$chromium_here" --librewolf-installed "$librewolf_here"
 }
@@ -340,6 +347,7 @@ apply_wizard_output() {
             TOUCH) case "$value" in 0|1) ENABLE_TOUCH="$value" ;; esac ;;
             LOOKSWITCHER) case "$value" in 0|1) WANT_LOOKSWITCHER="$value" ;; esac ;;
             QPDFVIEW) case "$value" in 0|1) WANT_QPDFVIEW="$value" ;; esac ;;
+            PIPEVIEWER) case "$value" in 0|1) WANT_PIPEVIEWER="$value" ;; esac ;;
             THEME) THEME="$value" ;;
             KEYBOARD) XKB_LAYOUT="$value" ;;
             SDDM) case "$value" in 0|1) WANT_SDDM="$value" ;; esac ;;
@@ -499,6 +507,25 @@ if [ "$ASSUME_YES" -eq 0 ] && [ "$QUICK_UPDATE" != "1" ] && [ "$PARAM_FLAGS" -eq
         die "Installazione annullata dalla finestra di scelta."
     else
         warn "GUI non disponibile: proseguo con le domande nella shell."
+    fi
+fi
+
+# pipe-viewer: client YouTube GTK leggero e mantenuto, build dal sorgente.
+if [ -z "$WANT_PIPEVIEWER" ]; then
+    if [ "$SKIP_APT" -eq 1 ]; then
+        WANT_PIPEVIEWER=0
+    elif [ "$QUICK_UPDATE" = "1" ]; then
+        WANT_PIPEVIEWER=0
+    elif [ "$ASSUME_YES" -eq 1 ]; then
+        WANT_PIPEVIEWER=1
+    else
+        note "pipe-viewer è un client YouTube GTK leggero, open source e mantenuto."
+        note "Video a 360p, mpv, H.264 e senza browser."
+        if ask_yes_no "Installare gtk-pipe-viewer?" yes; then
+            WANT_PIPEVIEWER=1
+        else
+            WANT_PIPEVIEWER=0
+        fi
     fi
 fi
 
@@ -760,14 +787,15 @@ SUDO_KEEPALIVE_PID=$!
 trap 'kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true' EXIT
 trap 'err_trap $LINENO' ERR
 
-printf '\n%sRiepilogo:%s tema %s, shell %s, zram %s, swappiness %s, touchscreen %s, browser %s, qpdfview %s\n\n' \
+printf '\n%sRiepilogo:%s tema %s, shell %s, zram %s, swappiness %s, touchscreen %s, browser %s, qpdfview %s, pipe-viewer %s\n\n' \
     "$C_BOLD" "$C_RESET" "$(theme_label "$THEME")" \
     "$([ "$WANT_SHELL" = "noctalia" ] && echo "Noctalia v5" || echo "Waybar + Fuzzel")" \
     "$([ "$ENABLE_ZRAM" -eq 1 ] && echo attivo || echo no)" \
     "$([ "$ENABLE_SWAPPINESS" -eq 1 ] && echo "${SWAPPINESS_VALUE:-auto}" || echo invariato)" \
     "$([ "$ENABLE_TOUCH" -eq 1 ] && echo si || echo no)" \
     "$(browser_label "$WANT_BROWSER")" \
-    "$([ "$WANT_QPDFVIEW" -eq 1 ] && echo si || echo no)"
+    "$([ "$WANT_QPDFVIEW" -eq 1 ] && echo si || echo no)" \
+    "$([ "$WANT_PIPEVIEWER" -eq 1 ] && echo si || echo no)"
 
 # -----------------------------------------------------------------------------
 # Installazione pacchetti
@@ -967,7 +995,8 @@ install_browser_extensions() {
         grep -q 'ddkjiahejlhfcafbddmgiahcphecmpfh' "$policy_file" &&
         grep -q 'pkehgijcmpdhfbdbbnkijodmdjhbjlgp' "$policy_file" &&
         grep -q 'omkfmpieigblcllmkgbflkikinpkodlk' "$policy_file" &&
-        grep -q 'ManagedBookmarks' "$policy_file"; then
+        grep -q 'ManagedBookmarks' "$policy_file" &&
+        grep -q 'youtube.it/' "$policy_file"; then
         info "Chromium: estensioni e preferito YouTube gia' configurati: nessuna modifica."
         return 0
     fi
@@ -1033,6 +1062,84 @@ export CHROMIUM_FLAGS="\$CHROMIUM_FLAGS --ozone-platform-hint=auto --enable-feat
 EOF
     sudo chmod 0644 "$flags_file"
     ok "Chromium: Wayland, decorazioni e YouTube 360p configurati."
+}
+
+install_pipe_viewer() {
+    local version="0.5.9"
+    local url="https://github.com/trizen/pipe-viewer/archive/refs/tags/${version}.tar.gz"
+    local sha="b6c705e8d6d749ec90dea7988f20c60646ae14aaaf125a16a97965f036f73cf2"
+    local tmp conf_dir conf_file
+
+    if [ "$SKIP_APT" -eq 1 ]; then
+        warn "pipe-viewer non installato con --skip-apt."
+        return 1
+    fi
+    if ! have gtk-pipe-viewer; then
+        log "Preparazione dipendenze pipe-viewer..."
+        install_packages libgtk3-perl libfile-sharedir-perl libdata-dump-perl             libjson-perl liblwp-protocol-https-perl libwww-perl             libterm-readline-gnu-perl libmodule-build-perl mpv
+        tmp="$(mktemp -d)"
+        if ! curl -fsSL --proto '=https' --proto-redir '=https' --max-time 120 \
+            -o "$tmp/pipe-viewer.tar.gz" "$url"; then
+            rm -rf "$tmp"
+            warn "Download pipe-viewer non riuscito."
+            return 1
+        fi
+        if ! printf '%s  %s\n' "$sha" "$tmp/pipe-viewer.tar.gz" |
+            sha256sum -c --strict --quiet -; then
+            rm -rf "$tmp"
+            warn "Checksum pipe-viewer non valido: installazione annullata."
+            return 1
+        fi
+        if ! tar -xzf "$tmp/pipe-viewer.tar.gz" -C "$tmp"; then
+            rm -rf "$tmp"
+            warn "Estrazione pipe-viewer non riuscita."
+            return 1
+        fi
+        if ! (
+            cd "$tmp/pipe-viewer-$version" &&
+                perl Build.PL --gtk &&
+                ./Build &&
+                sudo ./Build install
+        ) >"$tmp/build.log" 2>&1; then
+            warn "Build pipe-viewer non riuscita (log in $tmp/build.log)."
+            rm -rf "$tmp"
+            return 1
+        fi
+        sudo install -d -m 0755 /usr/share/applications
+        sudo install -m 0644 "$tmp/pipe-viewer-$version/share/gtk-pipe-viewer.desktop" \
+            /usr/share/applications/gtk-pipe-viewer.desktop
+        sudo install -d -m 0755 /usr/share/pixmaps
+        sudo install -m 0644 "$tmp/pipe-viewer-$version/share/icons/gtk-pipe-viewer.png" \
+            /usr/share/pixmaps/gtk-pipe-viewer.png
+        rm -rf "$tmp"
+        ok "gtk-pipe-viewer installato."
+    else
+        info "gtk-pipe-viewer gia' installato."
+    fi
+
+    # Configurazione per l'utente corrente: 360p, H.264, niente AV1/HFR/DASH.
+    conf_dir="$HOME/.config/pipe-viewer"
+    conf_file="$conf_dir/gtk-pipe-viewer.conf"
+    mkdir -p "$BACKUP_DIR/config" "$conf_dir"
+    [ -f "$conf_file" ] && cp -a "$conf_file" "$BACKUP_DIR/config/gtk-pipe-viewer.conf" 2>/dev/null || true
+    cat >"$conf_file" <<'EOF'
+# labwc-q4os: YouTube leggero, 360p e massima efficienza
+our $CONFIG = {
+    resolution           => '360',
+    audio_quality        => 'medium',
+    prefer_mp4           => 1,
+    prefer_m4a           => 1,
+    ignore_av1           => 1,
+    hfr                  => 0,
+    dash                 => 0,
+    split_videos         => 1,
+    show_thumbs          => 1,
+    default_notebook_page => 'settings',
+    mainw_size           => '700x400',
+    video_player_selected => 'mpv',
+};
+EOF
+    ok "pipe-viewer: 360p, H.264, niente AV1/HFR/DASH."
 }
 
 install_librewolf_extensions() {
@@ -1425,6 +1532,12 @@ if [ "$WANT_QPDFVIEW" -eq 1 ]; then
     fi
 else
     info "qpdfview non richiesto: nessuna modifica."
+fi
+
+if [ "$WANT_PIPEVIEWER" -eq 1 ]; then
+    install_pipe_viewer || true
+else
+    info "pipe-viewer non richiesto: nessuna modifica."
 fi
 
 
@@ -1867,6 +1980,10 @@ done
 if [ "$missing_wallpapers" -eq 0 ]; then
     log "Installazione dei tre sfondi pre-generati (2560x1440)..."
     for _wall in nordic-cobalt muted-crimson sage-emerald; do
+        if cmp -s "$REPO_DIR/configs/wallpapers/$_wall.png" \
+            "$SHARE/wallpapers/$_wall.png"; then
+            continue
+        fi
         install -m 0644 "$REPO_DIR/configs/wallpapers/$_wall.png" \
             "$SHARE/wallpapers/$_wall.png"
     done
@@ -2140,6 +2257,7 @@ SWAPPINESS_VALUE=$SWAPPINESS_VALUE
 THEME=$THEME
 BROWSER=$WANT_BROWSER
 QPDFVIEW=$WANT_QPDFVIEW
+PIPEVIEWER=$WANT_PIPEVIEWER
 KEYBOARD=$XKB_LAYOUT
 KEEP_TDM=$keep_tdm
 EOF
@@ -2223,6 +2341,7 @@ ${C_GREEN}${C_BOLD}Installazione completata.${C_RESET}
       esac
   )
   qpdfview ........... $(if have qpdfview; then echo "installato"; else echo "non installato"; fi)
+  pipe-viewer ........ $(if have gtk-pipe-viewer; then echo "GTK, 360p"; else echo "non installato"; fi)
   btop ............... $(if have btop; then echo "installato"; else echo "non installato"; fi)
   Backup ............. $BACKUP_DIR
   Log sessione ....... $STATE/session.log
