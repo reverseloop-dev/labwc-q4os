@@ -2,6 +2,12 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.17.1]
+
+- Una sola firma finale: banner ASCII di tre righe con `created by
+  reverseloop-dev`; rimosso il duplicato aggiunto dal terminale di
+  aggiornamento.
+
 ## [1.17.0]
 
 - Scelta browser **Chromium / LibreWolf / nessuno**, con descrizione e

@@ -2222,11 +2222,13 @@ ${C_BOLD}Da ricordare${C_RESET}
 Se stai gia' usando labwc, applica subito le modifiche con:
   labwc-reload
 
-Repository: https://github.com/reverseloop-dev/labwc-q4os
 EOF
 
-printf '\n%s   by Reverseloop-dev%s\n%s  ~~~~~~~~~~~~~~~~~~~~%s\n\n' \
-    "$C_DIM" "$C_RESET" "$C_DIM" "$C_RESET"
+printf '\n%s' "$C_CYAN"
+printf '%s\n' '  .-----------------------------------------------------.'
+printf '%s\n' '  |          created by reverseloop-dev                 |'
+printf '%s\n' "  '-----------------------------------------------------'"
+printf '%s\n' "$C_RESET"
 
 trap - ERR
 exit 0
