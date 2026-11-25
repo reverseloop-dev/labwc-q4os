@@ -43,7 +43,8 @@ if [ ! -f "$state/cage-supported" ]; then
     # non viene riaperta la sessione.
     notify "Riavvia la sessione per Cage reale" "Per ora apro Cage annidato."
     log="$(mktemp)"
-    LABWC_CAGE_QUIET=1 WLR_BACKENDS=wayland WLR_RENDERER=pixman cage -- "$@" >"$log" 2>&1 &
+    LABWC_CAGE_QUIET=1 WLR_BACKENDS=wayland WLR_RENDERER=pixman \
+        WLR_NO_HARDWARE_CURSORS=1 cage -- "$@" >"$log" 2>&1 &
     cage_pid=$!
     for _ in $(seq 1 40); do
         if wlrctl toplevel find app_id:wlroots >/dev/null 2>&1; then

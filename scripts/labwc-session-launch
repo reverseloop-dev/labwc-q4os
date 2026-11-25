@@ -126,6 +126,7 @@ while :; do
         (
             unset WAYLAND_DISPLAY DISPLAY XAUTHORITY
             LABWC_CAGE_QUIET=1 WLR_BACKENDS=drm WLR_RENDERER=pixman \
+                WLR_NO_HARDWARE_CURSORS=1 \
                 cage -- bash -lc "$cage_cmd"
         ) >>"$LOG" 2>&1
         printf 'cage: app terminata, riavvio labwc\n' >>"$LOG"

@@ -2,6 +2,14 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.22.1]
+
+- Cage: aggiunto l’utente al gruppo **input** (mouse/tastiera su DRM) e
+  attivato il cursore software (`WLR_NO_HARDWARE_CURSORS=1`).
+- Dopo l’aggiornamento serve un logout/login per applicare il gruppo input e
+  il nuovo wrapper di sessione.
+- FreeTube resta `.deb` ufficiale; nessun Flatpak.
+
 ## [1.22.0]
 
 - **Cage reale**: `(cage)` e AVVIA CAGE chiudono davvero labwc, liberano RAM e

@@ -3,6 +3,8 @@
 # Viene installato come /usr/local/bin/cage; labwc-cage lo richiama in
 # modalità silenziosa.
 set -u
+export WLR_NO_HARDWARE_CURSORS="${WLR_NO_HARDWARE_CURSORS:-1}"
+export XCURSOR_SIZE="${XCURSOR_SIZE:-24}"
 
 quiet="${LABWC_CAGE_QUIET:-0}"
 if [ "$quiet" != "1" ]; then

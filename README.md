@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.0**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.1**
 
 ---
 
@@ -382,6 +382,11 @@ serve **un logout/login una volta** per caricare il nuovo wrapper di sessione;
 fino ad allora Cage usa il fallback annidato. Anche FreeTube chiede conferma prima
 di chiudere labwc. Se lanci `cage` manualmente da una console, invece, resti
 nella shell: usa `labwc-return` o `Ctrl+Alt+F1`.
+
+**Mouse in Cage.** Cage su DRM legge direttamente mouse e tastiera: l’installer
+aggiunge l’utente al gruppo `input` e usa il cursore software. Serve un
+logout/login una volta dopo l’aggiornamento; senza gruppo `input` le app in
+Cage non ricevono il puntatore.
 
 **Tornare a labwc dopo Cage.** Se lanci `cage` manualmente dalla console, il
 wrapper mostra le istruzioni prima e dopo l'app. Dalla console non lanciare
