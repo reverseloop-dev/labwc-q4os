@@ -13,7 +13,7 @@ cat <<'EOF'
   Esempi:
     labwc-cage -- chromium
     labwc-cage -- librewolf
-    labwc-cage -- flatpak run io.freetubeapp.FreeTube
+    labwc-cage -- freetube
     labwc-cage -- firefox
 
   Per un'altra app, sostituisci il comando dopo --.

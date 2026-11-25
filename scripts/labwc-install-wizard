@@ -375,7 +375,7 @@ def main() -> int:
     pdf_check = check("qpdfview", bool_arg(args.qpdfview))
     extra_card.pack_start(pdf_check, False, False, 0)
     ft_hint = Gtk.Label(
-        label="FreeTube: client YouTube con GUI; richiede circa 1,5 GB liberi e un download lungo (Flatpak/Flathub).",
+        label="FreeTube: client YouTube con GUI; .deb ufficiale, circa 100 MB e un minuto di download. Niente Flatpak.",
         xalign=0)
     ft_hint.set_line_wrap(True)
     ft_hint.get_style_context().add_class("card-hint")

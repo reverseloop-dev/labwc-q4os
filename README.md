@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.21.1**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.21.2**
 
 ---
 
@@ -363,7 +363,7 @@ presente.
 
 **SMTube** non viene installato: l’ultima release è ferma al 2021 e il
 pacchetto non è disponibile in Debian 13/Q4OS 6. Al suo posto viene proposto
-**FreeTube**, client YouTube con GUI, installato da Flathub.
+**FreeTube**, client YouTube con GUI, installato dal pacchetto ufficiale `.deb`.
 
 ### Tasti volume e AVVIA CAGE
 
@@ -373,15 +373,14 @@ una console con gli esempi:
 ```
 labwc-cage -- chromium
 labwc-cage -- librewolf
-labwc-cage -- flatpak run io.freetubeapp.FreeTube
+labwc-cage -- freetube
 ```
 Si chiude l’app per tornare a labwc.
 
 ### FreeTube e Cage
 
-FreeTube arriva dal repository Flathub (Flatpak), quindi si aggiorna con
-`flatpak update`. Richiede **circa 1,5 GB liberi** e diversi minuti di download
-in base alla connessione. L’installer chiede se installarlo e crea un collegamento con
+FreeTube arriva dal pacchetto `.deb` ufficiale: **circa 100 MB** e poco più di
+un minuto, senza Flatpak né Flathub. L’installer chiede se installarlo e crea un collegamento con
 popup a tre scelte: **Cage a schermo intero**, **Labwc** oppure **Annulla**.
 Il popup ricorda di salvare i documenti. In Cage l’app viene aperta a tutto
 schermo; alla chiusura si torna a labwc e la barra viene riallineata.
@@ -527,7 +526,7 @@ cd labwc-q4os
 | `--chromium` / `--librewolf` | Scorciatoie per `--browser chromium` / `librewolf` |
 | `--no-chromium` / `--no-browser` | Nessun browser (compatibilità) |
 | `--qpdfview` / `--no-qpdfview` | Installa o esclude qpdfview, lettore PDF leggero |
-| `--freetube` / `--no-freetube` | Installa o esclude FreeTube (Flatpak/Flathub) |
+| `--freetube` / `--no-freetube` | Installa o esclude FreeTube (.deb ufficiale) |
 | `--both-browsers` | Installa sia Chromium sia LibreWolf |
 | `--quick` | Aggiorna subito con le opzioni salvate, senza domande |
 | `--configure` | Chiede comunque tutti i parametri prima di aggiornare |

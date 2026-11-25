@@ -2,6 +2,13 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.21.2]
+
+- Rimosso Flatpak/Flathub: FreeTube ora si installa dal **.deb ufficiale**
+  0.25.3 (circa 100 MB, checksum) senza runtime Flatpak.
+- L’installer elimina Flatpak/Flathub residui e non li usa più.
+- Aggiornati comandi Cage e documentazione.
+
 ## [1.21.1]
 
 - FreeTube: la domanda e il wizard dicono chiaramente che servono circa 1,5 GB

@@ -3,12 +3,6 @@
 #  labwc-freetube - FreeTube con scelta Cage / Labwc / Annulla
 # =============================================================================
 set -u
-FREETUBE="io.freetubeapp.FreeTube"
-
-if command -v flatpak >/dev/null 2>&1 &&
-    flatpak info "$FREETUBE" >/dev/null 2>&1; then
-    exec "$HOME/.local/bin/labwc-cage" --ask -- flatpak run "$FREETUBE"
-fi
 if command -v freetube >/dev/null 2>&1; then
     exec "$HOME/.local/bin/labwc-cage" --ask -- freetube
 fi

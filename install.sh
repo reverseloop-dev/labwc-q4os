@@ -89,7 +89,7 @@ Opzioni:
   --no-browser        Nessun browser
   --qpdfview          Installa qpdfview (lettore PDF leggero) senza chiedere
   --no-qpdfview       Non installare qpdfview
-  --freetube          Installa FreeTube (Flatpak/Flathub)
+  --freetube          Installa FreeTube dal .deb ufficiale
   --no-freetube       Non installare FreeTube
   --quick             Aggiorna senza domande, usando le opzioni salvate
   --configure         Chiedi comunque tutti i parametri prima di aggiornare
@@ -517,7 +517,7 @@ if [ "$ASSUME_YES" -eq 0 ] && [ "$QUICK_UPDATE" != "1" ] && [ "$PARAM_FLAGS" -eq
     fi
 fi
 
-# FreeTube: client YouTube con GUI, installato da Flathub (repo esterna).
+# FreeTube: client YouTube con GUI, dal pacchetto .deb ufficiale.
 if [ -z "$WANT_FREETUBE" ]; then
     if [ "$SKIP_APT" -eq 1 ]; then
         WANT_FREETUBE=0
@@ -527,8 +527,8 @@ if [ -z "$WANT_FREETUBE" ]; then
         WANT_FREETUBE=1
     else
         note "FreeTube è un client YouTube open source con interfaccia grafica."
-        note "Viene installato da Flathub e aggiornato con Flatpak."
-        note "Richiede circa 1,5 GB liberi e diversi minuti di download (dipende dalla connessione)."
+        note "Viene installato dal pacchetto .deb ufficiale: circa 100 MB, un minuto o poco più."
+        note "Niente Flatpak, niente Flathub."
         if ask_yes_no "Installare FreeTube?" yes; then
             WANT_FREETUBE=1
         else
@@ -1114,33 +1114,62 @@ EOF
     ok "Tasti volume mappati con keyd (anche in Cage)."
 }
 
+remove_flatpak() {
+    # Scelta esplicita dell'utente: niente Flatpak/Flathub sul sistema.
+    if command -v flatpak >/dev/null 2>&1; then
+        sudo flatpak uninstall --all -y >/dev/null 2>&1 || true
+        sudo flatpak remote-delete --system flathub >/dev/null 2>&1 || true
+        sudo env DEBIAN_FRONTEND=noninteractive apt-get purge -y flatpak >/dev/null 2>&1 || true
+    fi
+    sudo rm -rf /var/lib/flatpak /etc/flatpak 2>/dev/null || true
+    rm -rf "$HOME/.local/share/flatpak" "$HOME/.var/app/io.freetubeapp.FreeTube" 2>/dev/null || true
+}
+
 install_freetube() {
+    local version="0.25.3-beta"
+    local file="freetube_0.25.3_beta_amd64.deb"
+    local url="https://github.com/FreeTubeApp/FreeTube/releases/download/v${version}/${file}"
+    local sha="3a75dc4ef65edf184222c3389855be4699d04cce321e9695bb2989a50db2ba5d"
+    local tmp
+    local free_kb
+
     if [ "$SKIP_APT" -eq 1 ]; then
         warn "FreeTube non installato con --skip-apt."
         return 1
     fi
-    log "Preparazione Flatpak e Flathub..."
-    install_packages flatpak cage
-    if ! command -v flatpak >/dev/null 2>&1; then
-        warn "Flatpak non disponibile: FreeTube non installato."
+    if command -v freetube >/dev/null 2>&1; then
+        info "FreeTube gia' installato: nessuna reinstallazione."
+        return 0
+    fi
+
+    free_kb="$(df -Pk / 2>/dev/null | awk 'NR == 2 { print $4 }')"
+    if [ -n "$free_kb" ] && [ "$free_kb" -lt 250000 ]; then
+        warn "Spazio insufficiente per FreeTube: servono circa 250 MB liberi, trovati $((free_kb / 1024)) MB."
         return 1
     fi
-    sudo flatpak remote-add --if-not-exists flathub \
-        https://flathub.org/repo/flathub.flatpakrepo ||
-        warn "Repository Flathub non aggiunta: proseguo se gia' presente."
-    if sudo flatpak info io.freetubeapp.FreeTube >/dev/null 2>&1; then
-        info "FreeTube gia' installato: aggiornamenti da Flathub."
-    else
-        free_kb="$(df -Pk / 2>/dev/null | awk 'NR == 2 { print $4 }')"
-        if [ -n "$free_kb" ] && [ "$free_kb" -lt 1500000 ]; then
-            warn "Spazio insufficiente per FreeTube: servono circa 1,5 GB liberi, trovati $((free_kb / 1024)) MB. Installazione saltata."
-            return 1
-        fi
-        log "Installazione FreeTube da Flathub (download lungo, circa 1,5 GB)..."
-        sudo flatpak install -y flathub io.freetubeapp.FreeTube ||
-            { warn "Installazione FreeTube non riuscita (spazio/rete?)."; return 1; }
+
+    tmp="$(mktemp --suffix=.deb)"
+    log "Download FreeTube .deb ufficiale (circa 100 MB)..."
+    if ! curl -fsSL --proto '=https' --proto-redir '=https' --max-time 600 \
+        -o "$tmp" "$url"; then
+        rm -f "$tmp"
+        warn "Download FreeTube non riuscito."
+        return 1
     fi
-    ok "FreeTube installato (Flatpak, aggiornamenti da Flathub)."
+    if ! printf '%s  %s\n' "$sha" "$tmp" |
+        sha256sum -c --strict --quiet -; then
+        rm -f "$tmp"
+        warn "Checksum FreeTube non valido: installazione annullata."
+        return 1
+    fi
+    log "Installazione FreeTube dal .deb..."
+    if ! sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "$tmp"; then
+        rm -f "$tmp"
+        warn "Installazione FreeTube non riuscita."
+        return 1
+    fi
+    rm -f "$tmp"
+    ok "FreeTube installato dal .deb ufficiale (niente Flatpak)."
 }
 
 install_librewolf_extensions() {
@@ -1375,6 +1404,7 @@ Aggiorna a Q4OS 6 oppure usa una release Debian 13 o successiva."
     fi
     log "Installazione pacchetti opzionali consigliati..."
     install_packages "${OPTIONAL_PKGS[@]}"
+    remove_flatpak || true
     install_audio_keys || true
 
     if [ "$ENABLE_TOUCH" -eq 1 ]; then
@@ -2023,7 +2053,7 @@ EOF
 create_browser_shortcuts chromium Chromium chromium
 create_browser_shortcuts librewolf LibreWolf librewolf
 if [ "$WANT_FREETUBE" -eq 1 ]; then
-    cat >"$APPDATA/io.freetubeapp.FreeTube.desktop" <<EOF
+    cat >"$APPDATA/freetube.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=FreeTube
@@ -2409,7 +2439,7 @@ ${C_GREEN}${C_BOLD}Installazione completata.${C_RESET}
       esac
   )
   qpdfview ........... $(if have qpdfview; then echo "installato"; else echo "non installato"; fi)
-  FreeTube ........... $(if flatpak info io.freetubeapp.FreeTube >/dev/null 2>&1; then echo "installato (Flatpak)"; else echo "non installato"; fi)
+  FreeTube ........... $(if command -v freetube >/dev/null 2>&1; then echo "installato (.deb)"; else echo "non installato"; fi)
   btop ............... $(if have btop; then echo "installato"; else echo "non installato"; fi)
   Backup ............. $BACKUP_DIR
   Log sessione ....... $STATE/session.log
