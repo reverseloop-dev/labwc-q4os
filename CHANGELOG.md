@@ -2,6 +2,14 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.22.2]
+
+- FreeTube: aggiunto **repo APT dedicato** (GHaaAPT) con chiave firmata;
+  gli aggiornamenti passano da `apt update && apt upgrade`.
+- Cage: cursore software con tema **Adwaita** (`XCURSOR_THEME`), oltre al
+  gruppo `input`, per rendere visibile e usabile il mouse.
+- Nessun Flatpak/Flathub.
+
 ## [1.22.1]
 
 - Cage: aggiunto l’utente al gruppo **input** (mouse/tastiera su DRM) e

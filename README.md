@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.1**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.2**
 
 ---
 
@@ -399,11 +399,12 @@ della sessione attiva e ci ritorna; se labwc non è più attivo, riavvia SDDM.
 
 ### FreeTube e Cage
 
-FreeTube arriva dal pacchetto `.deb` ufficiale: **circa 100 MB** e poco più di
-un minuto, senza Flatpak né Flathub. L’installer chiede se installarlo e crea
-un collegamento con popup **Sì/No**: avvisa che labwc verrà chiuso e che i
-file non salvati andranno persi. Con **Sì** FreeTube parte in Cage a schermo
-intero; alla chiusura labwc riparte automaticamente.
+FreeTube viene installato da un **repository APT dedicato** (GHaaAPT, non
+ufficiale ma con pacchetto FreeTube ufficiale): circa **100 MB**, niente
+Flatpak/Flathub, aggiornamenti con `apt update && apt upgrade`. L’installer
+chiede se installarlo e crea un collegamento con popup **Sì/No**: avvisa che
+labwc verrà chiuso e che i file non salvati andranno persi. Con **Sì** FreeTube
+parte in Cage a schermo intero; alla chiusura labwc riparte automaticamente.
 
 Per Chromium e LibreWolf vengono creati due collegamenti: uno normale e uno
 con suffisso **(cage)**, che usa lo stesso meccanismo a schermo intero. Se
@@ -546,7 +547,7 @@ cd labwc-q4os
 | `--chromium` / `--librewolf` | Scorciatoie per `--browser chromium` / `librewolf` |
 | `--no-chromium` / `--no-browser` | Nessun browser (compatibilità) |
 | `--qpdfview` / `--no-qpdfview` | Installa o esclude qpdfview, lettore PDF leggero |
-| `--freetube` / `--no-freetube` | Installa o esclude FreeTube (.deb ufficiale) |
+| `--freetube` / `--no-freetube` | Installa o esclude FreeTube (repo APT) |
 | `--both-browsers` | Installa sia Chromium sia LibreWolf |
 | `--quick` | Aggiorna subito con le opzioni salvate, senza domande |
 | `--configure` | Chiede comunque tutti i parametri prima di aggiornare |

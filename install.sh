@@ -89,7 +89,7 @@ Opzioni:
   --no-browser        Nessun browser
   --qpdfview          Installa qpdfview (lettore PDF leggero) senza chiedere
   --no-qpdfview       Non installare qpdfview
-  --freetube          Installa FreeTube dal .deb ufficiale
+  --freetube          Installa FreeTube dal repo APT
   --no-freetube       Non installare FreeTube
   --quick             Aggiorna senza domande, usando le opzioni salvate
   --configure         Chiedi comunque tutti i parametri prima di aggiornare
@@ -527,8 +527,8 @@ if [ -z "$WANT_FREETUBE" ]; then
         WANT_FREETUBE=1
     else
         note "FreeTube è un client YouTube open source con interfaccia grafica."
-        note "Viene installato dal pacchetto .deb ufficiale: circa 100 MB, un minuto o poco più."
-        note "Niente Flatpak, niente Flathub."
+        note "Usa un repository APT dedicato (GHaaAPT): circa 100 MB e un minuto."
+        note "Niente Flatpak, niente Flathub; aggiornamenti con apt."
         if ask_yes_no "Installare FreeTube?" yes; then
             WANT_FREETUBE=1
         else
@@ -1138,50 +1138,61 @@ remove_flatpak() {
 }
 
 install_freetube() {
-    local version="0.25.3-beta"
-    local file="freetube_0.25.3_beta_amd64.deb"
-    local url="https://github.com/FreeTubeApp/FreeTube/releases/download/v${version}/${file}"
-    local sha="3a75dc4ef65edf184222c3389855be4699d04cce321e9695bb2989a50db2ba5d"
-    local tmp
+    local key_url="https://ghaaapt.github.io/freetube-apt/freetube-archive-keyring.asc"
+    local keyring="/usr/share/keyrings/freetube-archive-keyring.gpg"
+    local sources="/etc/apt/sources.list.d/freetube.sources"
+    local tmp_key
     local free_kb
 
     if [ "$SKIP_APT" -eq 1 ]; then
         warn "FreeTube non installato con --skip-apt."
         return 1
     fi
-    if command -v freetube >/dev/null 2>&1; then
-        info "FreeTube gia' installato: nessuna reinstallazione."
-        return 0
-    fi
-
     free_kb="$(df -Pk / 2>/dev/null | awk 'NR == 2 { print $4 }')"
     if [ -n "$free_kb" ] && [ "$free_kb" -lt 250000 ]; then
         warn "Spazio insufficiente per FreeTube: servono circa 250 MB liberi, trovati $((free_kb / 1024)) MB."
         return 1
     fi
 
-    tmp="$(mktemp --suffix=.deb)"
-    log "Download FreeTube .deb ufficiale (circa 100 MB)..."
-    if ! curl -fsSL --proto '=https' --proto-redir '=https' --max-time 600 \
-        -o "$tmp" "$url"; then
-        rm -f "$tmp"
-        warn "Download FreeTube non riuscito."
+    log "Configurazione repository APT FreeTube (GHaaAPT)..."
+    if [ ! -r "$keyring" ]; then
+        tmp_key="$(mktemp --suffix=.asc)"
+        if ! curl -fsSL --proto '=https' --proto-redir '=https' --max-time 60 \
+            -o "$tmp_key" "$key_url"; then
+            rm -f "$tmp_key"
+            warn "Chiave repo FreeTube non scaricata."
+            return 1
+        fi
+        if ! gpg --dearmor <"$tmp_key" | sudo tee "$keyring" >/dev/null; then
+            rm -f "$tmp_key"
+            warn "Chiave repo FreeTube non importata."
+            return 1
+        fi
+        sudo chmod 0644 "$keyring"
+        rm -f "$tmp_key"
+    fi
+    sudo install -d -m 0755 /etc/apt/sources.list.d
+    sudo tee "$sources" >/dev/null <<'EOF'
+Types: deb
+URIs: https://ghaaapt.github.io/freetube-apt/
+Suites: stable
+Components: main
+Signed-By: /usr/share/keyrings/freetube-archive-keyring.gpg
+EOF
+    sudo chmod 0644 "$sources"
+    sudo env DEBIAN_FRONTEND=noninteractive apt-get update -qq ||
+        warn "apt update dopo il repo FreeTube ha segnalato errori: proseguo."
+
+    if ! apt-cache show freetube >/dev/null 2>&1; then
+        warn "Pacchetto FreeTube non disponibile nel repo appena aggiunto."
         return 1
     fi
-    if ! printf '%s  %s\n' "$sha" "$tmp" |
-        sha256sum -c --strict --quiet -; then
-        rm -f "$tmp"
-        warn "Checksum FreeTube non valido: installazione annullata."
+    log "Installazione FreeTube dal repository APT (circa 100 MB)..."
+    if ! sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y freetube; then
+        warn "Installazione FreeTube dal repository non riuscita."
         return 1
     fi
-    log "Installazione FreeTube dal .deb..."
-    if ! sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "$tmp"; then
-        rm -f "$tmp"
-        warn "Installazione FreeTube non riuscita."
-        return 1
-    fi
-    rm -f "$tmp"
-    ok "FreeTube installato dal .deb ufficiale (niente Flatpak)."
+    ok "FreeTube installato dal repo APT (aggiornamenti con apt)."
 }
 
 install_librewolf_extensions() {
