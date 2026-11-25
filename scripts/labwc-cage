@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-cage - avvia un'app in Cage a schermo intero, con ritorno a labwc.
+#
+#  Uso: labwc-cage [--ask] -- comando [argomenti...]
+#  Cage gira come compositore annidato (WLR_BACKENDS=wayland), quindi non
+#  interrompe la sessione labwc; la finestra Cage viene portata a schermo
+#  intero e, alla chiusura, labwc torna subito utilizzabile.
+# =============================================================================
+set -u
+
+notify() {
+    if command -v notify-send >/dev/null 2>&1; then
+        notify-send -a "Cage" "$1" "${2:-}" >/dev/null 2>&1 || true
+    else
+        printf 'Cage: %s %s\n' "$1" "${2:-}" >&2
+    fi
+}
+
+ask=0
+if [ "${1:-}" = "--ask" ]; then
+    ask=1
+    shift
+fi
+if [ "${1:-}" = "--" ]; then
+    shift
+fi
+[ "$#" -gt 0 ] || { notify "Nessun comando da avviare"; exit 1; }
+
+if [ "$ask" -eq 1 ] && command -v zenity >/dev/null 2>&1; then
+    choice="$(zenity --list --radiolist \
+        --title="Cage — schermo intero" \
+        --text="Cage apre l'app a schermo intero. Salva i documenti aperti prima di continuare." \
+        --column="Scelta" --column="Azione" --width=680 --height=300 \
+        TRUE "cage|Avvia in Cage a schermo intero (salva prima i documenti)" \
+        FALSE "labwc|Apri normalmente nella sessione Labwc" \
+        FALSE "cancel|Annulla — non avviare nulla" 2>/dev/null)" || exit 0
+    case "${choice%%|*}" in
+        cage) ;;
+        labwc) exec "$@" ;;
+        *) exit 0 ;;
+    esac
+fi
+
+if ! command -v cage >/dev/null 2>&1; then
+    notify "Cage non installato" "Avvio l'app nella sessione Labwc."
+    exec "$@"
+fi
+
+log="$(mktemp)"
+WLR_BACKENDS=wayland WLR_RENDERER=pixman cage -- "$@" >"$log" 2>&1 &
+cage_pid=$!
+
+# Cage espone la sua finestra come toplevel wlroots: portala a schermo intero.
+for _ in $(seq 1 40); do
+    if wlrctl toplevel find app_id:wlroots >/dev/null 2>&1; then
+        wlrctl toplevel fullscreen app_id:wlroots >/dev/null 2>&1 || true
+        break
+    fi
+    sleep 0.2
+done
+
+wait "$cage_pid"
+status=$?
+if [ "$status" -ne 0 ]; then
+    notify "Cage terminato con errore" "Controlla il log: $log"
+else
+    rm -f "$log"
+fi
+
+# La sessione labwc non è stata chiusa: riallinea barra e menu al ritorno.
+if [ -n "${WAYLAND_DISPLAY:-}" ] && pgrep -x labwc >/dev/null 2>&1; then
+    LABWC_Q4OS_SILENT=1 "$HOME/.local/bin/labwc-reload" >/dev/null 2>&1 || true
+fi
+exit "$status"

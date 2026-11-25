@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.19.2**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.20.0**
 
 ---
 
@@ -100,7 +100,7 @@ un ambiente sobrio.**
   applicazioni con selezione icona; le voci di sistema restano protette.
 - **Chromium** oppure **LibreWolf**, con le tre estensioni
   (**uBlock**, **Privacy Badger**, **enhanced-h264ify**); **qpdfview** come
-  lettore PDF leggero; **gtk-pipe-viewer** per YouTube a 360p; **btop** per
+  lettore PDF leggero; **FreeTube** per YouTube con GUI; **btop** per
   monitorare il sistema.
 - **Wizard di installazione** GTK: pagine colorate con il tema, angoli
   arrotondati, scelte sì/no e **Indietro/Avanti** fino alla prima pagina.
@@ -363,17 +363,22 @@ presente.
 
 **SMTube** non viene installato: l’ultima release è ferma al 2021 e il
 pacchetto non è disponibile in Debian 13/Q4OS 6. Al suo posto viene proposto
-**gtk-pipe-viewer**, client GTK mantenuto e leggero, configurato a 360p.
+**FreeTube**, client YouTube con GUI, installato da Flathub.
 
-### gtk-pipe-viewer
+### FreeTube e Cage
 
-Il client viene compilato dal sorgente ufficiale GitHub (versione pinnata
-0.5.9, checksum verificato) perché non esiste un pacchetto APT per Debian 13.
-Configurazione predefinita: **360p**, mpv, MP4/H.264, AV1 ignorato, HFR e DASH
-disattivati. Non parte nessun browser e il consumo resta basso.
+FreeTube arriva dal repository Flathub (Flatpak), quindi si aggiorna con
+`flatpak update`. L’installer chiede se installarlo e crea un collegamento con
+popup a tre scelte: **Cage a schermo intero**, **Labwc** oppure **Annulla**.
+Il popup ricorda di salvare i documenti. In Cage l’app viene aperta a tutto
+schermo; alla chiusura si torna a labwc e la barra viene riallineata.
 
-Flag: `--pipeviewer` / `--no-pipeviewer`. Il programma si installa in
-`/usr/local` e la configurazione in `~/.config/pipe-viewer/gtk-pipe-viewer.conf`.
+Per Chromium e LibreWolf vengono creati due collegamenti: uno normale e uno
+con suffisso **(cage)**, che usa lo stesso meccanismo a schermo intero. Se
+scegli entrambi i browser, l’installer installa e configura entrambi.
+
+Flag: `--freetube` / `--no-freetube`; `--both-browsers` per Chromium e
+LibreWolf insieme.
 
 Le app con repository esterna restano aggiornabili con il sistema: LibreWolf
 usa `extrepo` (la fonte viene riconfigurata anche se il browser è già
@@ -505,11 +510,12 @@ cd labwc-q4os
 | `--touch` / `--no-touch` | Installa o esclude tastiera su schermo e gesti touch |
 | `--shell waybar\|noctalia` | Barra/launcher: Waybar+Fuzzel (default) o Noctalia v5 |
 | `--lookswitcher` / `--no-lookswitcher` | Selettore temi LookSwitcher per Trinity (solo Trinity) |
-| `--browser chromium\|librewolf\|none` | Sceglie il browser e le sue tre estensioni |
+| `--browser chromium\|librewolf\|both\|none` | Sceglie uno o entrambi i browser e le estensioni |
 | `--chromium` / `--librewolf` | Scorciatoie per `--browser chromium` / `librewolf` |
 | `--no-chromium` / `--no-browser` | Nessun browser (compatibilità) |
 | `--qpdfview` / `--no-qpdfview` | Installa o esclude qpdfview, lettore PDF leggero |
-| `--pipeviewer` / `--no-pipeviewer` | Installa o esclude gtk-pipe-viewer (YouTube GTK) |
+| `--freetube` / `--no-freetube` | Installa o esclude FreeTube (Flatpak/Flathub) |
+| `--both-browsers` | Installa sia Chromium sia LibreWolf |
 | `--quick` | Aggiorna subito con le opzioni salvate, senza domande |
 | `--configure` | Chiede comunque tutti i parametri prima di aggiornare |
 | `--swappiness N` | Imposta `vm.swappiness` a `N` (0–200) |
@@ -1113,6 +1119,8 @@ labwc-q4os/
 │   ├── labwc-fuzzel-apps          # aggiungi/rimuovi app in Fuzzel, con icona
 │   ├── labwc-minimized            # pipemenu finestre ridotte ad icona
 │   ├── labwc-install-wizard        # wizard GTK colorato, avanti/indietro
+│   ├── labwc-cage                  # app in Cage a schermo intero
+│   ├── labwc-freetube              # FreeTube: Cage/Labwc/Annulla
 │   ├── labwc-update-check         # controllo versione online
 │   ├── labwc-update-copy          # copia comando di aggiornamento
 │   ├── labwc-update-popup         # popup 15 s: chiudi, copia, apri GUI

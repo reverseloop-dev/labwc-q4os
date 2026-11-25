@@ -52,7 +52,7 @@ WANT_BROWSER=""
 REMOVE_BROWSER=""
 GUI_CHOICES=0
 WANT_QPDFVIEW=""
-WANT_PIPEVIEWER=""
+WANT_FREETUBE=""
 QUICK_UPDATE=""
 INSTALL_OPTIONS="${LABWC_Q4OS_OPTIONS:-/etc/labwc-q4os/install-options}"
 PARAM_FLAGS=0
@@ -82,15 +82,15 @@ Opzioni:
   --no-touch          Disattiva la configurazione touchscreen
   --lookswitcher      Installa LookSwitcher, selettore temi per Trinity (solo Trinity)
   --no-lookswitcher   Non proporre/installare LookSwitcher
-  --browser NOME      Browser: chromium|librewolf|none (default: chromium)
+  --browser NOME      Browser: chromium|librewolf|both|none (default: chromium)
   --chromium          Scegli Chromium senza chiedere (compatibilità)
   --librewolf         Scegli LibreWolf senza chiedere
   --no-chromium       Nessun browser (compatibilità)
   --no-browser        Nessun browser
   --qpdfview          Installa qpdfview (lettore PDF leggero) senza chiedere
   --no-qpdfview       Non installare qpdfview
-  --pipeviewer        Installa gtk-pipe-viewer (YouTube GTK, 360p)
-  --no-pipeviewer     Non installare gtk-pipe-viewer
+  --freetube          Installa FreeTube (Flatpak/Flathub)
+  --no-freetube       Non installare FreeTube
   --quick             Aggiorna senza domande, usando le opzioni salvate
   --configure         Chiedi comunque tutti i parametri prima di aggiornare
   --shell NOME        Shell desktop: waybar|noctalia (default: waybar)
@@ -136,11 +136,12 @@ while [ "$#" -gt 0 ]; do
         --browser=*) WANT_BROWSER="${1#*=}"; shift ;;
         --chromium) WANT_BROWSER=chromium; shift ;;
         --librewolf) WANT_BROWSER=librewolf; shift ;;
+        --both-browsers) WANT_BROWSER=both; shift ;;
         --no-chromium|--no-browser) WANT_BROWSER=none; shift ;;
         --qpdfview) WANT_QPDFVIEW=1; shift ;;
         --no-qpdfview) WANT_QPDFVIEW=0; shift ;;
-        --pipeviewer) WANT_PIPEVIEWER=1; shift ;;
-        --no-pipeviewer) WANT_PIPEVIEWER=0; shift ;;
+        --freetube) WANT_FREETUBE=1; shift ;;
+        --no-freetube) WANT_FREETUBE=0; shift ;;
         --quick) QUICK_UPDATE=1; shift ;;
         --configure) QUICK_UPDATE=0; shift ;;
         --shell)
@@ -158,7 +159,7 @@ done
 
 if [ -n "$WANT_BROWSER" ]; then
     case "$WANT_BROWSER" in
-        chromium|librewolf|none) ;;
+        chromium|librewolf|both|none) ;;
         *) die "Valore --browser non valido: $WANT_BROWSER (chromium|librewolf|none)" ;;
     esac
 fi
@@ -170,7 +171,7 @@ if [ -n "$WANT_SHELL" ]; then
     esac
 fi
 
-if [ -n "$THEME$ENABLE_ZRAM$ENABLE_SWAPPINESS$ENABLE_TOUCH$WANT_LOOKSWITCHER$WANT_SHELL$WANT_SDDM$XKB_LAYOUT$WANT_BROWSER$WANT_QPDFVIEW$WANT_PIPEVIEWER$SWAPPINESS_VALUE" ]; then
+if [ -n "$THEME$ENABLE_ZRAM$ENABLE_SWAPPINESS$ENABLE_TOUCH$WANT_LOOKSWITCHER$WANT_SHELL$WANT_SDDM$XKB_LAYOUT$WANT_BROWSER$WANT_QPDFVIEW$WANT_FREETUBE$SWAPPINESS_VALUE" ]; then
     PARAM_FLAGS=1
 fi
 
@@ -205,7 +206,7 @@ load_saved_options() {
     fi
     value="$(option_value BROWSER || true)"
     case "$value" in
-        chromium|librewolf|none) WANT_BROWSER="$value" ;;
+        chromium|librewolf|both|none) WANT_BROWSER="$value" ;;
     esac
     if [ -z "$WANT_BROWSER" ]; then
         # Migrazione dalle vecchie opzioni: CHROMIUM=1/0.
@@ -217,8 +218,8 @@ load_saved_options() {
     fi
     value="$(option_value QPDFVIEW || true)"
     case "$value" in 0|1) WANT_QPDFVIEW="$value" ;; esac
-    value="$(option_value PIPEVIEWER || true)"
-    case "$value" in 0|1) WANT_PIPEVIEWER="$value" ;; esac
+    value="$(option_value FREETUBE || true)"
+    case "$value" in 0|1) WANT_FREETUBE="$value" ;; esac
     value="$(option_value KEEP_TDM || true)"
     case "$value" in
         1) WANT_SDDM=0 ;;
@@ -283,6 +284,7 @@ browser_label() {
     case "$1" in
         chromium) printf 'Chromium' ;;
         librewolf) printf 'LibreWolf' ;;
+        both) printf 'Chromium + LibreWolf' ;;
         *) printf 'nessuno' ;;
     esac
 }
@@ -335,7 +337,7 @@ run_install_wizard() {
         --browser "$browser_default" --shell "$shell_default" \
         --zram 1 --swappiness 1 --touch "$touch_now" \
         --lookswitcher "$look_default" --lookswitcher-available "$trinity_here" \
-        --qpdfview 1 --pipeviewer 1 \
+        --qpdfview 1 --freetube 1 \
         --sddm "$sddm_default" --sddm-available "$sddm_available" \
         --chromium-installed "$chromium_here" --librewolf-installed "$librewolf_here"
 }
@@ -344,7 +346,7 @@ apply_wizard_output() {
     local line key value
     while IFS='=' read -r key value; do
         case "$key" in
-            BROWSER) case "$value" in chromium|librewolf|none) WANT_BROWSER="$value" ;; esac ;;
+            BROWSER) case "$value" in chromium|librewolf|both|none) WANT_BROWSER="$value" ;; esac ;;
             REMOVE_BROWSER) case "$value" in chromium|librewolf) REMOVE_BROWSER="$value" ;; esac ;;
             SHELL) case "$value" in waybar|noctalia) WANT_SHELL="$value" ;; esac ;;
             ZRAM) case "$value" in 0|1) ENABLE_ZRAM="$value" ;; esac ;;
@@ -352,7 +354,7 @@ apply_wizard_output() {
             TOUCH) case "$value" in 0|1) ENABLE_TOUCH="$value" ;; esac ;;
             LOOKSWITCHER) case "$value" in 0|1) WANT_LOOKSWITCHER="$value" ;; esac ;;
             QPDFVIEW) case "$value" in 0|1) WANT_QPDFVIEW="$value" ;; esac ;;
-            PIPEVIEWER) case "$value" in 0|1) WANT_PIPEVIEWER="$value" ;; esac ;;
+            FREETUBE) case "$value" in 0|1) WANT_FREETUBE="$value" ;; esac ;;
             THEME) THEME="$value" ;;
             KEYBOARD) XKB_LAYOUT="$value" ;;
             SDDM) case "$value" in 0|1) WANT_SDDM="$value" ;; esac ;;
@@ -515,21 +517,21 @@ if [ "$ASSUME_YES" -eq 0 ] && [ "$QUICK_UPDATE" != "1" ] && [ "$PARAM_FLAGS" -eq
     fi
 fi
 
-# pipe-viewer: client YouTube GTK leggero e mantenuto, build dal sorgente.
-if [ -z "$WANT_PIPEVIEWER" ]; then
+# FreeTube: client YouTube con GUI, installato da Flathub (repo esterna).
+if [ -z "$WANT_FREETUBE" ]; then
     if [ "$SKIP_APT" -eq 1 ]; then
-        WANT_PIPEVIEWER=0
+        WANT_FREETUBE=0
     elif [ "$QUICK_UPDATE" = "1" ]; then
-        WANT_PIPEVIEWER=0
+        WANT_FREETUBE=0
     elif [ "$ASSUME_YES" -eq 1 ]; then
-        WANT_PIPEVIEWER=1
+        WANT_FREETUBE=1
     else
-        note "pipe-viewer è un client YouTube GTK leggero, open source e mantenuto."
-        note "Video a 360p, mpv, H.264 e senza browser."
-        if ask_yes_no "Installare gtk-pipe-viewer?" yes; then
-            WANT_PIPEVIEWER=1
+        note "FreeTube è un client YouTube open source con interfaccia grafica."
+        note "Viene installato da Flathub e aggiornato con Flatpak; usa più RAM di un browser leggero."
+        if ask_yes_no "Installare FreeTube?" yes; then
+            WANT_FREETUBE=1
         else
-            WANT_PIPEVIEWER=0
+            WANT_FREETUBE=0
         fi
     fi
 fi
@@ -736,18 +738,20 @@ if [ -z "$WANT_BROWSER" ]; then
         printf '     estensioni dal Chrome Web Store. Scelta consigliata per TuxLab.\n'
         printf '  2) LibreWolf — Firefox senza telemetria, più privacy e meno pubblicità;\n'
         printf '     repository esterno, estensioni dal catalogo Mozilla.\n'
-        printf '  3) Nessuno — non installare e non modificare nessun browser.\n'
-        choice="$(ask_choice "Browser (1=Chromium, 2=LibreWolf, 3=Nessuno)" "$default_choice" 1 2 3)"
+        printf '  3) Entrambi — Chromium e LibreWolf, ognuno con le sue estensioni.\n'
+        printf '  4) Nessuno — non installare e non modificare nessun browser.\n'
+        choice="$(ask_choice "Browser (1=Chromium, 2=LibreWolf, 3=Entrambi, 4=Nessuno)" "$default_choice" 1 2 3 4)"
         case "$choice" in
             1) WANT_BROWSER=chromium ;;
             2) WANT_BROWSER=librewolf ;;
-            3) WANT_BROWSER=none ;;
+            3) WANT_BROWSER=both ;;
+            4) WANT_BROWSER=none ;;
         esac
     fi
 fi
 
 # Se si sceglie un browser e l'altro e' gia' installato, chiedi se rimuoverlo.
-if [ "$ASSUME_YES" -eq 0 ] && [ "$GUI_CHOICES" -eq 0 ]; then
+if [ "$ASSUME_YES" -eq 0 ] && [ "$GUI_CHOICES" -eq 0 ] && [ "$WANT_BROWSER" != "both" ]; then
     if [ "$WANT_BROWSER" = "chromium" ] && [ "$librewolf_installed" -eq 1 ]; then
         note "Hai scelto Chromium. LibreWolf è già installato: puoi tenerlo o rimuoverlo."
         if ask_yes_no "LibreWolf e' gia' installato. Vuoi disinstallarlo per usare solo Chromium?" no; then
@@ -792,7 +796,7 @@ SUDO_KEEPALIVE_PID=$!
 trap 'kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true' EXIT
 trap 'err_trap $LINENO' ERR
 
-printf '\n%sRiepilogo:%s tema %s, shell %s, zram %s, swappiness %s, touchscreen %s, browser %s, qpdfview %s, pipe-viewer %s\n\n' \
+printf '\n%sRiepilogo:%s tema %s, shell %s, zram %s, swappiness %s, touchscreen %s, browser %s, qpdfview %s, FreeTube %s\n\n' \
     "$C_BOLD" "$C_RESET" "$(theme_label "$THEME")" \
     "$([ "$WANT_SHELL" = "noctalia" ] && echo "Noctalia v5" || echo "Waybar + Fuzzel")" \
     "$([ "$ENABLE_ZRAM" -eq 1 ] && echo attivo || echo no)" \
@@ -800,7 +804,7 @@ printf '\n%sRiepilogo:%s tema %s, shell %s, zram %s, swappiness %s, touchscreen 
     "$([ "$ENABLE_TOUCH" -eq 1 ] && echo si || echo no)" \
     "$(browser_label "$WANT_BROWSER")" \
     "$([ "$WANT_QPDFVIEW" -eq 1 ] && echo si || echo no)" \
-    "$([ "$WANT_PIPEVIEWER" -eq 1 ] && echo si || echo no)"
+    "$([ "$WANT_FREETUBE" -eq 1 ] && echo si || echo no)"
 
 # -----------------------------------------------------------------------------
 # Installazione pacchetti
@@ -828,6 +832,7 @@ CORE_PKGS=(
     pcmanfm
     btop
     wlrctl
+    cage
     gvfs
     xwayland
     xauth
@@ -1069,82 +1074,28 @@ EOF
     ok "Chromium: Wayland, decorazioni e YouTube 360p configurati."
 }
 
-install_pipe_viewer() {
-    local version="0.5.9"
-    local url="https://github.com/trizen/pipe-viewer/archive/refs/tags/${version}.tar.gz"
-    local sha="b6c705e8d6d749ec90dea7988f20c60646ae14aaaf125a16a97965f036f73cf2"
-    local tmp conf_dir conf_file
-
+install_freetube() {
     if [ "$SKIP_APT" -eq 1 ]; then
-        warn "pipe-viewer non installato con --skip-apt."
+        warn "FreeTube non installato con --skip-apt."
         return 1
     fi
-    if ! have gtk-pipe-viewer; then
-        log "Preparazione dipendenze pipe-viewer..."
-        install_packages libgtk3-perl libfile-sharedir-perl libdata-dump-perl             libjson-perl liblwp-protocol-https-perl libwww-perl             libterm-readline-gnu-perl libmodule-build-perl mpv
-        tmp="$(mktemp -d)"
-        if ! curl -fsSL --proto '=https' --proto-redir '=https' --max-time 120 \
-            -o "$tmp/pipe-viewer.tar.gz" "$url"; then
-            rm -rf "$tmp"
-            warn "Download pipe-viewer non riuscito."
-            return 1
-        fi
-        if ! printf '%s  %s\n' "$sha" "$tmp/pipe-viewer.tar.gz" |
-            sha256sum -c --strict --quiet -; then
-            rm -rf "$tmp"
-            warn "Checksum pipe-viewer non valido: installazione annullata."
-            return 1
-        fi
-        if ! tar -xzf "$tmp/pipe-viewer.tar.gz" -C "$tmp"; then
-            rm -rf "$tmp"
-            warn "Estrazione pipe-viewer non riuscita."
-            return 1
-        fi
-        if ! (
-            cd "$tmp/pipe-viewer-$version" &&
-                perl Build.PL --gtk &&
-                ./Build &&
-                sudo ./Build install
-        ) >"$tmp/build.log" 2>&1; then
-            warn "Build pipe-viewer non riuscita (log in $tmp/build.log)."
-            rm -rf "$tmp"
-            return 1
-        fi
-        sudo install -d -m 0755 /usr/share/applications
-        sudo install -m 0644 "$tmp/pipe-viewer-$version/share/gtk-pipe-viewer.desktop" \
-            /usr/share/applications/gtk-pipe-viewer.desktop
-        sudo install -d -m 0755 /usr/share/pixmaps
-        sudo install -m 0644 "$tmp/pipe-viewer-$version/share/icons/gtk-pipe-viewer.png" \
-            /usr/share/pixmaps/gtk-pipe-viewer.png
-        rm -rf "$tmp"
-        ok "gtk-pipe-viewer installato."
-    else
-        info "gtk-pipe-viewer gia' installato."
+    log "Preparazione Flatpak e Flathub..."
+    install_packages flatpak cage
+    if ! command -v flatpak >/dev/null 2>&1; then
+        warn "Flatpak non disponibile: FreeTube non installato."
+        return 1
     fi
-
-    # Configurazione per l'utente corrente: 360p, H.264, niente AV1/HFR/DASH.
-    conf_dir="$HOME/.config/pipe-viewer"
-    conf_file="$conf_dir/gtk-pipe-viewer.conf"
-    mkdir -p "$BACKUP_DIR/config" "$conf_dir"
-    [ -f "$conf_file" ] && cp -a "$conf_file" "$BACKUP_DIR/config/gtk-pipe-viewer.conf" 2>/dev/null || true
-    cat >"$conf_file" <<'EOF'
-# labwc-q4os: YouTube leggero, 360p e massima efficienza
-our $CONFIG = {
-    resolution           => '360',
-    audio_quality        => 'medium',
-    prefer_mp4           => 1,
-    prefer_m4a           => 1,
-    ignore_av1           => 1,
-    hfr                  => 0,
-    dash                 => 0,
-    split_videos         => 1,
-    show_thumbs          => 1,
-    default_notebook_page => 'settings',
-    mainw_size           => '700x400',
-    video_player_selected => 'mpv',
-};
-EOF
-    ok "pipe-viewer: 360p, H.264, niente AV1/HFR/DASH."
+    sudo flatpak remote-add --if-not-exists flathub \
+        https://flathub.org/repo/flathub.flatpakrepo ||
+        warn "Repository Flathub non aggiunta: proseguo se gia' presente."
+    if sudo flatpak info io.freetubeapp.FreeTube >/dev/null 2>&1; then
+        info "FreeTube gia' installato: aggiornamenti da Flathub."
+    else
+        log "Installazione FreeTube da Flathub..."
+        sudo flatpak install -y flathub io.freetubeapp.FreeTube ||
+            { warn "Installazione FreeTube non riuscita."; return 1; }
+    fi
+    ok "FreeTube installato (Flatpak, aggiornamenti da Flathub)."
 }
 
 install_librewolf_extensions() {
@@ -1318,6 +1269,7 @@ remove_browser() {
     [ "${#installed[@]}" -gt 0 ] || return 0
     log "Disinstallazione di ${installed[*]}..."
     if sudo env DEBIAN_FRONTEND=noninteractive apt-get remove -y "${installed[@]}"; then
+        rm -f "$APPDATA/$browser.desktop" "$APPDATA/$browser-cage.desktop"
         ok "Disinstallato: ${installed[*]}"
     else
         warn "Disinstallazione non riuscita: ${installed[*]}"
@@ -1471,7 +1423,7 @@ elif [ "$WANT_SHELL" = "noctalia" ]; then
     warn "Noctalia scelto con --skip-apt: Waybar/Fuzzel non vengono rimossi (non verranno avviati)."
 fi
 
-if [ "$WANT_BROWSER" = "chromium" ]; then
+if { [ "$WANT_BROWSER" = "chromium" ] || [ "$WANT_BROWSER" = "both" ]; }; then
     if ! have chromium && ! have chromium-browser; then
         if [ "$SKIP_APT" -eq 1 ]; then
             warn "Chromium non installato e --skip-apt attivo: estensioni non configurate."
@@ -1489,7 +1441,7 @@ if [ "$WANT_BROWSER" = "chromium" ]; then
     else
         warn "Chromium assente: estensioni non installate."
     fi
-elif [ "$WANT_BROWSER" = "librewolf" ]; then
+elif { [ "$WANT_BROWSER" = "librewolf" ] || [ "$WANT_BROWSER" = "both" ]; }; then
     install_librewolf || true
     if have librewolf; then
         log "Configurazione estensioni LibreWolf..."
@@ -1499,6 +1451,12 @@ elif [ "$WANT_BROWSER" = "librewolf" ]; then
     fi
 else
     info "Nessun browser scelto: nessuna installazione."
+fi
+
+# Con "both" il primo ramo ha installato Chromium: installa anche LibreWolf
+# prima di configurare estensioni e preferiti di entrambi.
+if [ "$WANT_BROWSER" = "both" ]; then
+    install_librewolf || true
 fi
 
 # Se entrambi i browser restano installati, entrambi ricevono estensioni e
@@ -1539,10 +1497,10 @@ else
     info "qpdfview non richiesto: nessuna modifica."
 fi
 
-if [ "$WANT_PIPEVIEWER" -eq 1 ]; then
-    install_pipe_viewer || true
+if [ "$WANT_FREETUBE" -eq 1 ]; then
+    install_freetube || true
 else
-    info "pipe-viewer non richiesto: nessuna modifica."
+    info "FreeTube non richiesto: nessuna modifica."
 fi
 
 
@@ -1748,14 +1706,21 @@ for helper in \
     labwc-fuzzel-apps \
     labwc-minimized \
     labwc-install-wizard \
+    labwc-cage \
+    labwc-freetube \
     labwc-session-start
 do
     install -m 0755 "$REPO_DIR/scripts/$helper" "$BIN/$helper"
 done
 
-# Migrazione: il vecchio visualizzatore "YouTube leggero" e' stato sostituito
-# da gtk-pipe-viewer. Rimuove i residui delle versioni precedenti.
+# Migrazione: rimuove il vecchio YouTube leggero e gtk-pipe-viewer.
 rm -f "$BIN/labwc-youtube" "$APPDATA/labwc-youtube.desktop"
+sudo rm -f /usr/local/bin/gtk-pipe-viewer /usr/local/bin/pipe-viewer \
+    /usr/share/applications/gtk-pipe-viewer.desktop \
+    /usr/share/pixmaps/gtk-pipe-viewer.png 2>/dev/null || true
+sudo rm -rf /usr/local/share/perl/*/WWW/PipeViewer* \
+    /usr/local/share/man/man3/WWW::PipeViewer* 2>/dev/null || true
+rm -rf "$HOME/.config/pipe-viewer"
 
 # -----------------------------------------------------------------------------
 # Configurazioni utente
@@ -1977,6 +1942,53 @@ chmod 0644 "$APPDATA/labwc-theme-switcher.desktop" \
           "$APPDATA/labwc-fuzzel-apps.desktop" \
           "$APPDATA/labwc-preferences.desktop" \
           "$APPDATA/labwc-sysinfo.desktop"
+
+# Collegamenti browser: uno normale per Labwc e uno "(cage)" a schermo intero.
+create_browser_shortcuts() {
+    local browser="$1" name="$2" cmd="$3"
+    case "$WANT_BROWSER" in
+        "$browser"|both) ;;
+        *) return 0 ;;
+    esac
+    cat >"$APPDATA/$browser.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=$name
+Comment=$name nella sessione Labwc
+Exec=$cmd
+Icon=$browser
+Terminal=false
+Categories=Network;WebBrowser;
+Keywords=browser;web;$browser;
+EOF
+    cat >"$APPDATA/$browser-cage.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=$name (cage)
+Comment=$name a schermo intero con Cage; salva i documenti prima
+Exec=$HOME/.local/bin/labwc-cage -- $cmd
+Icon=$browser
+Terminal=false
+Categories=Network;WebBrowser;
+Keywords=browser;web;$browser;cage;
+EOF
+}
+create_browser_shortcuts chromium Chromium chromium
+create_browser_shortcuts librewolf LibreWolf librewolf
+if [ "$WANT_FREETUBE" -eq 1 ]; then
+    cat >"$APPDATA/io.freetubeapp.FreeTube.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=FreeTube
+Comment=YouTube con GUI; chiede se usare Cage o Labwc
+Exec=$HOME/.local/bin/labwc-freetube
+Icon=video-x-generic
+Terminal=false
+Categories=AudioVideo;Video;
+Keywords=youtube;video;freetube;cage;
+EOF
+fi
+rm -f "$APPDATA/gtk-pipe-viewer.desktop" "$APPDATA/labwc-youtube.desktop"
 
 # -----------------------------------------------------------------------------
 # Sfondi: copia quelli pre-generati (istantaneo), genera solo se mancano
@@ -2266,7 +2278,7 @@ SWAPPINESS_VALUE=$SWAPPINESS_VALUE
 THEME=$THEME
 BROWSER=$WANT_BROWSER
 QPDFVIEW=$WANT_QPDFVIEW
-PIPEVIEWER=$WANT_PIPEVIEWER
+FREETUBE=$WANT_FREETUBE
 KEYBOARD=$XKB_LAYOUT
 KEEP_TDM=$keep_tdm
 EOF
@@ -2300,7 +2312,7 @@ for variant in nordic-cobalt muted-crimson sage-emerald; do
     [ -f "/usr/share/labwc-q4os/login-themes/$variant/Main.qml" ] ||
         die "tema login mancante: $variant"
 done
-for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-doctor labwc-app-manager labwc-update-check labwc-update-copy labwc-update-popup labwc-update-run labwc-update-gui labwc-preferences labwc-desktop labwc-desktop-state labwc-desktop-status labwc-desktop-menu labwc-power-menu labwc-sysinfo labwc-touchscreen labwc-login-theme labwc-fuzzel-apps labwc-minimized labwc-install-wizard; do
+for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-doctor labwc-app-manager labwc-update-check labwc-update-copy labwc-update-popup labwc-update-run labwc-update-gui labwc-preferences labwc-desktop labwc-desktop-state labwc-desktop-status labwc-desktop-menu labwc-power-menu labwc-sysinfo labwc-touchscreen labwc-login-theme labwc-fuzzel-apps labwc-minimized labwc-install-wizard labwc-cage labwc-freetube; do
     [ -x "$BIN/$helper" ] || die "helper non eseguibile: $helper"
 done
 ok "Tutto in ordine."
@@ -2350,7 +2362,7 @@ ${C_GREEN}${C_BOLD}Installazione completata.${C_RESET}
       esac
   )
   qpdfview ........... $(if have qpdfview; then echo "installato"; else echo "non installato"; fi)
-  pipe-viewer ........ $(if have gtk-pipe-viewer; then echo "GTK, 360p"; else echo "non installato"; fi)
+  FreeTube ........... $(if flatpak info io.freetubeapp.FreeTube >/dev/null 2>&1; then echo "installato (Flatpak)"; else echo "non installato"; fi)
   btop ............... $(if have btop; then echo "installato"; else echo "non installato"; fi)
   Backup ............. $BACKUP_DIR
   Log sessione ....... $STATE/session.log

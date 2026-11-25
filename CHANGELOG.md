@@ -2,6 +2,18 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.20.0]
+
+- **FreeTube** da Flathub al posto di gtk-pipe-viewer, con popup a tre scelte:
+  Cage a schermo intero, Labwc, Annulla. Il popup avvisa di salvare i documenti.
+- **Cage**: le app vengono aperte a schermo intero e alla chiusura si torna a
+  labwc, con riallineamento della barra.
+- **Browser**: si possono scegliere Chromium e LibreWolf insieme; due
+  collegamenti per browser, normale e **(cage)**.
+- Ogni opzione della GUI ha una descrizione sopra la scelta.
+- Rimosso gtk-pipe-viewer e i suoi residui; Flathub viene aggiunto se manca e
+  gli aggiornamenti passano da Flatpak.
+
 ## [1.19.2]
 
 - Rimossi i residui del vecchio **YouTube leggero** (`labwc-youtube` e la sua

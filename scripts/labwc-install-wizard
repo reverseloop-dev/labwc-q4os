@@ -109,7 +109,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lookswitcher", default="0")
     parser.add_argument("--lookswitcher-available", default="0")
     parser.add_argument("--qpdfview", default="1")
-    parser.add_argument("--pipeviewer", default="1")
+    parser.add_argument("--freetube", default="1")
     parser.add_argument("--sddm", default="0")
     parser.add_argument("--sddm-available", default="0")
     parser.add_argument("--chromium-installed", default="0")
@@ -269,26 +269,37 @@ def main() -> int:
         "Scegli il browser. Le estensioni vengono configurate automaticamente.",
     )
     browser_card = card("BROWSER")
-    browser_group: Gtk.RadioButton | None = None
-    browser_buttons: dict[str, Gtk.RadioButton] = {}
 
-    def add_browser(key: str, label: str, description: str) -> None:
-        nonlocal browser_group
-        button = Gtk.RadioButton.new_with_label_from_widget(browser_group, label)
-        if browser_group is None:
-            browser_group = button
-        button.get_style_context().add_class("choice")
-        button.connect("toggled", lambda _b: refresh_summary())
-        browser_buttons[key] = button
-        browser_card.pack_start(button, False, False, 0)
+    def browser_option(key: str, label: str, description: str, active: bool):
         hint = Gtk.Label(label=description, xalign=0)
         hint.set_line_wrap(True)
         hint.get_style_context().add_class("card-hint")
         browser_card.pack_start(hint, False, False, 0)
+        button = Gtk.CheckButton(label=label)
+        button.set_active(active)
+        button.get_style_context().add_class("choice")
+        button.connect("toggled", lambda _b: refresh_summary())
+        browser_card.pack_start(button, False, False, 0)
+        return button
 
-    add_browser("chromium", "Chromium", "Motore Chrome: massima compatibilità con le web app; estensioni dal Chrome Web Store.")
-    add_browser("librewolf", "LibreWolf", "Firefox senza telemetria: più privacy; repository esterno e estensioni Mozilla.")
-    add_browser("none", "Nessuno", "Non installare e non modificare nessun browser.")
+    initial_browser = args.browser
+    if initial_browser not in {"chromium", "librewolf", "both", "none"}:
+        if bool_arg(args.chromium_installed) and bool_arg(args.librewolf_installed):
+            initial_browser = "both"
+        elif bool_arg(args.librewolf_installed):
+            initial_browser = "librewolf"
+        else:
+            initial_browser = "chromium"
+    chromium_check = browser_option(
+        "chromium", "Chromium",
+        "Motore Chrome: massima compatibilità con le web app; estensioni dal Chrome Web Store.",
+        initial_browser in {"chromium", "both"},
+    )
+    librewolf_check = browser_option(
+        "librewolf", "LibreWolf",
+        "Firefox senza telemetria: più privacy; repository esterno e estensioni Mozilla.",
+        initial_browser in {"librewolf", "both"},
+    )
     browser_page.pack_start(browser_card, False, False, 0)
 
     remove_check = Gtk.CheckButton(label="Disinstalla l'altro browser, se presente")
@@ -357,9 +368,19 @@ def main() -> int:
         "Spunta solo quello che vuoi installare.",
     )
     extra_card = card("APPLICAZIONI OPZIONALI")
-    pdf_check = check("qpdfview — lettore PDF leggero", bool_arg(args.qpdfview))
-    pipe_check = check("gtk-pipe-viewer — YouTube GTK leggero, 360p", bool_arg(args.pipeviewer))
+    pdf_hint = Gtk.Label(
+        label="qpdfview: lettore PDF leggero, senza browser.", xalign=0)
+    pdf_hint.get_style_context().add_class("card-hint")
+    extra_card.pack_start(pdf_hint, False, False, 0)
+    pdf_check = check("qpdfview", bool_arg(args.qpdfview))
     extra_card.pack_start(pdf_check, False, False, 0)
+    ft_hint = Gtk.Label(
+        label="FreeTube: client YouTube con GUI; usa Flatpak/Flathub.",
+        xalign=0)
+    ft_hint.set_line_wrap(True)
+    ft_hint.get_style_context().add_class("card-hint")
+    extra_card.pack_start(ft_hint, False, False, 0)
+    pipe_check = check("FreeTube", bool_arg(args.freetube))
     extra_card.pack_start(pipe_check, False, False, 0)
     extra_page.pack_start(extra_card, False, False, 0)
     add_page("extra", "Applicazioni", extra_scroll)
@@ -437,10 +458,15 @@ def main() -> int:
     finished = {"value": False}
 
     def selected_browser() -> str:
-        for key, button in browser_buttons.items():
-            if button.get_active():
-                return key
-        return "chromium"
+        chromium = chromium_check.get_active()
+        librewolf = librewolf_check.get_active()
+        if chromium and librewolf:
+            return "both"
+        if chromium:
+            return "chromium"
+        if librewolf:
+            return "librewolf"
+        return "none"
 
     def selected_shell() -> str:
         return "noctalia" if shell_buttons["noctalia"].get_active() else "waybar"
@@ -455,14 +481,15 @@ def main() -> int:
         if "summary" not in [name for name, _label, _widget in pages]:
             return
         browser = selected_browser()
+        browser_text = {"both": "Chromium + LibreWolf", "none": "nessuno"}.get(browser, browser)
         lines = [
-            f"Browser: {browser if browser != 'none' else 'nessuno'}",
+            f"Browser: {browser_text}",
             f"Shell: {'Noctalia v5' if selected_shell() == 'noctalia' else 'Waybar + Fuzzel'}",
             f"zram: {'sì' if zram_check.get_active() else 'no'}",
             f"Swappiness: {'sì' if swappiness_check.get_active() else 'no'}",
             f"Touchscreen: {'sì' if touch_check.get_active() else 'no'}",
             f"qpdfview: {'sì' if pdf_check.get_active() else 'no'}",
-            f"pipe-viewer: {'sì' if pipe_check.get_active() else 'no'}",
+            f"FreeTube: {'sì' if pipe_check.get_active() else 'no'}",
             f"Tema: {selected_theme()}",
             f"Tastiera: {keyboard_combo.get_active_text() or 'it'}",
         ]
@@ -475,15 +502,6 @@ def main() -> int:
         summary_label.set_text("\n".join(lines))
 
     # --- initial state ----------------------------------------------------
-    initial_browser = args.browser
-    if initial_browser not in browser_buttons:
-        if bool_arg(args.chromium_installed):
-            initial_browser = "chromium"
-        elif bool_arg(args.librewolf_installed):
-            initial_browser = "librewolf"
-        else:
-            initial_browser = "chromium"
-    browser_buttons[initial_browser].set_active(True)
     shell_buttons["noctalia" if args.shell == "noctalia" else "waybar"].set_active(True)
     theme_buttons[args.theme if args.theme in theme_buttons else "nordic-cobalt"].set_active(True)
     keyboard_combo.set_active(max(0, keyboard_values.index(args.keyboard)) if args.keyboard in keyboard_values else 0)
@@ -518,7 +536,7 @@ def main() -> int:
             f"TOUCH={1 if touch_check.get_active() else 0}",
             f"LOOKSWITCHER={1 if look_check is not None and look_check.get_active() else 0}",
             f"QPDFVIEW={1 if pdf_check.get_active() else 0}",
-            f"PIPEVIEWER={1 if pipe_check.get_active() else 0}",
+            f"FREETUBE={1 if pipe_check.get_active() else 0}",
             f"THEME={selected_theme()}",
             f"KEYBOARD={keyboard_combo.get_active_text() or 'it'}",
             f"SDDM={1 if sddm_check is not None and sddm_check.get_active() else 0}",
