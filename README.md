@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.21.3**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.21.4**
 
 ---
 
@@ -375,11 +375,13 @@ labwc-cage -- chromium
 labwc-cage -- librewolf
 labwc-cage -- freetube
 ```
-Si chiude l’app per tornare a labwc.
+Con i collegamenti **(cage)** e con `labwc-cage` si torna **automaticamente**
+a labwc alla chiusura dell’app. Se lanci `cage` manualmente dalla console,
+invece, resti nella shell: usa `labwc-return` o `Ctrl+Alt+F1`.
 
-**Tornare a labwc dopo Cage.** Dalla console non lanciare `labwc`: il
-compositore è ancora attivo e il DRM risulta occupato (`Permission denied`).
-Usa:
+**Tornare a labwc dopo Cage.** Se lanci `cage` manualmente dalla console, il
+wrapper mostra le istruzioni prima e dopo l'app. Dalla console non lanciare
+`labwc`: il compositore è ancora attivo e il DRM risulta occupato. Usa:
 ```bash
 labwc-return
 ```
@@ -1145,6 +1147,7 @@ labwc-q4os/
 │   ├── labwc-cage-help             # console AVVIA CAGE con esempi
 │   ├── labwc-return                # torna da console/Cage a labwc
 │   ├── labwc-audio-key             # helper root keyd per volume
+│   ├── cage-with-help              # wrapper /usr/local/bin/cage con istruzioni
 │   ├── labwc-update-check         # controllo versione online
 │   ├── labwc-update-copy          # copia comando di aggiornamento
 │   ├── labwc-update-popup         # popup 15 s: chiudi, copia, apri GUI

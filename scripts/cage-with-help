@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# cage-with-help - wrapper per mostrare come tornare a labwc dalla console.
+# Viene installato come /usr/local/bin/cage; labwc-cage lo richiama in
+# modalità silenziosa.
+set -u
+
+quiet="${LABWC_CAGE_QUIET:-0}"
+if [ "$quiet" != "1" ]; then
+    cat <<'MSG'
+
+  Cage avviato dalla console.
+  Se labwc è ancora attivo e non vedi il desktop, torna con:
+      labwc-return
+  oppure:
+      Ctrl+Alt+F1
+
+  Salva i documenti aperti prima di chiudere l'app.
+
+MSG
+fi
+
+/usr/bin/cage "$@"
+status=$?
+
+if [ "$quiet" != "1" ]; then
+    cat <<'MSG'
+
+  Cage terminato. Se non sei tornato a labwc:
+      labwc-return
+  oppure:
+      Ctrl+Alt+F1
+
+MSG
+fi
+exit "$status"

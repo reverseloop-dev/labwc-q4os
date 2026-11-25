@@ -1075,6 +1075,18 @@ EOF
     ok "Chromium: Wayland, decorazioni e YouTube 360p configurati."
 }
 
+install_cage_helper() {
+    if [ "$SKIP_APT" -eq 1 ]; then
+        return 0
+    fi
+    install_packages cage
+    if ! command -v cage >/dev/null 2>&1; then
+        return 0
+    fi
+    # /usr/local/bin precede /usr/bin: la console mostra le istruzioni.
+    sudo install -m 0755 "$REPO_DIR/scripts/cage-with-help" /usr/local/bin/cage
+}
+
 install_audio_keys() {
     local keyd_conf="/etc/keyd/default.conf"
     local helper="/usr/local/bin/labwc-audio-key"
@@ -1406,6 +1418,7 @@ Aggiorna a Q4OS 6 oppure usa una release Debian 13 o successiva."
     install_packages "${OPTIONAL_PKGS[@]}"
     remove_flatpak || true
     install_audio_keys || true
+    install_cage_helper || true
 
     if [ "$ENABLE_TOUCH" -eq 1 ]; then
         log "Installazione componenti touchscreen (wvkbd, lisgd, libinput-tools)..."

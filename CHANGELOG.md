@@ -2,6 +2,14 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.21.4]
+
+- `labwc-cage` / collegamenti **(cage)**: alla chiusura dell’app si torna
+  automaticamente a labwc.
+- `cage` manuale dalla console: il wrapper stampa prima e dopo le istruzioni
+  `labwc-return` / `Ctrl+Alt+F1`.
+- FreeTube resta solo `.deb` ufficiale; nessun Flatpak/Flathub.
+
 ## [1.21.3]
 
 - Nuovo comando **labwc-return**: torna al VT della sessione labwc dopo Cage;
