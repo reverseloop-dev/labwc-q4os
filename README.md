@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.21.2**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.21.3**
 
 ---
 
@@ -376,6 +376,15 @@ labwc-cage -- librewolf
 labwc-cage -- freetube
 ```
 Si chiude l’app per tornare a labwc.
+
+**Tornare a labwc dopo Cage.** Dalla console non lanciare `labwc`: il
+compositore è ancora attivo e il DRM risulta occupato (`Permission denied`).
+Usa:
+```bash
+labwc-return
+```
+oppure `Ctrl+Alt+F1` per tornare al VT di labwc. `labwc-return` rileva il VT
+della sessione attiva e ci ritorna; se labwc non è più attivo, riavvia SDDM.
 
 ### FreeTube e Cage
 
@@ -1134,6 +1143,7 @@ labwc-q4os/
 │   ├── labwc-cage                  # app in Cage a schermo intero
 │   ├── labwc-freetube              # FreeTube: Cage/Labwc/Annulla
 │   ├── labwc-cage-help             # console AVVIA CAGE con esempi
+│   ├── labwc-return                # torna da console/Cage a labwc
 │   ├── labwc-audio-key             # helper root keyd per volume
 │   ├── labwc-update-check         # controllo versione online
 │   ├── labwc-update-copy          # copia comando di aggiornamento

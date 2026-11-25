@@ -17,7 +17,9 @@ cat <<'EOF'
     labwc-cage -- firefox
 
   Per un'altra app, sostituisci il comando dopo --.
-  Per tornare a labwc: chiudi l'app aperta in Cage.
+  Se sei in una console dopo Cage e labwc non risponde, digita:
+    labwc-return
+  (oppure Ctrl+Alt+F1 per tornare al VT di labwc).
 
   Tasti volume: vengono gestiti da keyd anche dentro Cage.
 

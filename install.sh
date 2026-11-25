@@ -1785,6 +1785,7 @@ for helper in \
     labwc-cage \
     labwc-freetube \
     labwc-cage-help \
+    labwc-return \
     labwc-session-start
 do
     install -m 0755 "$REPO_DIR/scripts/$helper" "$BIN/$helper"

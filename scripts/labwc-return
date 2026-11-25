@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-return - torna alla sessione labwc attiva dopo una console/Cage.
+# =============================================================================
+set -u
+
+pid="$(pgrep -x labwc | head -n1 || true)"
+if [ -n "$pid" ] && [ -r "/proc/$pid/environ" ]; then
+    vt="$(tr '\0' '\n' <"/proc/$pid/environ" |
+        sed -n 's/^XDG_VTNR=//p' | head -n1)"
+    sid="$(tr '\0' '\n' <"/proc/$pid/environ" |
+        sed -n 's/^XDG_SESSION_ID=//p' | head -n1)"
+    if [ -n "$vt" ] && command -v chvt >/dev/null 2>&1; then
+        if sudo -n chvt "$vt" 2>/dev/null || chvt "$vt" 2>/dev/null; then
+            printf 'Ritorno a labwc sul VT %s.\n' "$vt"
+            exit 0
+        fi
+        printf 'Esegui: sudo chvt %s\n' "$vt"
+        exit 0
+    fi
+    if [ -n "$sid" ] && command -v loginctl >/dev/null 2>&1; then
+        if loginctl activate "$sid" 2>/dev/null; then
+            printf 'Ritorno alla sessione labwc %s.\n' "$sid"
+            exit 0
+        fi
+    fi
+fi
+
+if systemctl is-active sddm >/dev/null 2>&1; then
+    printf 'Labwc non è attivo: riavvio SDDM per tornare al login.\n'
+    sudo systemctl restart sddm
+    exit $?
+fi
+
+printf 'Labwc non è attivo. Da console avvia: dbus-run-session labwc\n'
+exit 1

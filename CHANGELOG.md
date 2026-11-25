@@ -2,6 +2,13 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.21.3]
+
+- Nuovo comando **labwc-return**: torna al VT della sessione labwc dopo Cage;
+  non lanciare `labwc` da console (DRM occupato).
+- `labwc-return` e `Ctrl+Alt+F1` documentati in README e nella console Cage.
+- FreeTube solo dal `.deb` ufficiale; Flatpak/Flathub rimossi.
+
 ## [1.21.2]
 
 - Rimosso Flatpak/Flathub: FreeTube ora si installa dal **.deb ufficiale**
