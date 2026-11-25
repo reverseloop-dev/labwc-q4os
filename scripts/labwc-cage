@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  labwc-cage - avvia un'app in Cage a schermo intero, con ritorno a labwc.
+#  labwc-cage - chiude labwc, avvia l'app in Cage e poi riapre labwc.
 #
-#  Uso: labwc-cage [--ask] -- comando [argomenti...]
-#  Cage gira come compositore annidato (WLR_BACKENDS=wayland), quindi non
-#  interrompe la sessione labwc; la finestra Cage viene portata a schermo
-#  intero e, alla chiusura, labwc torna subito utilizzabile.
+#  La richiesta viene scritta in ~/.local/state/labwc-q4os/cage-request:
+#  il wrapper di sessione labwc-session-launch la esegue sulla stessa TTY,
+#  quindi labwc libera DRM e RAM e Cage parte davvero come compositore.
 # =============================================================================
 set -u
 
@@ -28,48 +27,47 @@ fi
 [ "$#" -gt 0 ] || { notify "Nessun comando da avviare"; exit 1; }
 
 if [ "$ask" -eq 1 ] && command -v zenity >/dev/null 2>&1; then
-    choice="$(zenity --list --radiolist \
-        --title="Cage — schermo intero" \
-        --text="Cage apre l'app a schermo intero. Salva i documenti aperti prima di continuare." \
-        --column="Scelta" --column="Azione" --width=680 --height=300 \
-        TRUE "cage|Avvia in Cage a schermo intero (salva prima i documenti)" \
-        FALSE "labwc|Apri normalmente nella sessione Labwc" \
-        FALSE "cancel|Annulla — non avviare nulla" 2>/dev/null)" || exit 0
-    case "${choice%%|*}" in
-        cage) ;;
-        labwc) exec "$@" ;;
-        *) exit 0 ;;
-    esac
+    zenity --question \
+        --title="Cage — chiudere labwc?" \
+        --text="Cage chiude labwc e avvia l'app a schermo intero.\n\nTutti i file non salvati andranno persi.\n\nContinuare?" \
+        --ok-label="Sì" --cancel-label="No" 2>/dev/null || exit 0
 fi
 
-if ! command -v cage >/dev/null 2>&1; then
-    notify "Cage non installato" "Avvio l'app nella sessione Labwc."
-    exec "$@"
-fi
+state="${XDG_STATE_HOME:-$HOME/.local/state}/labwc-q4os"
+mkdir -p "$state"
+request="$state/cage-request"
 
-log="$(mktemp)"
-LABWC_CAGE_QUIET=1 WLR_BACKENDS=wayland WLR_RENDERER=pixman cage -- "$@" >"$log" 2>&1 &
-cage_pid=$!
-
-# Cage espone la sua finestra come toplevel wlroots: portala a schermo intero.
-for _ in $(seq 1 40); do
-    if wlrctl toplevel find app_id:wlroots >/dev/null 2>&1; then
-        wlrctl toplevel fullscreen app_id:wlroots >/dev/null 2>&1 || true
-        break
-    fi
-    sleep 0.2
-done
-
-wait "$cage_pid"
-status=$?
-if [ "$status" -ne 0 ]; then
-    notify "Cage terminato con errore" "Controlla il log: $log"
-else
+if [ ! -f "$state/cage-supported" ]; then
+    # Sessione avviata prima dell'aggiornamento: il wrapper in memoria non
+    # supporta ancora la richiesta Cage. Uso il compositore annidato finché
+    # non viene riaperta la sessione.
+    notify "Riavvia la sessione per Cage reale" "Per ora apro Cage annidato."
+    log="$(mktemp)"
+    LABWC_CAGE_QUIET=1 WLR_BACKENDS=wayland WLR_RENDERER=pixman cage -- "$@" >"$log" 2>&1 &
+    cage_pid=$!
+    for _ in $(seq 1 40); do
+        if wlrctl toplevel find app_id:wlroots >/dev/null 2>&1; then
+            wlrctl toplevel fullscreen app_id:wlroots >/dev/null 2>&1 || true
+            break
+        fi
+        sleep 0.2
+    done
+    wait "$cage_pid"
+    status=$?
     rm -f "$log"
+    exit "$status"
 fi
 
-# La sessione labwc non è stata chiusa: riallinea barra e menu al ritorno.
-if [ -n "${WAYLAND_DISPLAY:-}" ] && pgrep -x labwc >/dev/null 2>&1; then
-    LABWC_Q4OS_SILENT=1 "$HOME/.local/bin/labwc-reload" >/dev/null 2>&1 || true
+printf '%q ' "$@" >"$request"
+printf '\n' >>"$request"
+sync
+
+if ! pgrep -x labwc >/dev/null 2>&1; then
+    # Siamo già in una console senza labwc: Cage può partire direttamente.
+    exec cage -- "$@"
 fi
-exit "$status"
+
+# Il wrapper di sessione è il padre di labwc: sopravvive alla chiusura,
+# avvia Cage e poi riapre labwc automaticamente.
+pkill -TERM -x labwc 2>/dev/null || true
+exit 0

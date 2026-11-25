@@ -7,20 +7,17 @@ cat <<'EOF'
 
   AVVIA CAGE
   ==========
-  Con labwc-cage (o i collegamenti "(cage)") l'app si apre a schermo
-  intero e, quando la chiudi, torni AUTOMATICAMENTE a labwc.
+  Sei dentro Cage con labwc chiuso. Avvia un'app direttamente:
+    chromium
+    librewolf
+    freetube
+    firefox
 
-  Esempi:
-    labwc-cage -- chromium
-    labwc-cage -- librewolf
-    labwc-cage -- freetube
-    labwc-cage -- firefox
+  Chiudi l'app per tornare a questa shell.
+  Per uscire da Cage e riaprire labwc automaticamente:
+    exit
 
-  Se invece lanci `cage` manualmente dalla console, alla chiusura resti
-  nella shell. Per tornare a labwc:
-    labwc-return
-  oppure:
-    Ctrl+Alt+F1
+  Salva i documenti aperti prima di chiudere le app.
 
   Tasti volume: vengono gestiti da keyd anche dentro Cage.
 

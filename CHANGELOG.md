@@ -2,6 +2,18 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.22.0]
+
+- **Cage reale**: `(cage)` e AVVIA CAGE chiudono davvero labwc, liberano RAM e
+  avviano Cage sulla stessa sessione; alla chiusura labwc riparte da solo.
+- Popup **Sì/No** con avviso esplicito: i file non salvati andranno persi.
+- **AVVIA CAGE** apre una shell dentro Cage; da lì si lanciano le app
+  direttamente e con `exit` si torna a labwc.
+- `cage` manuale resta in shell con `labwc-return` / `Ctrl+Alt+F1`.
+- FreeTube solo `.deb` ufficiale, nessun Flatpak/Flathub.
+- Dopo l’aggiornamento serve un logout/login per attivare il nuovo wrapper di
+  sessione; fino ad allora Cage resta annidato.
+
 ## [1.21.4]
 
 - `labwc-cage` / collegamenti **(cage)**: alla chiusura dell’app si torna

@@ -112,4 +112,24 @@ printf 'exec labwc\n' >>"$LOG"
     fi
 ) >/dev/null 2>&1 &
 
-exec labwc -C "$XDG_CONFIG_HOME/labwc"
+# Labwc e Cage condividono la stessa sessione logind: quando una app chiede
+# Cage, labwc esce, il wrapper avvia Cage sulla stessa TTY e poi riavvia labwc.
+CAGE_REQUEST="$STATE/cage-request"
+touch "$STATE/cage-supported" 2>/dev/null || true
+while :; do
+    labwc -C "$XDG_CONFIG_HOME/labwc"
+    status=$?
+    if [ -s "$CAGE_REQUEST" ]; then
+        cage_cmd="$(cat "$CAGE_REQUEST")"
+        rm -f "$CAGE_REQUEST"
+        printf 'cage: chiusura labwc, avvio %s\n' "$cage_cmd" >>"$LOG"
+        (
+            unset WAYLAND_DISPLAY DISPLAY XAUTHORITY
+            LABWC_CAGE_QUIET=1 WLR_BACKENDS=drm WLR_RENDERER=pixman \
+                cage -- bash -lc "$cage_cmd"
+        ) >>"$LOG" 2>&1
+        printf 'cage: app terminata, riavvio labwc\n' >>"$LOG"
+        continue
+    fi
+    exit "$status"
+done

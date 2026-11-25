@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.21.4**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.0**
 
 ---
 
@@ -315,13 +315,14 @@ manager non viene toccato; in tal caso si può avviare Labwc da TTY con
 
 ### Browser, estensioni e qpdfview
 
-L'installer propone tre scelte con una breve descrizione:
+L'installer permette di scegliere con una breve descrizione:
 
 1. **Chromium** — motore di Chrome, massima compatibilità con le web app;
    estensioni dal Chrome Web Store. Consigliato per TuxLab.
 2. **LibreWolf** — Firefox senza telemetria, più privacy e meno pubblicità;
    repository ufficiale esterno, estensioni dal catalogo Mozilla.
-3. **Nessuno** — non installa e non modifica nessun browser.
+3. **Entrambi** — installa Chromium e LibreWolf, ognuno con le sue estensioni.
+4. **Nessuno** — non installa e non modifica nessun browser.
 
 Il browser scelto **non viene reinstallato** se è già presente. Se scegli un
 browser diverso da quello già installato, l'installer chiede se **disinstallare
@@ -368,16 +369,19 @@ pacchetto non è disponibile in Debian 13/Q4OS 6. Al suo posto viene proposto
 ### Tasti volume e AVVIA CAGE
 
 I tasti **volume su/giù/mute** vengono intercettati da `keyd` e funzionano
-anche dentro Cage. Nel menu **TOOL reverseloop** la voce **AVVIA CAGE** apre
-una console con gli esempi:
+anche dentro Cage. Nel menu **TOOL reverseloop** la voce **AVVIA CAGE** chiude
+labwc e apre una console dentro Cage: da lì si avviano direttamente:
 ```
-labwc-cage -- chromium
-labwc-cage -- librewolf
-labwc-cage -- freetube
+chromium
+librewolf
+freetube
 ```
-Con i collegamenti **(cage)** e con `labwc-cage` si torna **automaticamente**
-a labwc alla chiusura dell’app. Se lanci `cage` manualmente dalla console,
-invece, resti nella shell: usa `labwc-return` o `Ctrl+Alt+F1`.
+Con i collegamenti **(cage)** labwc viene chiuso, l’app parte in Cage e, alla
+chiusura, labwc riparte automaticamente. Dopo un aggiornamento dello script
+serve **un logout/login una volta** per caricare il nuovo wrapper di sessione;
+fino ad allora Cage usa il fallback annidato. Anche FreeTube chiede conferma prima
+di chiudere labwc. Se lanci `cage` manualmente da una console, invece, resti
+nella shell: usa `labwc-return` o `Ctrl+Alt+F1`.
 
 **Tornare a labwc dopo Cage.** Se lanci `cage` manualmente dalla console, il
 wrapper mostra le istruzioni prima e dopo l'app. Dalla console non lanciare
@@ -391,10 +395,10 @@ della sessione attiva e ci ritorna; se labwc non è più attivo, riavvia SDDM.
 ### FreeTube e Cage
 
 FreeTube arriva dal pacchetto `.deb` ufficiale: **circa 100 MB** e poco più di
-un minuto, senza Flatpak né Flathub. L’installer chiede se installarlo e crea un collegamento con
-popup a tre scelte: **Cage a schermo intero**, **Labwc** oppure **Annulla**.
-Il popup ricorda di salvare i documenti. In Cage l’app viene aperta a tutto
-schermo; alla chiusura si torna a labwc e la barra viene riallineata.
+un minuto, senza Flatpak né Flathub. L’installer chiede se installarlo e crea
+un collegamento con popup **Sì/No**: avvisa che labwc verrà chiuso e che i
+file non salvati andranno persi. Con **Sì** FreeTube parte in Cage a schermo
+intero; alla chiusura labwc riparte automaticamente.
 
 Per Chromium e LibreWolf vengono creati due collegamenti: uno normale e uno
 con suffisso **(cage)**, che usa lo stesso meccanismo a schermo intero. Se

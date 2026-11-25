@@ -2057,7 +2057,7 @@ EOF
 Type=Application
 Name=$name (cage)
 Comment=$name a schermo intero con Cage; salva i documenti prima
-Exec=$HOME/.local/bin/labwc-cage -- $cmd
+Exec=$HOME/.local/bin/labwc-cage --ask -- $cmd
 Icon=$browser
 Terminal=false
 Categories=Network;WebBrowser;
@@ -2071,7 +2071,7 @@ if [ "$WANT_FREETUBE" -eq 1 ]; then
 [Desktop Entry]
 Type=Application
 Name=FreeTube
-Comment=YouTube con GUI; chiede se usare Cage o Labwc
+Comment=YouTube con GUI; avvisa che labwc verra chiuso
 Exec=$HOME/.local/bin/labwc-freetube
 Icon=video-x-generic
 Terminal=false
