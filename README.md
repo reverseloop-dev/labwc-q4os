@@ -1320,8 +1320,8 @@ Per ora l'obiettivo è **l'interfaccia grafica e le prestazioni**. Le web app
 locali, come quelle di [TuxLab](https://tuxlab.site), devono girare fluide su
 **PC molto vecchi**, senza rinunciare a grafica, semplicità e funzioni di base.
 
-Voglio un desktop **accessibile a tutti**. Un esempio concreto: un netbook
-Toshiba serie N di 10-15 anni o più si trova usato per 10-15 euro. Con
+Voglio un desktop **accessibile a tutti**. Un esempio concreto: su Vinted un netbook
+Toshiba o Acer di 10-15 anni o più si trova usato per 15 o 20 euro. Con
 labwc-q4os può tornare utile per navigare, scrivere e usare le web app. Il
 resto — nuove app e nuove funzioni — arriverà un passo alla volta.
 
