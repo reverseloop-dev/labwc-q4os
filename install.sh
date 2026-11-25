@@ -323,13 +323,18 @@ run_install_wizard() {
     local look_default="${WANT_LOOKSWITCHER:-0}"
     local sddm_default=0
     if [ "$sddm_available" -eq 1 ]; then sddm_default=1; fi
+    local trinity_here=0
+    if command -v starttde >/dev/null 2>&1 || [ -d /etc/trinity ] ||
+        dpkg -s tdebase-trinity >/dev/null 2>&1; then
+        trinity_here=1
+    fi
 
     python3 "$REPO_DIR/scripts/labwc-install-wizard" \
         --theme "$theme_default" --themes-dir "$REPO_DIR/configs/themes" \
         --keyboard "${XKB_LAYOUT:-$DETECTED_LAYOUT}" \
         --browser "$browser_default" --shell "$shell_default" \
         --zram 1 --swappiness 1 --touch "$touch_now" \
-        --lookswitcher "$look_default" --lookswitcher-available "$trinity_present" \
+        --lookswitcher "$look_default" --lookswitcher-available "$trinity_here" \
         --qpdfview 1 --pipeviewer 1 \
         --sddm "$sddm_default" --sddm-available "$sddm_available" \
         --chromium-installed "$chromium_here" --librewolf-installed "$librewolf_here"

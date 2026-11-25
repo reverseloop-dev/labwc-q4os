@@ -2,6 +2,12 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.19.1]
+
+- Corretto il crash del wizard alla voce “Sì” (`trinity_present` non
+  inizializzata) e l’ordine di inizializzazione del riepilogo GTK.
+- Aggiunto il controllo automatico del wizard nella VM di test.
+
 ## [1.19.0]
 
 - **gtk-pipe-viewer** proposto e compilato dal sorgente GitHub pinnato 0.5.9

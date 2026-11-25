@@ -424,20 +424,6 @@ def main() -> int:
     summary_page.pack_start(summary_card, False, False, 0)
     add_page("summary", "Riepilogo", summary_scroll)
 
-    # --- initial state ----------------------------------------------------
-    initial_browser = args.browser
-    if initial_browser not in browser_buttons:
-        if bool_arg(args.chromium_installed):
-            initial_browser = "chromium"
-        elif bool_arg(args.librewolf_installed):
-            initial_browser = "librewolf"
-        else:
-            initial_browser = "chromium"
-    browser_buttons[initial_browser].set_active(True)
-    shell_buttons["noctalia" if args.shell == "noctalia" else "waybar"].set_active(True)
-    theme_buttons[args.theme if args.theme in theme_buttons else "nordic-cobalt"].set_active(True)
-    keyboard_combo.set_active(max(0, keyboard_values.index(args.keyboard)) if args.keyboard in keyboard_values else 0)
-
     back = Gtk.Button(label="Indietro")
     cancel = Gtk.Button(label="Annulla")
     forward = Gtk.Button(label="Avanti")
@@ -487,6 +473,21 @@ def main() -> int:
         if remove_check.get_parent() is not None and remove_check.get_active():
             lines.append("L'altro browser verrà disinstallato")
         summary_label.set_text("\n".join(lines))
+
+    # --- initial state ----------------------------------------------------
+    initial_browser = args.browser
+    if initial_browser not in browser_buttons:
+        if bool_arg(args.chromium_installed):
+            initial_browser = "chromium"
+        elif bool_arg(args.librewolf_installed):
+            initial_browser = "librewolf"
+        else:
+            initial_browser = "chromium"
+    browser_buttons[initial_browser].set_active(True)
+    shell_buttons["noctalia" if args.shell == "noctalia" else "waybar"].set_active(True)
+    theme_buttons[args.theme if args.theme in theme_buttons else "nordic-cobalt"].set_active(True)
+    keyboard_combo.set_active(max(0, keyboard_values.index(args.keyboard)) if args.keyboard in keyboard_values else 0)
+
 
     def show(index: int) -> None:
         current["index"] = max(0, min(index, len(pages) - 1))
