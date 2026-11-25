@@ -249,6 +249,12 @@ if jq empty configs/wlogout/layout; then pass "wlogout/layout"; else bad "wlogou
 # --- 4. XML ------------------------------------------------------------------
 check "XML (labwc rc.xml)"
 if xmllint --noout configs/labwc/rc.xml; then pass "labwc/rc.xml"; else bad "labwc/rc.xml"; fi
+if grep -q '<decoration>server</decoration>' configs/labwc/rc.xml &&
+    grep -q '<layout>icon:iconify,max,close</layout>' configs/labwc/rc.xml; then
+    pass "pulsanti finestra: riduci, ingrandisci, chiudi"
+else
+    bad "pulsanti finestra mancanti in labwc/rc.xml"
+fi
 
 # --- 5. permessi eseguibili -------------------------------------------------
 check "permessi eseguibili"

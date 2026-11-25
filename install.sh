@@ -1360,8 +1360,10 @@ fi
 if [ -n "$REMOVE_BROWSER" ]; then
     selected_ok=0
     case "$WANT_BROWSER" in
-        chromium) have chromium || have chromium-browser && selected_ok=1 ;;
-        librewolf) have librewolf && selected_ok=1 ;;
+        chromium)
+            if have chromium || have chromium-browser; then selected_ok=1; fi ;;
+        librewolf)
+            if have librewolf; then selected_ok=1; fi ;;
     esac
     if [ "$selected_ok" -eq 1 ] && [ "$SKIP_APT" -ne 1 ]; then
         remove_browser "$REMOVE_BROWSER"
@@ -2193,6 +2195,7 @@ ${C_GREEN}${C_BOLD}Installazione completata.${C_RESET}
       esac
   )
   qpdfview ........... $(if have qpdfview; then echo "installato"; else echo "non installato"; fi)
+  btop ............... $(if have btop; then echo "installato"; else echo "non installato"; fi)
   YouTube leggero .... $(if have mpv && have yt-dlp; then echo "mpv + yt-dlp"; else echo "non installato"; fi)
   Backup ............. $BACKUP_DIR
   Log sessione ....... $STATE/session.log
