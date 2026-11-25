@@ -2,6 +2,13 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.21.1]
+
+- FreeTube: la domanda e il wizard dicono chiaramente che servono circa 1,5 GB
+  liberi e diversi minuti di download.
+- Installer: controllo spazio prima del download Flatpak, con messaggio chiaro
+  se lo spazio non basta.
+
 ## [1.21.0]
 
 - **Tasti volume** mappati con `keyd` e helper `/usr/local/bin/labwc-audio-key`:

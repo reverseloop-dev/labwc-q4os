@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.21.0**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.21.1**
 
 ---
 
@@ -380,7 +380,8 @@ Si chiude l’app per tornare a labwc.
 ### FreeTube e Cage
 
 FreeTube arriva dal repository Flathub (Flatpak), quindi si aggiorna con
-`flatpak update`. L’installer chiede se installarlo e crea un collegamento con
+`flatpak update`. Richiede **circa 1,5 GB liberi** e diversi minuti di download
+in base alla connessione. L’installer chiede se installarlo e crea un collegamento con
 popup a tre scelte: **Cage a schermo intero**, **Labwc** oppure **Annulla**.
 Il popup ricorda di salvare i documenti. In Cage l’app viene aperta a tutto
 schermo; alla chiusura si torna a labwc e la barra viene riallineata.
@@ -1134,6 +1135,7 @@ labwc-q4os/
 │   ├── labwc-cage                  # app in Cage a schermo intero
 │   ├── labwc-freetube              # FreeTube: Cage/Labwc/Annulla
 │   ├── labwc-cage-help             # console AVVIA CAGE con esempi
+│   ├── labwc-audio-key             # helper root keyd per volume
 │   ├── labwc-update-check         # controllo versione online
 │   ├── labwc-update-copy          # copia comando di aggiornamento
 │   ├── labwc-update-popup         # popup 15 s: chiudi, copia, apri GUI

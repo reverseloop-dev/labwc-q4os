@@ -527,7 +527,8 @@ if [ -z "$WANT_FREETUBE" ]; then
         WANT_FREETUBE=1
     else
         note "FreeTube è un client YouTube open source con interfaccia grafica."
-        note "Viene installato da Flathub e aggiornato con Flatpak; usa più RAM di un browser leggero."
+        note "Viene installato da Flathub e aggiornato con Flatpak."
+        note "Richiede circa 1,5 GB liberi e diversi minuti di download (dipende dalla connessione)."
         if ask_yes_no "Installare FreeTube?" yes; then
             WANT_FREETUBE=1
         else
@@ -1130,9 +1131,14 @@ install_freetube() {
     if sudo flatpak info io.freetubeapp.FreeTube >/dev/null 2>&1; then
         info "FreeTube gia' installato: aggiornamenti da Flathub."
     else
-        log "Installazione FreeTube da Flathub..."
+        free_kb="$(df -Pk / 2>/dev/null | awk 'NR == 2 { print $4 }')"
+        if [ -n "$free_kb" ] && [ "$free_kb" -lt 1500000 ]; then
+            warn "Spazio insufficiente per FreeTube: servono circa 1,5 GB liberi, trovati $((free_kb / 1024)) MB. Installazione saltata."
+            return 1
+        fi
+        log "Installazione FreeTube da Flathub (download lungo, circa 1,5 GB)..."
         sudo flatpak install -y flathub io.freetubeapp.FreeTube ||
-            { warn "Installazione FreeTube non riuscita."; return 1; }
+            { warn "Installazione FreeTube non riuscita (spazio/rete?)."; return 1; }
     fi
     ok "FreeTube installato (Flatpak, aggiornamenti da Flathub)."
 }
