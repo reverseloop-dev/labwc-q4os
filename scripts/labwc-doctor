@@ -396,10 +396,18 @@ if [ -L "$icon_theme" ] && [ -r "$icon_theme/index.theme" ] && [ -d "$icon_theme
 else
     warn "icone del tema mancanti o non collegate (usa --fix)"
 fi
-if grep -q '^gtk-icon-theme-name=labwc-q4os' "$CONFIG/gtk-3.0/settings.ini" 2>/dev/null; then
-    ok "GTK usa le icone labwc-q4os"
+if command -v gsettings >/dev/null 2>&1; then
+    gtk_icon="$(gsettings get org.gnome.desktop.interface icon-theme 2>/dev/null |
+        tr -d "'")"
+    if [ "$gtk_icon" = "labwc-q4os" ]; then
+        ok "GTK usa le icone labwc-q4os (GSettings)"
+    else
+        warn "GTK non usa le icone labwc-q4os (valore: ${gtk_icon:-vuoto}; usa --fix)"
+    fi
+elif grep -q '^gtk-icon-theme-name=labwc-q4os' "$CONFIG/gtk-3.0/settings.ini" 2>/dev/null; then
+    ok "GTK usa gtk-icon-theme-name=labwc-q4os (fallback settings.ini)"
 else
-    warn "GTK non usa gtk-icon-theme-name=labwc-q4os"
+    warn "GTK non usa le icone labwc-q4os"
 fi
 
 if [ -f "$SHARE/wallpapers/$theme_id.png" ]; then

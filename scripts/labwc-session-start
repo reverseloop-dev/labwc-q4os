@@ -23,6 +23,13 @@ if command -v dbus-update-activation-environment >/dev/null 2>&1; then
         XDG_RUNTIME_DIR 2>/dev/null || true
 fi
 
+# GTK3 su Wayland usa GSettings per il tema icone: settings.ini da solo non
+# basta (PCManFM resterebbe con le icone Adwaita).
+if command -v gsettings >/dev/null 2>&1; then
+    gsettings set org.gnome.desktop.interface icon-theme labwc-q4os \
+        >/dev/null 2>&1 || true
+fi
+
 start_once() {
     local name="$1"; shift
     if pgrep -x "$name" >/dev/null 2>&1; then

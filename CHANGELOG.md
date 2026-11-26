@@ -2,6 +2,19 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.22.9]
+
+- Icone: corretto il bug per cui PCManFM mostrava le icone standard. GTK3 su
+  Wayland non legge `settings.ini` per le icone: ora l’installer e il login
+  impostano **GSettings** `icon-theme=labwc-q4os`; `settings.ini` resta come
+  fallback.
+- Icone: aggiunte al tema **cartella Home, Scrivania, Cestino**, cartelle
+  Documenti/Immagini/Musica/Video/Scaricati, dischi, rete, azioni del file
+  manager e tipi di file comuni. PCManFM e i dialoghi di sistema non usano più
+  icone Adwaita per queste voci.
+- README: avviso che **Plasma** richiede molta RAM e spazio ed è sconsigliato
+  su PC datati o con poca memoria/archiviazione.
+
 ## [1.22.8]
 
 - Touchpad: click fisico in basso a sinistra = sinistro, in basso a destra =

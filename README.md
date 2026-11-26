@@ -57,7 +57,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.8**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.9**
 
 ### Parole semplici
 
@@ -90,6 +90,8 @@ tutto e scegliere ogni volta l'ambiente che preferisci.
   GPU. È pensata per chi vuole un desktop moderno ed essenziale, soprattutto su
   PC vecchi o poco potenti.
 - **Plasma** resta disponibile per chi preferisce l'ambiente KDE completo.
+  Richiede però molta più RAM e spazio su disco: è **sconsigliato** su PC
+  datati o con poca memoria (RAM) o poco spazio di archiviazione.
 
 In breve: **Trinity per la familiarità di Windows, Labwc per la reattività e
 un ambiente sobrio.**
@@ -768,18 +770,22 @@ da repository esterni, quindi non ci sono dubbi di licenza o link che possano
 rompersi.
 
 Il set copre terminale, file manager, browser, impostazioni, audio, rete,
-batteria, sessione, screenshot, monitor, tema, ricerca, cartelle, documenti e
-categorie. Viene applicato a:
+batteria, sessione, screenshot, monitor, tema, ricerca, cartelle, documenti,
+categorie, **cartella Home, Scrivania, Cestino**, dischi, azioni (indietro,
+avanti, aggiorna, copia, incolla, elimina) e tipi di file comuni. Viene
+applicato a:
 
-- icone GTK (`gtk-icon-theme-name=labwc-q4os`);
+- icone GTK: **GSettings** `org.gnome.desktop.interface icon-theme=labwc-q4os`
+  (con `gtk-icon-theme-name` in `settings.ini` come fallback). Su Wayland
+  `settings.ini` da solo non basta: senza GSettings PCManFM resta su Adwaita;
 - taskbar di Waybar;
 - Fuzzel;
 - Mako;
 - finestre di ZRAM e App nel menu Labwc.
 
 Al cambio tema il symlink `~/.local/share/icons/labwc-q4os` punta al set del
-nuovo tema; Waybar viene riavviata e gli altri componenti usano le nuove icone
-alla successiva apertura.
+nuovo tema; Waybar viene riavviata. Se PCManFM era già aperto, chiudilo e
+riaprilo per vedere subito le nuove icone.
 
 ![Icone dei tre temi](preview/icons.png)
 
@@ -797,14 +803,6 @@ Il menu e' generato dinamicamente da `scripts/render-menu.py` leggendo i file
    app/preferite, cambio tema, editor rapido Fuzzel, ricarica, aiuto,
    screenshot, pannello ZRAM, controlli aggiornamenti, diagnostica, blocco
    schermo e menu sessione.
-
-### RIDOTTO AD ICONA
-
-Sotto **File manager** c'è la voce **RIDOTTO AD ICONA**: è un *pipemenu* di
-labwc, quindi l'elenco delle finestre ridotte compare direttamente nel menu.
-Un clic sulla voce ripristina la finestra. Funziona anche con Noctalia e
-Waybar, perché usa `wlrctl` e il protocollo foreign-toplevel di Wayland; se
-non ci sono finestre ridotte il menu mostra un messaggio.
 
 ### App nel menu, preferite e categorie
 

@@ -148,8 +148,10 @@ render "$TEMPLATES/wlogout-style.css" "$CONFIG/wlogout/style.css"
 
 printf '%s\n' "$THEME_ID" > "$CONFIG/labwc/theme"
 
-# Icone coordinate al tema (tema GTK "labwc-q4os"); rigenerate solo se mancanti.
-if [ -x "$SHARE/scripts/generate-icons.py" ] && [ ! -d "$SHARE/icons/$THEME_ID" ]; then
+# Icone coordinate al tema (tema GTK "labwc-q4os"); rigenerate a ogni
+# applicazione così anche le icone nuove (cartelle, cestino, azioni) entrano
+# subito nel tema già installato.
+if [ -x "$SHARE/scripts/generate-icons.py" ]; then
     python3 "$SHARE/scripts/generate-icons.py" \
         --theme-conf "$THEMES_DIR/$THEME_ID/theme.conf" \
         --output "$SHARE/icons" >/dev/null 2>&1 || true
@@ -175,6 +177,12 @@ for gtk_dir in "$CONFIG/gtk-3.0" "$CONFIG/gtk-4.0"; do
         printf 'gtk-icon-theme-name=labwc-q4os\n' >> "$settings"
     fi
 done
+# GTK3 su Wayland non legge settings.ini per le icone: il tema va impostato
+# in GSettings. Senza questo PCManFM resta su Adwaita.
+if command -v gsettings >/dev/null 2>&1; then
+    gsettings set org.gnome.desktop.interface icon-theme labwc-q4os \
+        >/dev/null 2>&1 || true
+fi
 
 WALLPAPER_PATH="$SHARE/wallpapers/$WALLPAPER"
 if [ -f "$WALLPAPER_PATH" ]; then
