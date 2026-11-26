@@ -1559,8 +1559,8 @@ riducendo i consumi e semplificando l’uso in movimento.
 
 ## Test e ringraziamenti
 
-I test sono stati fatti sia su una **macchina virtuale** sia su un **PC reale** (
-hardware vero). Per provare anche il **touchscreen**  ho acquistato un **Lenovo Chromebook E300** 
+I test sono stati fatti sia su una **macchina virtuale** sia su un **PC reale**. 
+Per avere un quadro completo e provare anche il **touchscreen**  ho acquistato un **Lenovo Chromebook E300** 
 rigorosamente usato e dal valore di 15 euro.
 
 Il **firmware** (il programma di base che avvia il computer) del Chromebook è
@@ -1569,11 +1569,17 @@ stato modificato grazie a **MrChromebox**: https://docs.mrchromebox.tech/
 **Attenzione prima di comprare un Chromebook.** Su un Chromebook la modifica
 del firmware è **necessaria per installare Linux**. Prima di acquistarlo,
 controlla che il modello sia compatibile sul sito di MrChromebox:
-https://docs.mrchromebox.tech/ — Se invece compri un normale **netbook**
+https://docs.mrchromebox.tech/ — Se invece compri un normale **notebook** o un **netbook**
 (un piccolo portatile), non serve nessuna modifica al firmware.
 
 L’idea di usare **labwc** (il desktop leggero di questo progetto) viene dai
 consigli di **Riccardo Palombo**: https://www.youtube.com/@RiccardoPalombo
+
+🔋 ***Autonomia ed esperimenti futuri***
+
+L'accoppiata **labwc + cage** abbatte i consumi in background, migliorando drasticamente l'autonomia della batteria sui vecchi laptop.
+
+Esperimento futuro (solo per nerd) e a tempo perso: creare una sessione **ultra-minimale** con solo cage e un menu testuale in shell, azzerando il superfluo **per spingere al massimo** l'efficienza energetica e il risparmio di RAM. Con questa modalità, neanche i vecchi netbook **da 1 GB di RAM** avranno il permesso di andare in pensione. 😊
 
 ---
 
