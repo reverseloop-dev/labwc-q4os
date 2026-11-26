@@ -57,19 +57,6 @@ grafica, sessioni esistenti o possibilità di scelta.
 
 > **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.12**
 
-### Parole semplici
-
-- **Script**: un file di istruzioni che il computer esegue.
-- **Repository APT**: un deposito online di programmi per Debian.
-- **Wayland / compositore**: il sistema grafico e il programma che disegna le
-  finestre.
-- **Shell**: la barra e il menu del desktop.
-- **Tema**: colori, icone e sfondo.
-- **VM / bare metal**: computer simulato / computer vero.
-- **Touchscreen / touchpad**: schermo che risponde al tocco / piano di
-  appoggio con i tasti del mouse.
-- **Pipemenu**: un menu creato al momento, invece di essere scritto a mano.
-
 ---
 
 ## Trinity o Labwc: scegli tu
