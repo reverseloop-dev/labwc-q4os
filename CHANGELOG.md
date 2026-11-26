@@ -2,6 +2,16 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.22.7]
+
+- FreeTube: l’installer usa **0.23.15**, ultima versione senza SABR, e la
+  blocca con `apt-mark hold`; disattiva il controllo aggiornamenti interno.
+  Evita il loop “reloading player according to SABR request”. Verificato in
+  labwc e Cage: riproduzione oltre i 60 s senza reload.
+- FreeTube: il pulsante X in Cage viene chiuso insieme all’app (PID + trap);
+  non può più comparire per errore nella finestra normale di labwc.
+- Per l’ultima versione: `FREETUBE_PIN=latest ./install.sh` (può avere SABR).
+
 ## [1.22.6]
 
 - Noctalia: se manca `~/.config/labwc/shell` (installazione interrotta o

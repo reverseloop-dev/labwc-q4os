@@ -11,6 +11,7 @@ Uso: freetube-close-overlay /percorso/DevToolsActivePort
 
 import asyncio
 import json
+import os
 import sys
 import urllib.request
 
@@ -69,9 +70,14 @@ async def evaluate(ws, expression, msg_id):
             return message
 
 
-async def watch(port_file):
+async def watch(port_file, app_pid=None):
     msg_id = 0
     while True:
+        if app_pid is not None:
+            try:
+                os.kill(app_pid, 0)
+            except OSError:
+                return
         try:
             url = page_ws_url(read_port(port_file))
             if not url:
@@ -79,6 +85,11 @@ async def watch(port_file):
                 continue
             async with websockets.connect(url) as ws:
                 while True:
+                    if app_pid is not None:
+                        try:
+                            os.kill(app_pid, 0)
+                        except OSError:
+                            return
                     msg_id += 1
                     await evaluate(ws, JS, msg_id)
                     await asyncio.sleep(2)
@@ -87,9 +98,10 @@ async def watch(port_file):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        raise SystemExit("uso: freetube-close-overlay DevToolsActivePort")
+    if len(sys.argv) not in (2, 3):
+        raise SystemExit("uso: freetube-close-overlay DevToolsActivePort [freetube-pid]")
+    app_pid = int(sys.argv[2]) if len(sys.argv) == 3 else None
     try:
-        asyncio.run(watch(sys.argv[1]))
+        asyncio.run(watch(sys.argv[1], app_pid))
     except KeyboardInterrupt:
         pass

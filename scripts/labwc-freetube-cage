@@ -23,10 +23,16 @@ pid=$!
 
 port_file="$data/DevToolsActivePort"
 overlay_pid=""
+cleanup() {
+    if [ -n "$overlay_pid" ]; then
+        kill "$overlay_pid" 2>/dev/null || true
+    fi
+}
+trap cleanup EXIT TERM INT
 for _ in $(seq 1 150); do
     if [ -s "$port_file" ]; then
         if [ -x "$overlay" ] && command -v python3 >/dev/null 2>&1; then
-            python3 "$overlay" "$port_file" &
+            python3 "$overlay" "$port_file" "$pid" &
             overlay_pid=$!
         fi
         break
@@ -39,7 +45,5 @@ done
 
 wait "$pid"
 status=$?
-if [ -n "$overlay_pid" ]; then
-    kill "$overlay_pid" 2>/dev/null || true
-fi
+cleanup
 exit "$status"

@@ -1200,12 +1200,64 @@ EOF
         warn "Pacchetto FreeTube non disponibile nel repo appena aggiunto."
         return 1
     fi
-    log "Installazione FreeTube dal repository APT (circa 100 MB)..."
-    if ! sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y freetube; then
-        warn "Installazione FreeTube dal repository non riuscita."
+
+    # FreeTube 0.24+ usa SABR in modo obbligatorio: su molte reti/versioni
+    # entra nel loop "reloading player according to SABR request".
+    # 0.23.15 e' l'ultima senza SABR e riproduce i video con i vecchi flussi.
+    local pin_version="0.23.15"
+    local pin_sha="2b773bba2d9f58daa78fd259de725daa8331405816b542434e9a912294dd4b89"
+    local pin_url=""
+    local tmp_deb=""
+    if [ "${FREETUBE_PIN:-$pin_version}" = "latest" ]; then
+        sudo apt-mark unhold freetube >/dev/null 2>&1 || true
+        log "Installazione FreeTube dal repository APT (circa 100 MB)..."
+        if ! sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y freetube; then
+            warn "Installazione FreeTube dal repository non riuscita."
+            return 1
+        fi
+        ok "FreeTube installato dal repo APT (aggiornamenti con apt)."
+        return 0
+    fi
+
+    case "$(dpkg --print-architecture)" in
+        amd64)
+            pin_url="https://github.com/FreeTubeApp/FreeTube/releases/download/v${pin_version}-beta/freetube_${pin_version}_beta_amd64.deb"
+            ;;
+        *)
+            warn "FreeTube ${pin_version} pinnato solo su amd64: uso l'ultima versione (puo' avere il bug SABR)."
+            sudo apt-mark unhold freetube >/dev/null 2>&1 || true
+            sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y freetube || return 1
+            return 0
+            ;;
+    esac
+
+    log "Installazione FreeTube ${pin_version} (senza SABR)..."
+    tmp_deb="$(mktemp --suffix=.deb)"
+    if ! curl -fL --proto '=https' --proto-redir '=https' --retry 2 \
+        --max-time 300 -o "$tmp_deb" "$pin_url"; then
+        rm -f "$tmp_deb"
+        warn "Download FreeTube ${pin_version} non riuscito: installo l'ultima versione."
+        sudo apt-mark unhold freetube >/dev/null 2>&1 || true
+        sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y freetube || return 1
+        return 0
+    fi
+    if ! echo "${pin_sha}  ${tmp_deb}" | sha256sum -c - >/dev/null 2>&1; then
+        rm -f "$tmp_deb"
+        warn "Checksum FreeTube ${pin_version} non valido: installo l'ultima versione."
+        sudo apt-mark unhold freetube >/dev/null 2>&1 || true
+        sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y freetube || return 1
+        return 0
+    fi
+    if ! sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        --allow-downgrades "$tmp_deb"; then
+        rm -f "$tmp_deb"
+        warn "Installazione FreeTube ${pin_version} non riuscita."
         return 1
     fi
-    ok "FreeTube installato dal repo APT (aggiornamenti con apt)."
+    rm -f "$tmp_deb"
+    sudo apt-mark hold freetube >/dev/null 2>&1 || true
+    ok "FreeTube ${pin_version} installato e bloccato (niente SABR; apt non lo aggiorna)."
+    info "Per tornare all'ultima versione: sudo apt-mark unhold freetube && FREETUBE_PIN=latest ./install.sh"
 }
 
 configure_freetube() {
@@ -1238,8 +1290,12 @@ if os.path.exists(path):
             if isinstance(doc, dict) and "_id" in doc:
                 docs.append(doc)
 
-docs = [doc for doc in docs if doc.get("_id") != "defaultQuality"]
+docs = [doc for doc in docs
+        if doc.get("_id") not in ("defaultQuality", "checkForUpdates")]
 docs.append({"_id": "defaultQuality", "value": "360"})
+docs.append({"_id": "checkForUpdates", "value": False})
+# Una sola voce per _id (NeDB compatta cosi' al prossimo avvio).
+docs = list({doc["_id"]: doc for doc in docs}.values())
 
 tmp = path + ".labwc-q4os.tmp"
 with open(tmp, "w", encoding="utf-8") as handle:
@@ -1250,9 +1306,9 @@ os.chmod(tmp, 0o600)
 os.replace(tmp, path)
 PY
     then
-        ok "FreeTube: qualita' video predefinita 360p."
+        ok "FreeTube: qualita' 360p, controllo aggiornamenti disattivato."
     else
-        warn "Impossibile impostare la qualita' FreeTube a 360p."
+        warn "Impossibile configurare FreeTube (360p/aggiornamenti)."
     fi
 }
 

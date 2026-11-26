@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.6**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.7**
 
 ---
 
@@ -414,10 +414,14 @@ serve un logout vero dalla sessione.
 
 ### FreeTube e Cage
 
-FreeTube viene installato da un **repository APT dedicato** (GHaaAPT, non
-ufficiale ma con pacchetto FreeTube ufficiale): circa **100 MB**, niente
-Flatpak/Flathub, aggiornamenti con `apt update && apt upgrade`. L’installer
-chiede se installarlo e crea **due** collegamenti, come per i browser:
+FreeTube viene installato dal **repository APT dedicato** (GHaaAPT) o dal
+pacchetto ufficiale GitHub: circa **100 MB**, niente Flatpak/Flathub. Per
+evitare il loop **SABR** (“reloading player according to SABR request”)
+l’installer usa **FreeTube 0.23.15**, ultima versione senza SABR: verifica lo
+SHA-256 e la blocca con `apt-mark hold`, quindi `apt upgrade` non la sostituisce
+e il controllo aggiornamenti interno è disattivato. Per provare l’ultima
+versione: `FREETUBE_PIN=latest ./install.sh` (può avere il bug SABR).
+L’installer chiede se installarlo e crea **due** collegamenti, come per i browser:
 **FreeTube** apre FreeTube in labwc con la normale X della finestra;
 **FreeTube (cage)** chiede conferma (avvisa che labwc verrà chiuso e che i
 file non salvati andranno persi), avvia FreeTube a schermo intero in Cage e
@@ -566,7 +570,7 @@ cd labwc-q4os
 | `--chromium` / `--librewolf` | Scorciatoie per `--browser chromium` / `librewolf` |
 | `--no-chromium` / `--no-browser` | Nessun browser (compatibilità) |
 | `--qpdfview` / `--no-qpdfview` | Installa o esclude qpdfview, lettore PDF leggero |
-| `--freetube` / `--no-freetube` | Installa o esclude FreeTube (repo APT) |
+| `--freetube` / `--no-freetube` | Installa o esclude FreeTube 0.23.15 (senza SABR) |
 | `--both-browsers` | Installa sia Chromium sia LibreWolf |
 | `--quick` | Aggiorna subito con le opzioni salvate, senza domande |
 | `--configure` | Chiede comunque tutti i parametri prima di aggiornare |
