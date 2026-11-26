@@ -1577,6 +1577,42 @@ consigli di **Riccardo Palombo**: https://www.youtube.com/@RiccardoPalombo
 
 ---
 
+## Numeri del progetto
+
+Tutti i numeri vengono dal [`CHANGELOG.md`](CHANGELOG.md): ogni voce è un
+intervento registrato in una release. Le aree sono una stima per parole chiave
+(una voce può riguardare più aspetti, qui conta l'area principale).
+
+### Interventi per area
+
+1 quadretto = 4 voci (arrotondato per eccesso). Colonna più alta: installer e
+compatibilità con **39** interventi.
+
+| Livello | 🟥 Bug | 🟩 Funzioni | 🟦 Migliorie | 🟪 Temi/UI | 🟧 Installer | 🟨 Docs | 🟫 Pulizia | ⬛ Altro |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| 10 | ⬜ | ⬜ | ⬜ | ⬜ | 🟧 | ⬜ | ⬜ | ⬜ |
+| 9 | ⬜ | ⬜ | ⬜ | ⬜ | 🟧 | ⬜ | ⬜ | ⬜ |
+| 8 | ⬜ | 🟩 | ⬜ | ⬜ | 🟧 | ⬜ | ⬜ | ⬜ |
+| 7 | ⬜ | 🟩 | ⬜ | ⬜ | 🟧 | ⬜ | ⬜ | ⬜ |
+| 6 | ⬜ | 🟩 | ⬜ | 🟪 | 🟧 | ⬜ | ⬜ | ⬜ |
+| 5 | ⬜ | 🟩 | ⬜ | 🟪 | 🟧 | ⬜ | ⬜ | ⬛ |
+| 4 | 🟥 | 🟩 | ⬜ | 🟪 | 🟧 | ⬜ | ⬜ | ⬛ |
+| 3 | 🟥 | 🟩 | ⬜ | 🟪 | 🟧 | ⬜ | ⬜ | ⬛ |
+| 2 | 🟥 | 🟩 | 🟦 | 🟪 | 🟧 | 🟨 | ⬜ | ⬛ |
+| 1 | 🟥 | 🟩 | 🟦 | 🟪 | 🟧 | 🟨 | 🟫 | ⬛ |
+| **Totale** | **13** | **29** | **6** | **23** | **39** | **5** | **4** | **17** |
+
+**Legenda**
+
+- 🟥 **Bug corretti** — errori, regressioni, cose che non funzionavano.
+- 🟩 **Nuove funzioni** — comandi, script, scorciatoie, pannelli.
+- 🟦 **Migliorie** — prestazioni, RAM, velocità, semplificazioni.
+- 🟪 **Temi e interfaccia** — temi, icone, Waybar, Fuzzel, Mako, menu.
+- 🟧 **Installer e compatibilità** — pacchetti, Debian, browser, Cage, driver.
+- 🟨 **Documentazione** — README, CHANGELOG, guide e aiuto integrato.
+- 🟫 **Pulizia e manutenzione** — rimozioni, sostituzioni, migrazioni.
+- ⬛ **Altro** — note tecniche e casi particolari.
+
 ### Scheda numeri
 
 | Indicatore | Valore |
