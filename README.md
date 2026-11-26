@@ -1511,7 +1511,7 @@ Toshiba o Acer di 10-15 anni o più si trova usato per 15 o 20 euro. Con
 labwc-q4os può tornare utile per navigare, scrivere e usare le web app. Il
 resto — nuove app e nuove funzioni — arriverà un passo alla volta.
 
-E, detto tra noi: **salviamo i Chromebook e i vecchi netbook dalla munnizza**.
+E, detto tra noi: **salviamo Chromebook e vecchi netbook da morte certa**.
 
 ## Sviluppi futuri
 
