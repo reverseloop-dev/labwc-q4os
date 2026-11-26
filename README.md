@@ -46,7 +46,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 > Meno rifiuti elettronici, più computer utili. labwc-q4os non richiede hardware recente né sistemi sperimentali: unisce la solidità di Debian e le ottimizzazioni di Q4OS alla leggerezza di labwc, offrendo un desktop  >
 > Wayland moderno, rapido e dai consumi ridotti.
 >
-> In più, per massimizzare batteria, RAM e CPU, integra la modalità cage (kiosk): l'avvio diretto da shell di una singola applicazione predefinita, eliminando ogni elemento grafico superfluo. Il PC che hai già può tornare > a essere veloce.
+> In più, per massimizzare batteria, RAM e CPU, integra la modalità cage (kiosk): l'avvio diretto da shell di una singola applicazione predefinita, eliminando ogni elemento grafico superfluo. Il PC che hai già può tornare a essere veloce.
 >
 > **[Scarica Q4OS 6](https://www.q4os.org/downloads1.html)**
 
