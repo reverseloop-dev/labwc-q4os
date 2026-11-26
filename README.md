@@ -1517,9 +1517,8 @@ E, detto tra noi: **salviamo i Chromebook e i vecchi netbook dalla munnizza**.
 
 ## Test e ringraziamenti
 
-I test sono stati fatti sia su una **macchina virtuale** (VM: un computer
-simulato dentro un programma) sia su un **PC reale** (bare metal, cioè
-hardware vero). Per provare anche il **touchscreen**  ho preso un **Lenovo Chromebook E300** 
+I test sono stati fatti sia su una **macchina virtuale** sia su un **PC reale** (
+hardware vero). Per provare anche il **touchscreen**  ho acquistato un **Lenovo Chromebook E300** 
 rigorosamente usato e dal valore di 15 euro.
 
 Il **firmware** (il programma di base che avvia il computer) del Chromebook è
