@@ -181,15 +181,6 @@ if [ -x "$HOME/.local/bin/labwc-battery-indicator" ]; then
     printf 'avviato: labwc-battery-indicator\n'
 fi
 
-# Scala schermo scelta con labwc-screen-scaling (solo se salvata).
-if [ -r "$CONFIG/labwc/screen-scale.conf" ] &&
-    command -v wlr-randr >/dev/null 2>&1 &&
-    [ -x "$HOME/.local/bin/labwc-screen-scaling" ]; then
-    setsid -f "$HOME/.local/bin/labwc-screen-scaling" \
-        --apply-from-config >>"$LOG" 2>&1 ||
-        printf 'applicazione scala schermo non riuscita\n'
-fi
-
 # Agenti di sistema
 command -v nm-applet >/dev/null 2>&1 && start_once nm-applet nm-applet --indicator
 command -v lxpolkit >/dev/null 2>&1 && start_once lxpolkit lxpolkit

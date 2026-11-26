@@ -1824,7 +1824,6 @@ backup_tree "$APPDATA/labwc-app-manager.desktop" "config/applications/labwc-app-
 backup_tree "$APPDATA/labwc-update-gui.desktop" "config/applications/labwc-update-gui.desktop"
 backup_tree "$APPDATA/labwc-preferences.desktop" "config/applications/labwc-preferences.desktop"
 backup_tree "$APPDATA/labwc-sysinfo.desktop" "config/applications/labwc-sysinfo.desktop"
-backup_tree "$APPDATA/labwc-screen-scaling.desktop" "config/applications/labwc-screen-scaling.desktop"
 
 configure_keyboard() {
     local env_file="$CONFIG/labwc/environment" tmp
@@ -1994,7 +1993,6 @@ for helper in \
     labwc-power-menu \
     labwc-sysinfo \
     labwc-battery-indicator \
-    labwc-screen-scaling \
     labwc-touchscreen \
     labwc-touch-tap \
     labwc-login-theme \
@@ -2011,6 +2009,12 @@ for helper in \
 do
     install -m 0755 "$REPO_DIR/scripts/$helper" "$BIN/$helper"
 done
+
+# 1.22.18: rimosso il tool interno di scala schermo (non compatibile con
+# labwc/Wayland). Pulisce installazioni precedenti.
+rm -f "$BIN/labwc-screen-scaling" \
+      "$APPDATA/labwc-screen-scaling.desktop" \
+      "$CONFIG/labwc/screen-scale.conf" 2>/dev/null || true
 
 # Migrazione: rimuove il vecchio YouTube leggero e gtk-pipe-viewer.
 rm -f "$BIN/labwc-youtube" "$APPDATA/labwc-youtube.desktop"
@@ -2230,17 +2234,6 @@ Terminal=false
 Categories=System;Settings;
 Keywords=labwc;diagnostica;ripara;log;
 EOF
-cat > "$APPDATA/labwc-screen-scaling.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Name=Scala dimensioni dello schermo
-Comment=Cambia risoluzione e scala dei monitor
-Exec=$HOME/.local/bin/labwc-screen-scaling
-Icon=preferences-desktop-display
-Terminal=false
-Categories=Settings;HardwareSettings;
-Keywords=schermo;monitor;scala;risoluzione;dpi;
-EOF
 chmod 0644 "$APPDATA/labwc-theme-switcher.desktop" \
           "$APPDATA/labwc-menu-editor.desktop" \
           "$APPDATA/labwc-help.desktop" \
@@ -2251,7 +2244,6 @@ chmod 0644 "$APPDATA/labwc-theme-switcher.desktop" \
           "$APPDATA/labwc-login-theme.desktop" \
           "$APPDATA/labwc-fuzzel-apps.desktop" \
           "$APPDATA/labwc-preferences.desktop" \
-          "$APPDATA/labwc-screen-scaling.desktop" \
           "$APPDATA/labwc-sysinfo.desktop"
 
 # Collegamenti browser: uno normale per Labwc e uno "(cage)" a schermo intero.
@@ -2644,7 +2636,7 @@ for variant in nordic-cobalt muted-crimson sage-emerald; do
     [ -f "/usr/share/labwc-q4os/login-themes/$variant/Main.qml" ] ||
         die "tema login mancante: $variant"
 done
-for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-doctor labwc-app-manager labwc-update-check labwc-update-copy labwc-update-popup labwc-update-run labwc-update-gui labwc-preferences labwc-battery-indicator labwc-screen-scaling labwc-desktop labwc-desktop-state labwc-desktop-status labwc-desktop-menu labwc-power-menu labwc-sysinfo labwc-touchscreen labwc-touch-tap labwc-login-theme labwc-fuzzel-apps labwc-minimized labwc-install-wizard labwc-cage labwc-freetube labwc-freetube-cage freetube-close-overlay labwc-cage-help; do
+for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-doctor labwc-app-manager labwc-update-check labwc-update-copy labwc-update-popup labwc-update-run labwc-update-gui labwc-preferences labwc-battery-indicator labwc-desktop labwc-desktop-state labwc-desktop-status labwc-desktop-menu labwc-power-menu labwc-sysinfo labwc-touchscreen labwc-touch-tap labwc-login-theme labwc-fuzzel-apps labwc-minimized labwc-install-wizard labwc-cage labwc-freetube labwc-freetube-cage freetube-close-overlay labwc-cage-help; do
     [ -x "$BIN/$helper" ] || die "helper non eseguibile: $helper"
 done
 ok "Tutto in ordine."

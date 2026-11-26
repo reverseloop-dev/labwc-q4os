@@ -28,8 +28,8 @@ done < <(find . -path ./.git -prune -o -type f \( -name '*.sh' -o -path './scrip
 # --- 2. sintassi Python ------------------------------------------------------
 check "sintassi Python"
 PYCACHE_DIR="$(mktemp -d)"
-if PYTHONPYCACHEPREFIX="$PYCACHE_DIR" python3 -m py_compile scripts/generate-wallpapers.py scripts/render-menu.py scripts/labwc-zram scripts/labwc-app-manager scripts/labwc-update-gui scripts/labwc-login-theme scripts/labwc-fuzzel-apps scripts/labwc-preferences scripts/labwc-install-wizard scripts/freetube-close-overlay scripts/labwc-battery-indicator scripts/labwc-screen-scaling scripts/generate-icons.py; then
-    pass "Python: sfondi, menu, zram, app manager, update GUI, login, fuzzel, preferences, overlay FreeTube, batteria, scala schermo, icone"
+if PYTHONPYCACHEPREFIX="$PYCACHE_DIR" python3 -m py_compile scripts/generate-wallpapers.py scripts/render-menu.py scripts/labwc-zram scripts/labwc-app-manager scripts/labwc-update-gui scripts/labwc-login-theme scripts/labwc-fuzzel-apps scripts/labwc-preferences scripts/labwc-install-wizard scripts/freetube-close-overlay scripts/labwc-battery-indicator scripts/generate-icons.py; then
+    pass "Python: sfondi, menu, zram, app manager, update GUI, login, fuzzel, preferences, overlay FreeTube, batteria, icone"
 else
     bad "py_compile"
 fi
@@ -75,12 +75,6 @@ if python3 scripts/labwc-battery-indicator --self-test | grep -q 'SELFTEST_OK' &
     pass "labwc-battery-indicator --self-test/--help"
 else
     bad "labwc-battery-indicator --self-test/--help"
-fi
-if python3 scripts/labwc-screen-scaling --self-test | grep -q 'SELFTEST_OK' &&
-    python3 scripts/labwc-screen-scaling --version | grep -q '^labwc-screen-scaling 1$'; then
-    pass "labwc-screen-scaling --self-test/--version"
-else
-    bad "labwc-screen-scaling --self-test/--version"
 fi
 # Smoke test del wrapper: FreeTube finto che ignora SIGTERM e overlay che
 # chiede la chiusura. Il wrapper deve escalare a SIGKILL e uscire con 0.
@@ -345,7 +339,7 @@ for f in install.sh bootstrap.sh scripts/labwc-theme-apply scripts/labwc-theme-s
          scripts/labwc-fuzzel-apps scripts/labwc-minimized scripts/labwc-install-wizard scripts/labwc-cage scripts/labwc-freetube scripts/labwc-freetube-cage scripts/freetube-close-overlay scripts/labwc-cage-help scripts/labwc-return \
          scripts/labwc-desktop scripts/labwc-desktop-state scripts/labwc-desktop-status scripts/labwc-desktop-menu \
          scripts/labwc-power-menu scripts/labwc-sysinfo \
-         scripts/labwc-battery-indicator scripts/labwc-screen-scaling \
+         scripts/labwc-battery-indicator \
          scripts/labwc-touchscreen \
          scripts/labwc-touch-tap \
          scripts/labwc-session-start scripts/validate.sh scripts/generate-wallpapers.py \

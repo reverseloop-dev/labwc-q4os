@@ -2,6 +2,19 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.22.18]
+
+- Menu desktop più corto: **TOOL reverseloop** ha poche voci in chiaro e
+  sottomenu tematici (**App e menu**, **Cambia tema**, **Desktop 1–4**,
+  **Schermo e monitor**, **Sessione**, **Sistema e diagnostica**);
+  **Impostazioni** raggruppa le app in Aspetto e desktop, Schermo e hardware,
+  Sistema e sessione, Altre impostazioni.
+- Rimosso il tool interno **labwc-screen-scaling** (script, voce di menu,
+  `.desktop` e config). Lo **Screen scaling originale di Q4OS** non viene
+  aggiunto al menu: è un tool TDE/X11 e non controlla labwc/Wayland, quindi
+  sarebbe una voce che non funziona. L'installer pulisce le installazioni
+  precedenti.
+
 ## [1.22.17]
 
 - Menu **TOOL reverseloop**: labwc non ha lo scroll, quindi la voce **Scala

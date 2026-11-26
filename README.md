@@ -55,7 +55,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.17**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.18**
 
 ---
 
@@ -114,8 +114,8 @@ un ambiente sobrio.**
 - **Indicatore batteria** in basso (sinistra, centro o destra) con percentuale
   esatta, riempimento proporzionale e contorno neon; posizione e percentuale si
   scelgono dalle **Preferenze**.
-- **Scala dimensioni dello schermo**: app GTK per risoluzione e scala dei
-  monitor, con scelta permanente opzionale.
+- **Menu corto**: Impostazioni e TOOL reverseloop raggruppati in sottomenu
+  tematici, così le voci non vengono tagliate.
 - **Aggiornamenti interattivi**: controllo versione, popup di avviso con
   chiusura dopo 15 s e aggiornamento nel terminale che rifà le domande.
 - zram e swappiness configurabili durante l'installazione.
@@ -811,11 +811,13 @@ Il menu e' generato dinamicamente da `scripts/render-menu.py` leggendo i file
 1. **★ App preferite** — scelte dall'utente, in cima al menu.
 2. **Categorie** — Internet, Multimedia, Grafica, Ufficio, Sviluppo, Giochi,
    Istruzione, Scienza, Sistema, Impostazioni, Accessori, Altre applicazioni.
-3. **TOOL reverseloop** — in cima la **scala dimensioni dello schermo**;
-   preferenze della scrivania, desktop 1–4, gestione app/preferite, cambio
-   tema, editor rapido Fuzzel, ricarica, aiuto, **Schermo e monitor**
-   (screenshot), **Sistema e diagnostica** (informazioni, Doctor, aggiornamenti,
-   ZRAM), blocco schermo e menu sessione.
+   Il sottomenu **Impostazioni** raggruppa le app in **Aspetto e desktop**,
+   **Schermo e hardware**, **Sistema e sessione** e **Altre impostazioni**.
+3. **TOOL reverseloop** — poche voci in chiaro (AVVIA CAGE, Preferenze della
+   scrivania, Aiuto) e sottomenu **App e menu**, **Cambia tema**,
+   **Desktop 1–4**, **Schermo e monitor**, **Sessione**, **Sistema e
+   diagnostica**. Così il menu resta corto e le ultime voci non vengono
+   tagliate.
 
 ### App nel menu, preferite e categorie
 
@@ -855,21 +857,12 @@ La Waybar mostra inoltre l'indicatore **`[1] 2 3 4`**: click sull'indicatore per
 scegliere il desktop. I desktop restano selezionabili anche con `Super + 1…4` e
 con la rotellina sul desktop.
 
-### Scala dimensioni dello schermo
+### Scala dello schermo
 
-**TOOL reverseloop → Scala dimensioni dello schermo** apre una piccola app GTK
-per adattare i monitor con `wlr-randr`:
-
-- scelta del **monitor** (uno o più output);
-- **scala** tra 1.0, 1.25, 1.5, 1.75, 2.0 oppure un valore libero;
-- **risoluzione** tra i modi disponibili o quella preferita;
-- **Applica**, **Ripristina** (scala 1.0 + modo preferito) e **Chiudi**;
-- **Rendi permanente** salva la scelta in
-  `~/.config/labwc/screen-scale.conf`; al login successivo
-  `labwc-session-start` la riapplica.
-
-Se `wlr-randr` non è disponibile l'app lo segnala; l'installer lo installa tra
-i pacchetti consigliati.
+labwc usa Wayland: lo **Screen scaling originale di Q4OS** è un tool TDE/X11 e
+non controlla la sessione labwc, quindi non viene aggiunto al menu (sarebbe una
+voce che non funziona). Per l'HiDPI si agiscono le variabili della sessione e le
+impostazioni delle singole app.
 
 Le finestre usano decorazioni lato server di labwc con i tre pulsanti classici
 **riduci a icona, ingrandisci, chiudi**; `GTK_CSD=0` evita che le app GTK
@@ -1275,7 +1268,6 @@ labwc-q4os/
 │   ├── labwc-power-menu           # menu sessione Fuzzel/Zenity
 │   ├── labwc-sysinfo              # versioni e informazioni sistema
 │   ├── labwc-battery-indicator    # indicatore batteria in basso (neon)
-│   ├── labwc-screen-scaling       # scala risoluzione e dimensioni schermo
 │   ├── labwc-touchscreen          # rileva /dev/input/eventX del touchscreen
 │   ├── labwc-touch-tap            # tap touch: 2 dita=destro, 3 dita=Esc
 │   ├── labwc-session-launch      # wrapper sessione (login Plasma/SDDM)
@@ -1331,7 +1323,6 @@ Configurazione utente:
 ~/.local/share/applications/labwc-login-theme.desktop
 ~/.local/share/applications/labwc-preferences.desktop
 ~/.local/share/applications/labwc-sysinfo.desktop
-~/.local/share/applications/labwc-screen-scaling.desktop
 ```
 
 Dati e strumenti:
@@ -1343,7 +1334,6 @@ Dati e strumenti:
 ~/.local/state/labwc-q4os/update-status.json
 ~/.config/labwc/update-check.enabled
 ~/.config/labwc/battery-indicator.conf
-~/.config/labwc/screen-scale.conf
 ~/.local/share/labwc-q4os/backups/<data>/
 ```
 
@@ -1647,7 +1637,7 @@ compatibilità con **42** interventi.
 | 3 | 🟥 | 🟩 | ⬜ | 🟪 | 🟧 | ⬜ | ⬜ | ⬛ |
 | 2 | 🟥 | 🟩 | 🟦 | 🟪 | 🟧 | 🟨 | ⬜ | ⬛ |
 | 1 | 🟥 | 🟩 | 🟦 | 🟪 | 🟧 | 🟨 | 🟫 | ⬛ |
-| **Totale** | **13** | **32** | **7** | **24** | **41** | **5** | **4** | **17** |
+| **Totale** | **14** | **32** | **8** | **24** | **41** | **5** | **4** | **17** |
 
 **Legenda**
 
@@ -1664,11 +1654,11 @@ compatibilità con **42** interventi.
 
 | Indicatore | Valore |
 | --- | ---: |
-| Release documentate (dalla 1.0 alla 1.22.17) | **45** |
-| Voci/interventi totali nel CHANGELOG | **143** |
-| Bug corretti | **13** |
+| Release documentate (dalla 1.0 alla 1.22.18) | **46** |
+| Voci/interventi totali nel CHANGELOG | **145** |
+| Bug corretti | **14** |
 | Nuove funzioni | **32** |
-| Migliorie e ottimizzazioni | **7** |
+| Migliorie e ottimizzazioni | **8** |
 | Interventi su temi e interfaccia | **24** |
 | Interventi su installer e compatibilità | **41** |
 | Interventi su documentazione | **5** |
@@ -1676,7 +1666,7 @@ compatibilità con **42** interventi.
 | Altro / note tecniche | **17** |
 | Script nel repository | **48** |
 | File nel repository | **111** |
-| Righe di script (Bash e Python) | **12.393** |
+| Righe di script (Bash e Python) | **11.780** |
 | Temi inclusi | **3** |
 
 ### Cosa è cambiato nel tempo

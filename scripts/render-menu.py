@@ -85,6 +85,38 @@ CATEGORY_ORDER = [
     "Altre applicazioni",
 ]
 
+# Sottocategorie per il menu Impostazioni: evita un elenco lunghissimo
+# (labwc non ha lo scroll nei menu).
+SETTINGS_GROUPS = [
+    ("Aspetto e desktop", (
+        "tema", "theme", "icon", "cursore", "cursor", "sfondo", "background",
+        "font", "caratter", "aspetto", "appearance", "colore", "color", "look",
+        "decoraz", "desktop", "widget", "pannello", "panel", "notific",
+    )),
+    ("Schermo e hardware", (
+        "schermo", "screen", "display", "monitor", "scal", "dpi", "tastiera",
+        "keyboard", "mouse", "touch", "touchpad", "trackpad", "stampante",
+        "printer", "audio", "suono", "sound", "batteria", "battery",
+        "alimentaz", "power", "rete", "network", "wifi", "bluetooth",
+        "scheda", "driver", "hardware",
+    )),
+    ("Sistema e sessione", (
+        "sistema", "system", "sessione", "session", "login", "utente", "user",
+        "account", "password", "aggiorn", "update", "pacchett", "package",
+        "software", "firewall", "sicurezza", "security", "data", "date",
+        "ora", "time", "lingua", "language", "locale", "regione", "region",
+        "serviz", "service", "avvio", "startup", "backup",
+    )),
+]
+
+
+def settings_subgroup(name: str, desktop_id: str) -> str:
+    text = f"{name} {desktop_id}".casefold()
+    for label, keys in SETTINGS_GROUPS:
+        if any(key in text for key in keys):
+            return label
+    return "Altre impostazioni"
+
 # Voci di TDE/Trinity che aprirebbero impostazioni estranee a labwc.
 EXCLUDED_DESKTOP_IDS = {
     "kcontrol",
@@ -419,6 +451,22 @@ def submenu(menu_id: str, label: str, body: str) -> str:
     )
 
 
+def settings_body(apps: list["App"]) -> str:
+    """Raggruppa le app di Impostazioni in sottomenu tematici."""
+    groups: dict[str, list[App]] = {}
+    for app in apps:
+        groups.setdefault(settings_subgroup(app.name, app.desktop_id), []).append(app)
+    body = ""
+    for label in sorted(groups, key=menu_sort_key):
+        rows = sorted(groups[label], key=lambda app: menu_sort_key(app.name))
+        inner = "".join(item(app.name, app.command) for app in rows)
+        menu_id = "settings-" + re.sub(
+            r"[^a-z0-9]+", "-", label.casefold()
+        ).strip("-")
+        body += submenu(menu_id, label, inner)
+    return body
+
+
 def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     groups: dict[str, list[App]] = {}
     for app in apps:
@@ -482,42 +530,41 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     ]
     category_groups.sort(key=lambda row: menu_sort_key(row[0]))
     for category, cat_apps in category_groups:
-        body = "".join(
-            item(app.name, app.command)
-            for app in sorted(cat_apps, key=lambda app: menu_sort_key(app.name))
-        )
+        if category == "Impostazioni" and len(cat_apps) > 3:
+            body = settings_body(cat_apps)
+        else:
+            body = "".join(
+                item(app.name, app.command)
+                for app in sorted(cat_apps, key=lambda app: menu_sort_key(app.name))
+            )
         menu_id = "cat-" + re.sub(r"[^a-z0-9]+", "-", category.casefold()).strip("-")
         parts.append(submenu(menu_id, category, body))
 
     parts.append("    <separator />\n")
 
-    tool_entries: list[tuple[str, str]] = [
-        ("AVVIA CAGE", item("AVVIA CAGE", f"{helper('labwc-cage')} --ask -- terminator --fullscreen -e {helper('labwc-cage-help')}")),
+    def sorted_body(entries: list[tuple[str, str]]) -> str:
+        return "".join(
+            body for _label, body in sorted(
+                entries, key=lambda row: menu_sort_key(row[0])
+            )
+        )
+
+    app_menu_entries: list[tuple[str, str]] = [
         ("Gestisci app e preferite", item("Gestisci app e preferite", helper("labwc-app-manager"))),
         ("Editor rapido del menu", item("Editor rapido del menu", helper("labwc-menu-editor"))),
         ("Ricarica menu e desktop", item("Ricarica menu e desktop", helper("labwc-reload"))),
-        ("Aiuto, scorciatoie e sistema", item("Aiuto, scorciatoie e sistema", helper("labwc-help"))),
-        ("Preferenze della scrivania Labwc", item("Preferenze della scrivania Labwc", helper("labwc-preferences"))),
+    ]
+
+    session_entries: list[tuple[str, str]] = [
         ("Blocca schermo", item("Blocca schermo", "swaylock -f")),
         ("Menu sessione (blocca, esci, riavvia, spegni)", item("Menu sessione (blocca, esci, riavvia, spegni)", helper("labwc-power-menu"))),
         ("Riconfigura labwc", item("Riconfigura labwc", "labwc --reconfigure")),
     ]
 
-    # Sotto-menu per non allungare troppo TOOL reverseloop: labwc non ha lo
-    # scroll nei menu, quindi gli strumenti dello schermo stanno qui.
     screen_entries: list[tuple[str, str]] = [
         ("Cattura schermo (area)", item("Cattura schermo (area)", helper("labwc-screenshot", "region"))),
         ("Cattura schermo (intero)", item("Cattura schermo (intero)", helper("labwc-screenshot", "full"))),
     ]
-    screen_entries.sort(key=lambda row: menu_sort_key(row[0]))
-    tool_entries.append((
-        "Schermo e monitor",
-        submenu(
-            "screen-menu",
-            "Schermo e monitor",
-            "".join(body for _label, body in screen_entries),
-        ),
-    ))
 
     system_entries: list[tuple[str, str]] = [
         ("Informazioni di sistema", item("Informazioni di sistema", f"terminator -x {helper('labwc-sysinfo')}")),
@@ -525,15 +572,6 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
         ("Controlli aggiornamenti script labwc-q4os", item("Controlli aggiornamenti script labwc-q4os", helper("labwc-update-gui"))),
         ("ZRAM — memoria compressa", item("ZRAM — memoria compressa", helper("labwc-zram"))),
     ]
-    system_entries.sort(key=lambda row: menu_sort_key(row[0]))
-    tool_entries.append((
-        "Sistema e diagnostica",
-        submenu(
-            "system-menu",
-            "Sistema e diagnostica",
-            "".join(body for _label, body in system_entries),
-        ),
-    ))
 
     theme_entries: list[tuple[str, str]] = [
         (label, item(label, helper("labwc-theme-switcher", theme_id)))
@@ -542,23 +580,26 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     theme_entries.append(
         ("Genera di nuovo gli sfondi", item("Genera di nuovo gli sfondi", helper("labwc-generate-wallpapers")))
     )
-    theme_entries.sort(key=lambda row: menu_sort_key(row[0]))
-    theme_body = "".join(body for _label, body in theme_entries)
-    tool_entries.append(("Cambia tema", submenu("theme-menu", "Cambia tema", theme_body)))
 
     desktops_body = "".join(
         item(f"Desktop {n}", helper("labwc-desktop", str(n))) for n in range(1, 5)
     )
-    tool_entries.append(
-        ("Desktop 1–4", submenu("desktop-switcher-menu", "Desktop 1–4", desktops_body))
-    )
+
+    # TOOL corto: le voci frequenti in chiaro, il resto in sottomenu tematici
+    # (labwc non ha lo scroll nei menu).
+    tool_entries: list[tuple[str, str]] = [
+        ("AVVIA CAGE", item("AVVIA CAGE", f"{helper('labwc-cage')} --ask -- terminator --fullscreen -e {helper('labwc-cage-help')}")),
+        ("Preferenze della scrivania Labwc", item("Preferenze della scrivania Labwc", helper("labwc-preferences"))),
+        ("Aiuto, scorciatoie e sistema", item("Aiuto, scorciatoie e sistema", helper("labwc-help"))),
+        ("App e menu", submenu("apps-tools-menu", "App e menu", sorted_body(app_menu_entries))),
+        ("Cambia tema", submenu("theme-menu", "Cambia tema", sorted_body(theme_entries))),
+        ("Desktop 1–4", submenu("desktop-switcher-menu", "Desktop 1–4", desktops_body)),
+        ("Schermo e monitor", submenu("screen-menu", "Schermo e monitor", sorted_body(screen_entries))),
+        ("Sessione", submenu("session-tools-menu", "Sessione", sorted_body(session_entries))),
+        ("Sistema e diagnostica", submenu("system-menu", "Sistema e diagnostica", sorted_body(system_entries))),
+    ]
 
     tool_entries.sort(key=lambda row: menu_sort_key(row[0]))
-    # labwc non ha lo scroll: la scala schermo sta in cima, sempre visibile.
-    tool_entries.insert(1, (
-        "Scala dimensioni dello schermo",
-        item("Scala dimensioni dello schermo", helper("labwc-screen-scaling")),
-    ))
     desktop_body = "".join(body for _label, body in tool_entries)
     parts.append(submenu("desktop-menu", "TOOL reverseloop", desktop_body))
 
