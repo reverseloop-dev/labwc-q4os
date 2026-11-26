@@ -1539,10 +1539,11 @@ Il piano prevede:
   decorazioni e senza pulsanti di chiusura. Serve quindi una **X** oppure un
   pulsante/scorciatoia dedicata per chiudere l’app e tornare al menu.
 
-**Perché mi interessa.** In treno uso il PC per guardare YouTube, leggere un
-PDF o le notizie sul web. La cosa fondamentale, per me, resta **risparmiare
-batteria**: una modalità con solo Cage e l’app aperta consuma meno di un
-desktop completo e allunga l’autonomia.
+In contesti come un viaggio in treno, l’utilizzo è in genere legato a
+un’unica attività per volta: lettura tramite lettore PDF, riproduzione video
+su YouTube o navigazione web con Chromium o LibreWolf. Limitare l’ambiente a
+una singola applicazione attiva aiuta a mantenere il sistema snello,
+riducendo i consumi e semplificando l’uso in movimento.
 
 ## Test e ringraziamenti
 
