@@ -2,6 +2,12 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.22.10]
+
+- Installer: aggiunte le dipendenze per applicare il tema icone tramite
+  GSettings su Debian minimale (`gsettings-desktop-schemas`,
+  `libglib2.0-bin`, `dconf-gsettings-backend`).
+
 ## [1.22.9]
 
 - Icone: corretto il bug per cui PCManFM mostrava le icone standard. GTK3 su

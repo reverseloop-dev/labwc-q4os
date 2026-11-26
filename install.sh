@@ -843,6 +843,9 @@ CORE_PKGS=(
     python3-gi
     python3-gi-cairo
     python3-websockets
+    gsettings-desktop-schemas
+    libglib2.0-bin
+    dconf-gsettings-backend
     gir1.2-gtk-3.0
     libgtk-3-bin
     qml6-module-qtquick
