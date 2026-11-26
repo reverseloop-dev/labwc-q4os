@@ -503,6 +503,7 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
         ("ZRAM — memoria compressa", item("ZRAM — memoria compressa", helper("labwc-zram"))),
         ("Controlli aggiornamenti script labwc-q4os", item("Controlli aggiornamenti script labwc-q4os", helper("labwc-update-gui"))),
         ("Preferenze della scrivania Labwc", item("Preferenze della scrivania Labwc", helper("labwc-preferences"))),
+        ("Scala dimensioni dello schermo", item("Scala dimensioni dello schermo", helper("labwc-screen-scaling"))),
         ("Diagnostica e ripara desktop", item("Diagnostica e ripara desktop", f"terminator -x {helper('labwc-doctor')} --fix")),
         ("Blocca schermo", item("Blocca schermo", "swaylock -f")),
         ("Menu sessione (blocca, esci, riavvia, spegni)", item("Menu sessione (blocca, esci, riavvia, spegni)", helper("labwc-power-menu"))),

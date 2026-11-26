@@ -55,7 +55,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.15**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.16**
 
 ---
 
@@ -111,6 +111,11 @@ un ambiente sobrio.**
   le finestre ridotte a icona; un clic le ripristina, anche con Noctalia.
 - **ZRAM**, **Labwc Doctor**, **Preferenze**, desktop 1–4 e guida integrata in
   italiano.
+- **Indicatore batteria** in basso (sinistra, centro o destra) con percentuale
+  esatta, riempimento proporzionale e contorno neon; posizione e percentuale si
+  scelgono dalle **Preferenze**.
+- **Scala dimensioni dello schermo**: app GTK per risoluzione e scala dei
+  monitor, con scelta permanente opzionale.
 - **Aggiornamenti interattivi**: controllo versione, popup di avviso con
   chiusura dopo 15 s e aggiornamento nel terminale che rifà le domande.
 - zram e swappiness configurabili durante l'installazione.
@@ -809,7 +814,7 @@ Il menu e' generato dinamicamente da `scripts/render-menu.py` leggendo i file
 3. **TOOL reverseloop** — preferenze della scrivania, desktop 1–4, gestione
    app/preferite, cambio tema, editor rapido Fuzzel, ricarica, aiuto,
    screenshot, pannello ZRAM, controlli aggiornamenti, diagnostica, blocco
-   schermo e menu sessione.
+   schermo, **scala dimensioni dello schermo** e menu sessione.
 
 ### App nel menu, preferite e categorie
 
@@ -841,11 +846,29 @@ pannello per:
 - scegliere il tema e quindi icone, Waybar, Fuzzel, sfondo;
 - impostare la tastiera `it`, `us` o `it,us`;
 - selezionare i desktop **1–4**;
+- scegliere la **posizione dell'indicatore batteria** (sinistra, centro,
+  destra) e se mostrare la percentuale;
 - aprire ZRAM, aggiornamenti, App nel menu e aiuto.
 
 La Waybar mostra inoltre l'indicatore **`[1] 2 3 4`**: click sull'indicatore per
 scegliere il desktop. I desktop restano selezionabili anche con `Super + 1…4` e
 con la rotellina sul desktop.
+
+### Scala dimensioni dello schermo
+
+**TOOL reverseloop → Scala dimensioni dello schermo** apre una piccola app GTK
+per adattare i monitor con `wlr-randr`:
+
+- scelta del **monitor** (uno o più output);
+- **scala** tra 1.0, 1.25, 1.5, 1.75, 2.0 oppure un valore libero;
+- **risoluzione** tra i modi disponibili o quella preferita;
+- **Applica**, **Ripristina** (scala 1.0 + modo preferito) e **Chiudi**;
+- **Rendi permanente** salva la scelta in
+  `~/.config/labwc/screen-scale.conf`; al login successivo
+  `labwc-session-start` la riapplica.
+
+Se `wlr-randr` non è disponibile l'app lo segnala; l'installer lo installa tra
+i pacchetti consigliati.
 
 Le finestre usano decorazioni lato server di labwc con i tre pulsanti classici
 **riduci a icona, ingrandisci, chiudi**; `GTK_CSD=0` evita che le app GTK
@@ -1113,6 +1136,22 @@ File:
 
 Dopo una modifica: `Super + Shift + R`.
 
+### Indicatore batteria in basso
+
+Oltre al modulo batteria della Waybar, la scrivania mostra un piccolo
+**indicatore in basso**: corpo della batteria che si riempie in base alla
+percentuale, percentuale esatta e contorno con effetto **neon** nei colori del
+tema. È trasparente, non ruba il focus e si posiziona a **sinistra**, **centro**
+o **destra** (default: sinistra); su PC senza batteria non compare.
+
+Si configura da **Preferenze della scrivania Labwc**, con il cambio applicato
+subito:
+
+- posizione: Sinistra / Centro / Destra;
+- **Mostra percentuale**: on/off (resta il disegno della batteria).
+
+File: `~/.config/labwc/battery-indicator.conf`.
+
 ---
 
 ## Fuzzel
@@ -1234,6 +1273,8 @@ labwc-q4os/
 │   ├── labwc-desktop-menu         # selettore desktop 1-4
 │   ├── labwc-power-menu           # menu sessione Fuzzel/Zenity
 │   ├── labwc-sysinfo              # versioni e informazioni sistema
+│   ├── labwc-battery-indicator    # indicatore batteria in basso (neon)
+│   ├── labwc-screen-scaling       # scala risoluzione e dimensioni schermo
 │   ├── labwc-touchscreen          # rileva /dev/input/eventX del touchscreen
 │   ├── labwc-touch-tap            # tap touch: 2 dita=destro, 3 dita=Esc
 │   ├── labwc-session-launch      # wrapper sessione (login Plasma/SDDM)
@@ -1289,6 +1330,7 @@ Configurazione utente:
 ~/.local/share/applications/labwc-login-theme.desktop
 ~/.local/share/applications/labwc-preferences.desktop
 ~/.local/share/applications/labwc-sysinfo.desktop
+~/.local/share/applications/labwc-screen-scaling.desktop
 ```
 
 Dati e strumenti:
@@ -1299,6 +1341,8 @@ Dati e strumenti:
 ~/.local/state/labwc-q4os/session.log
 ~/.local/state/labwc-q4os/update-status.json
 ~/.config/labwc/update-check.enabled
+~/.config/labwc/battery-indicator.conf
+~/.config/labwc/screen-scale.conf
 ~/.local/share/labwc-q4os/backups/<data>/
 ```
 
@@ -1602,7 +1646,7 @@ compatibilità con **42** interventi.
 | 3 | 🟥 | 🟩 | ⬜ | 🟪 | 🟧 | ⬜ | ⬜ | ⬛ |
 | 2 | 🟥 | 🟩 | 🟦 | 🟪 | 🟧 | 🟨 | ⬜ | ⬛ |
 | 1 | 🟥 | 🟩 | 🟦 | 🟪 | 🟧 | 🟨 | 🟫 | ⬛ |
-| **Totale** | **13** | **29** | **6** | **23** | **42** | **5** | **4** | **17** |
+| **Totale** | **13** | **32** | **7** | **23** | **41** | **5** | **4** | **17** |
 
 **Legenda**
 
@@ -1619,19 +1663,19 @@ compatibilità con **42** interventi.
 
 | Indicatore | Valore |
 | --- | ---: |
-| Release documentate (dalla 1.0 alla 1.22.15) | **43** |
-| Voci/interventi totali nel CHANGELOG | **139** |
+| Release documentate (dalla 1.0 alla 1.22.16) | **44** |
+| Voci/interventi totali nel CHANGELOG | **142** |
 | Bug corretti | **13** |
-| Nuove funzioni | **29** |
-| Migliorie e ottimizzazioni | **6** |
+| Nuove funzioni | **32** |
+| Migliorie e ottimizzazioni | **7** |
 | Interventi su temi e interfaccia | **23** |
-| Interventi su installer e compatibilità | **42** |
+| Interventi su installer e compatibilità | **41** |
 | Interventi su documentazione | **5** |
 | Pulizia e manutenzione | **4** |
 | Altro / note tecniche | **17** |
 | Script nel repository | **48** |
 | File nel repository | **111** |
-| Righe di script (Bash e Python) | **11.132** |
+| Righe di script (Bash e Python) | **12.361** |
 | Temi inclusi | **3** |
 
 ### Cosa è cambiato nel tempo

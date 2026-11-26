@@ -1,0 +1,478 @@
+#!/usr/bin/env python3
+"""labwc-battery-indicator - indicatore batteria in basso, stile neon.
+
+Mostra in basso (sinistra, centro o destra) un piccolo indicatore trasparente:
+corpo della batteria che si riempie in base alla percentuale, contorno con
+effetto neon e percentuale esatta. La posizione e la percentuale si scelgono da
+"Preferenze della scrivania Labwc" e si applicano subito, senza logout.
+
+Legge solo /sys/class/power_supply (niente DBus). Se il PC non ha batteria
+esce subito senza mostrare nulla. Usa wlr-layer-shell tramite GtkLayerShell:
+non ruba mai il focus e occupa solo la propria area.
+
+Uso: labwc-battery-indicator [--config FILE] [--detect] [--self-test]
+"""
+
+from __future__ import annotations
+
+import argparse
+import fcntl
+import os
+import sys
+from pathlib import Path
+
+VERSION = "1"
+SYSFS_DEFAULT = Path("/sys/class/power_supply")
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+SHARE = Path(
+    os.environ.get(
+        "LABWC_Q4OS_SHARE",
+        Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share"))
+        / "labwc-q4os",
+    )
+)
+CONFIG_FILE = CONFIG / "labwc/battery-indicator.conf"
+THEME_FILE = CONFIG / "labwc/theme"
+
+POSITIONS = ("left", "center", "right")
+DEFAULT_POSITION = "left"
+
+BODY_W = 42
+BODY_H = 22
+NUB_W = 3
+NUB_H = 10
+PAD = 4
+GAP = 6
+HEIGHT = BODY_H + PAD * 2
+MARGIN = 18
+
+DEFAULT_COLORS = {
+    "ACCENT": "3b82f6",
+    "ACCENT_SOFT": "60a5fa",
+    "WARNING": "fbbf24",
+    "DANGER": "f87171",
+    "FG": "e2e8f0",
+    "FG_MUTED": "94a3b8",
+    "BG": "070d1a",
+    "BORDER": "334155",
+}
+
+
+def _read_text(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8", errors="replace").strip()
+    except OSError:
+        return ""
+
+
+def read_battery(root=None):
+    """Restituisce (percentuale, stato) oppure None se non c'e' batteria."""
+    base = Path(root) if root is not None else Path(
+        os.environ.get("BATTERY_SYSFS_DIR", str(SYSFS_DEFAULT))
+    )
+    try:
+        entries = sorted(base.iterdir())
+    except OSError:
+        return None
+    for entry in entries:
+        if not entry.is_dir():
+            continue
+        kind = _read_text(entry / "type")
+        if kind and kind != "Battery":
+            continue
+        pct = None
+        capacity = _read_text(entry / "capacity")
+        if capacity.isdigit():
+            pct = int(capacity)
+        else:
+            full = _read_text(entry / "energy_full") or _read_text(entry / "charge_full")
+            now = _read_text(entry / "energy_now") or _read_text(entry / "charge_now")
+            try:
+                pct = int(round(float(now) / float(full) * 100))
+            except (TypeError, ValueError, ZeroDivisionError):
+                pct = None
+        if pct is None:
+            continue
+        status = _read_text(entry / "status") or "Unknown"
+        return max(0, min(100, pct)), status
+    return None
+
+
+def load_config(path: Path):
+    """Legge posizione e switch percentuale, con default sicuri."""
+    position = DEFAULT_POSITION
+    show_percent = True
+    try:
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip()
+            if key == "position" and value in POSITIONS:
+                position = value
+            elif key == "show_percent":
+                show_percent = value not in ("0", "no", "false")
+    except OSError:
+        pass
+    return position, show_percent
+
+
+def hex_rgb(value: str):
+    value = value.strip().lstrip("#")
+    if len(value) != 6:
+        return (1.0, 1.0, 1.0)
+    try:
+        return tuple(int(value[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+    except ValueError:
+        return (1.0, 1.0, 1.0)
+
+
+def theme_colors():
+    theme = "nordic-cobalt"
+    try:
+        value = THEME_FILE.read_text(encoding="utf-8").strip()
+        if value:
+            theme = value
+    except OSError:
+        pass
+    data = dict(DEFAULT_COLORS)
+    conf = SHARE / "themes" / theme / "theme.conf"
+    try:
+        for raw in conf.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip('"')
+            if key in data and len(value.lstrip("#")) == 6:
+                data[key] = value
+    except OSError:
+        pass
+    return {key: hex_rgb(value) for key, value in data.items()}
+
+
+def battery_color(pct, status, colors):
+    charging = status.lower() in ("charging", "full")
+    if pct <= 10 and not charging:
+        return colors["DANGER"]
+    if pct <= 20 and not charging:
+        return colors["WARNING"]
+    return colors["ACCENT"]
+
+
+def window_width(show_percent: bool) -> int:
+    width = PAD * 2 + BODY_W + NUB_W
+    if show_percent:
+        width += GAP + 32
+    return width
+
+
+class Indicator:
+    def __init__(self, config_path: Path) -> None:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("Gdk", "3.0")
+        gi.require_version("GtkLayerShell", "0.1")
+        from gi.repository import Gdk, GLib, Gtk, GtkLayerShell
+
+        self.GLib = GLib
+        self.Gtk = Gtk
+        self.GtkLayerShell = GtkLayerShell
+        if not GtkLayerShell.is_supported():
+            raise RuntimeError("il compositor non supporta wlr-layer-shell")
+        self.config_path = config_path
+        self.position, self.show_percent = load_config(config_path)
+        self.battery = read_battery()
+        self.colors = theme_colors()
+        self._config_mtime = self._mtime(config_path)
+        self._theme_mtime = self._mtime(THEME_FILE)
+        self._theme_age = self._mtime(SHARE / "themes")
+
+        self.win = Gtk.Window()
+        self.win.set_decorated(False)
+        self.win.set_resizable(False)
+        self.win.set_skip_taskbar_hint(True)
+        self.win.set_skip_pager_hint(True)
+        self.win.set_accept_focus(False)
+        self.win.set_focus_on_map(False)
+        self.win.set_app_paintable(True)
+        screen = Gdk.Screen.get_default()
+        visual = screen.get_rgba_visual() if screen is not None else None
+        if visual is not None:
+            self.win.set_visual(visual)
+        provider = Gtk.CssProvider()
+        provider.load_from_data(b"window { background-color: transparent; }")
+        Gtk.StyleContext.add_provider_for_screen(
+            screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+        self.win.connect("destroy", Gtk.main_quit)
+
+        self.area = Gtk.DrawingArea()
+        self.area.set_size_request(self._width(), HEIGHT)
+        self.area.connect("draw", self.on_draw)
+        self.win.add(self.area)
+
+        GtkLayerShell.init_for_window(self.win)
+        GtkLayerShell.set_namespace(self.win, "labwc-battery-indicator")
+        GtkLayerShell.set_layer(self.win, GtkLayerShell.Layer.TOP)
+        GtkLayerShell.set_keyboard_mode(self.win, GtkLayerShell.KeyboardMode.NONE)
+        GtkLayerShell.set_exclusive_zone(self.win, 0)
+        display = Gdk.Display.get_default()
+        monitor = display.get_primary_monitor() if display is not None else None
+        if monitor is not None:
+            GtkLayerShell.set_monitor(self.win, monitor)
+        self._apply_anchors()
+        self.win.show_all()
+        GLib.timeout_add_seconds(2, self.on_tick)
+
+    @staticmethod
+    def _mtime(path: Path) -> float:
+        try:
+            return path.stat().st_mtime
+        except OSError:
+            return 0.0
+
+    def _width(self) -> int:
+        return window_width(self.show_percent)
+
+    def _apply_anchors(self) -> None:
+        shell = self.GtkLayerShell
+        for edge in (shell.Edge.LEFT, shell.Edge.RIGHT):
+            shell.set_anchor(self.win, edge, False)
+            shell.set_margin(self.win, edge, 0)
+        shell.set_anchor(self.win, shell.Edge.BOTTOM, True)
+        shell.set_margin(self.win, shell.Edge.BOTTOM, MARGIN)
+        if self.position == "left":
+            shell.set_anchor(self.win, shell.Edge.LEFT, True)
+            shell.set_margin(self.win, shell.Edge.LEFT, MARGIN)
+        elif self.position == "right":
+            shell.set_anchor(self.win, shell.Edge.RIGHT, True)
+            shell.set_margin(self.win, shell.Edge.RIGHT, MARGIN)
+
+    def apply_config(self) -> None:
+        position, show_percent = load_config(self.config_path)
+        changed = position != self.position or show_percent != self.show_percent
+        self.position = position
+        self.show_percent = show_percent
+        if changed:
+            self.area.set_size_request(self._width(), HEIGHT)
+            self.win.resize(self._width(), HEIGHT)
+            self._apply_anchors()
+            self.area.queue_draw()
+
+    def on_tick(self, *_args) -> bool:
+        config_mtime = self._mtime(self.config_path)
+        if config_mtime != self._config_mtime:
+            self._config_mtime = config_mtime
+            self.apply_config()
+        theme_mtime = self._mtime(THEME_FILE)
+        theme_age = self._mtime(SHARE / "themes")
+        if theme_mtime != self._theme_mtime or theme_age != self._theme_age:
+            self._theme_mtime = theme_mtime
+            self._theme_age = theme_age
+            self.colors = theme_colors()
+            self.area.queue_draw()
+        battery = read_battery()
+        if battery != self.battery:
+            self.battery = battery
+            self.area.queue_draw()
+        return True
+
+    @staticmethod
+    def _rounded(cr, x, y, w, h, radius) -> None:
+        cr.new_sub_path()
+        cr.arc(x + w - radius, y + radius, radius, -1.5707963, 0)
+        cr.arc(x + w - radius, y + h - radius, radius, 0, 1.5707963)
+        cr.arc(x + radius, y + h - radius, radius, 1.5707963, 3.1415926)
+        cr.arc(x + radius, y + radius, radius, 3.1415926, 4.7123889)
+        cr.close_path()
+
+    def _stroke_neon(self, cr, color, width, height) -> None:
+        x = PAD
+        y = (HEIGHT - height) / 2
+        radius = 5
+        for line_width, alpha in (
+            (7.0, 0.05),
+            (4.5, 0.10),
+            (2.6, 0.22),
+            (1.4, 0.95),
+        ):
+            cr.set_line_width(line_width)
+            cr.set_source_rgba(color[0], color[1], color[2], alpha)
+            self._rounded(cr, x, y, width, height, radius)
+            cr.stroke()
+
+    def on_draw(self, _widget, cr) -> bool:
+        import cairo
+
+        cr.set_operator(cairo.OPERATOR_SOURCE)
+        cr.set_source_rgba(0, 0, 0, 0)
+        cr.paint()
+        cr.set_operator(cairo.OPERATOR_OVER)
+
+        if self.battery is None:
+            return False
+        pct, status = self.battery
+        colors = self.colors
+        color = battery_color(pct, status, colors)
+
+        body_x = PAD
+        body_y = (HEIGHT - BODY_H) / 2
+        self._stroke_neon(cr, color, BODY_W, BODY_H)
+
+        # Riempimento proporzionale, ritagliato nel corpo della batteria.
+        inner_pad = 3.0
+        inner_w = BODY_W - inner_pad * 2
+        cr.save()
+        self._rounded(
+            cr, body_x + inner_pad, body_y + inner_pad,
+            inner_w, BODY_H - inner_pad * 2, 3,
+        )
+        cr.clip()
+        fill_w = inner_w * (pct / 100.0)
+        cr.set_source_rgba(color[0], color[1], color[2], 0.72)
+        cr.rectangle(body_x + inner_pad, body_y + inner_pad, fill_w,
+                     BODY_H - inner_pad * 2)
+        cr.fill()
+        cr.restore()
+
+        # Terminale della batteria.
+        nub_x = body_x + BODY_W
+        nub_y = HEIGHT / 2 - NUB_H / 2
+        cr.set_line_width(1.6)
+        cr.set_source_rgba(color[0], color[1], color[2], 0.95)
+        self._rounded(cr, nub_x, nub_y, NUB_W, NUB_H, 1.5)
+        cr.stroke()
+
+        if self.show_percent:
+            text = f"{pct}%"
+            cr.select_font_face(
+                "Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD
+            )
+            cr.set_font_size(11)
+            extents = cr.text_extents(text)
+            text_x = body_x + BODY_W + NUB_W + GAP
+            text_y = HEIGHT / 2 + extents.height / 2
+            fg = colors["FG"]
+            cr.set_source_rgba(fg[0], fg[1], fg[2], 0.95)
+            cr.move_to(text_x, text_y - 1)
+            cr.show_text(text)
+        return False
+
+
+def acquire_lock() -> bool:
+    runtime = os.environ.get("XDG_RUNTIME_DIR") or "/tmp"
+    path = Path(runtime) / "labwc-battery-indicator.lock"
+    try:
+        handle = open(path, "w", encoding="utf-8")
+    except OSError:
+        return True
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        handle.close()
+        return False
+    handle.write(str(os.getpid()))
+    handle.flush()
+    # Il lock resta per tutta la vita del processo.
+    globals()["_LOCK_HANDLE"] = handle
+    return True
+
+
+def self_test() -> int:
+    import tempfile
+
+    with tempfile.TemporaryDirectory(prefix="bat-indicator-") as tmp:
+        root = Path(tmp) / "power_supply"
+        (root / "BAT0").mkdir(parents=True)
+        (root / "BAT0/type").write_text("Battery\n", encoding="utf-8")
+        (root / "BAT0/capacity").write_text("78\n", encoding="utf-8")
+        (root / "BAT0/status").write_text("Discharging\n", encoding="utf-8")
+        assert read_battery(root) == (78, "Discharging"), "lettura sysfs"
+        (root / "BAT0/capacity").write_text("7\n", encoding="utf-8")
+        assert read_battery(root) == (7, "Discharging"), "percentuale bassa"
+        (root / "BAT0/capacity").write_text("150\n", encoding="utf-8")
+        assert read_battery(root) == (100, "Discharging"), "clamp a 100"
+        assert read_battery(Path(tmp) / "vuota") is None, "assenza batteria"
+
+        conf = Path(tmp) / "battery.conf"
+        conf.write_text("position=right\nshow_percent=0\n", encoding="utf-8")
+        assert load_config(conf) == ("right", False), "config valida"
+        conf.write_text("position=strano\nshow_percent=1\n", encoding="utf-8")
+        assert load_config(conf) == ("left", True), "config non valida"
+        assert window_width(True) > window_width(False), "larghezza percentuale"
+
+        colors = theme_colors()
+        assert battery_color(5, "Discharging", colors) == colors["DANGER"]
+        assert battery_color(15, "Discharging", colors) == colors["WARNING"]
+        assert battery_color(80, "Discharging", colors) == colors["ACCENT"]
+        assert battery_color(5, "Charging", colors) == colors["ACCENT"]
+    print("SELFTEST_OK")
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="labwc-battery-indicator",
+        description="Indicatore batteria in basso con posizione e percentuale.",
+    )
+    parser.add_argument(
+        "--config", type=Path, default=CONFIG_FILE,
+        help="file di configurazione (default ~/.config/labwc/battery-indicator.conf)",
+    )
+    parser.add_argument(
+        "--detect", action="store_true",
+        help="stampa la batteria rilevata ed esce (per test)",
+    )
+    parser.add_argument(
+        "--self-test", action="store_true",
+        help="test interno senza display",
+    )
+    parser.add_argument(
+        "--print-config", action="store_true",
+        help="stampa posizione e percentuale configurate",
+    )
+    parser.add_argument(
+        "--version", action="version", version=f"labwc-battery-indicator {VERSION}",
+    )
+    return parser
+
+
+def main(argv=None) -> int:
+    args = build_parser().parse_args(argv)
+    if args.self_test:
+        return self_test()
+    if args.print_config:
+        position, show_percent = load_config(args.config)
+        print(f"position={position} show_percent={1 if show_percent else 0}")
+        return 0
+    if args.detect:
+        battery = read_battery()
+        if battery is None:
+            print("NO_BATTERY")
+            return 1
+        print(f"BATTERY {battery[0]} {battery[1]}")
+        return 0
+
+    if read_battery() is None:
+        return 0
+    if not acquire_lock():
+        return 0
+    try:
+        indicator = Indicator(args.config)
+    except Exception as exc:  # compositor o GtkLayerShell assenti
+        print(f"labwc-battery-indicator: {exc}", file=sys.stderr)
+        return 0
+    try:
+        indicator.Gtk.main()
+    except KeyboardInterrupt:
+        return 0
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

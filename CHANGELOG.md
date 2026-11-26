@@ -2,6 +2,19 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.22.16]
+
+- Nuovo **indicatore batteria** in basso: trasparente, contorno con effetto
+  neon, riempimento in base alla percentuale e percentuale esatta. Posizione
+  (sinistra, centro, destra) e switch percentuale si scelgono dalle
+  **Preferenze della scrivania** e si applicano subito; su PC senza batteria
+  non compare.
+- Nuova app **Scala dimensioni dello schermo** (menu TOOL reverseloop):
+  monitor, scala 1.0–2.0 o libera, risoluzione, Applica, Ripristina e
+  permanenza al login, tramite `wlr-randr`.
+- Installer: aggiunta la dipendenza `gir1.2-gtklayershell-0.1` per
+  l'indicatore; l'app di scala usa `wlr-randr`.
+
 ## [1.22.15]
 
 - Installer: FreeTube **non viene più reinstallato** a ogni esecuzione. Se la
