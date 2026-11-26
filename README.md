@@ -38,16 +38,16 @@ sistema **Debian perfettamente funzionante, veloce, intuitivo e facile da
 amministrare**, reattivo anche su macchine con **1 GB di RAM**, senza perdere
 grafica, sessioni esistenti o possibilità di scelta.
 
-> **RAM consigliata:** scegli **Waybar + Fuzzel** se la VM ha **1–2 GB**;
-> **Noctalia** solo se vuoi testarla con più RAM.
+ **RAM consigliata:** scegli **Waybar + Fuzzel** se la VM ha **1–2 GB**;
+ **Noctalia** solo se vuoi testarla con più RAM.
 
 > ### Riuso, stabilità, prestazioni
 >
 > Meno rifiuti elettronici, più computer utili. labwc-q4os non richiede hardware recente né sistemi sperimentali: unisce la solidità di Debian e le ottimizzazioni di Q4OS alla leggerezza di labwc, offrendo un desktop  >
 > Wayland moderno, rapido e dai consumi ridotti.
-
+>
 > In più, per massimizzare batteria, RAM e CPU, integra la modalità cage (kiosk): l'avvio diretto da shell di una singola applicazione predefinita, eliminando ogni elemento grafico superfluo. Il PC che hai già può tornare > a essere veloce.
-
+>
 > **[Scarica Q4OS 6](https://www.q4os.org/downloads1.html)**
 
 [![Q4OS](https://img.shields.io/badge/Q4OS-6.x%20Andromeda-1e293b?style=flat-square)](https://q4os.org)
