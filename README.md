@@ -15,8 +15,9 @@ L'idea è il **riuso consapevole**. Non serve una macchina nuova per navigare,
 scrivere, lavorare o studiare: serve un sistema costruito bene. Per questo il
 progetto parte dalla solidità di **Debian**, aggiunge la configurazione pronta
 e collaudata di **Q4OS** e usa **labwc su Wayland** come desktop: un compositor
-essenziale che consuma poche risorse, riduce il carico di CPU e RAM e rende
-l'interazione più immediata, anche con pochi gigabyte di memoria.
+(il programma che disegna le finestre) essenziale che consuma poche risorse,
+riduce il carico di CPU e RAM e rende l'interazione più immediata, anche con
+pochi gigabyte di memoria.
 
 Il risultato è un desktop curato e completo, con tre temi coordinati, un login
 moderno e tutti gli strumenti di uso quotidiano già configurati. Le sessioni
@@ -57,6 +58,19 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
 > **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.8**
+
+### Parole semplici
+
+- **Script**: un file di istruzioni che il computer esegue.
+- **Repository APT**: un deposito online di programmi per Debian.
+- **Wayland / compositore**: il sistema grafico e il programma che disegna le
+  finestre.
+- **Shell**: la barra e il menu del desktop.
+- **Tema**: colori, icone e sfondo.
+- **VM / bare metal**: computer simulato / computer vero.
+- **Touchscreen / touchpad**: schermo che risponde al tocco / piano di
+  appoggio con i tasti del mouse.
+- **Pipemenu**: un menu creato al momento, invece di essere scritto a mano.
 
 ---
 
@@ -106,9 +120,8 @@ un ambiente sobrio.**
   arrotondati, scelte sì/no e **Indietro/Avanti** fino alla prima pagina.
 - **Preferito YouTube 360p** in Chromium e LibreWolf; aggiornamenti delle app
   esterne (LibreWolf, Noctalia) tramite i loro repository APT.
-- **RIDOTTO AD ICONA** sotto **File manager**: pipemenu con le finestre
-- **RIDOTTO AD ICONA** sotto **File manager**: pipemenu con le finestre
-  ridotte a icona; un clic le ripristina, anche con Noctalia.
+- **RIDOTTO AD ICONA** sotto **File manager**: menu dinamico (pipemenu) con
+  le finestre ridotte a icona; un clic le ripristina, anche con Noctalia.
 - **ZRAM**, **Labwc Doctor**, **Preferenze**, desktop 1–4 e guida integrata in
   italiano.
 - **Aggiornamenti interattivi**: controllo versione, popup di avviso con
@@ -156,8 +169,6 @@ avviato con le opzioni Wayland e le decorazioni richieste.
   se l'altro browser è già installato l'installer chiede se disinstallarlo.
   LibreWolf arriva dal repository ufficiale `extrepo` e riceve le stesse tre
   estensioni dal catalogo Mozilla.
-- **RIDOTTO AD ICONA** sotto **File manager**: pipemenu di labwc con le
-  finestre ridotte; un clic le ripristina. Funziona anche con Noctalia.
 - **btop** installato dallo script, con la sua voce nel menu applicazioni.
 - **Ricarica automatica dopo il login rimossa**, insieme al popup: il
   watchdog avvia solo la shell se manca.
@@ -396,8 +407,8 @@ fino ad allora Cage usa il fallback annidato. La voce **FreeTube (cage)** chiede
 di chiudere labwc. Se lanci `cage` manualmente da una console, invece, resti
 nella shell: usa `labwc-return` o `Ctrl+Alt+F1`.
 
-**Mouse in Cage.** Cage su DRM legge direttamente mouse e tastiera: serve il
-backend `libinput` accanto a `drm` (`WLR_BACKENDS=drm,libinput`) e l’utente nel
+**Mouse in Cage.** Cage su DRM (accesso diretto alla scheda video) legge
+direttamente mouse e tastiera: serve il backend `libinput` accanto a `drm` (`WLR_BACKENDS=drm,libinput`) e l’utente nel
 gruppo `input`. L’installer aggiunge il gruppo quando installa Cage e usa il
 cursore software. Serve un logout/login una volta dopo l’aggiornamento; senza
 uno dei due requisiti le app in Cage non ricevono il puntatore, anche se Cage
@@ -412,7 +423,8 @@ applica con `labwc --reconfigure` o al login.
 **Touchscreen.** Un dito è il click sinistro nativo. **Due dita = tasto
 destro**, **tre dita = Esc**: serve a uscire dallo schermo intero di FreeTube
 o del browser, sia in labwc sia in Cage, senza tastiera. Funziona tramite
-`labwc-touch-tap` e `/dev/uinput` (l’installer dà accesso al gruppo `input`).
+`labwc-touch-tap` e `/dev/uinput` (un dispositivo virtuale; l’installer dà
+accesso al gruppo `input`).
 
 **Tornare a labwc dopo Cage.** Se lanci `cage` manualmente dalla console, il
 wrapper mostra le istruzioni prima e dopo l'app. Dalla console non lanciare
@@ -435,8 +447,8 @@ serve un logout vero dalla sessione.
 
 FreeTube viene installato dal **repository APT dedicato** (GHaaAPT) o dal
 pacchetto ufficiale GitHub: circa **100 MB**, niente Flatpak/Flathub. Per
-evitare il loop **SABR** (“reloading player according to SABR request”)
-l’installer usa **FreeTube 0.23.15**, ultima versione senza SABR: verifica lo
+evitare il loop **SABR** (un problema del sistema di streaming di YouTube,
+che mostra “reloading player according to SABR request”), l’installer usa **FreeTube 0.23.15**, ultima versione senza SABR: verifica lo
 SHA-256 e la blocca con `apt-mark hold`, quindi `apt upgrade` non la sostituisce
 e il controllo aggiornamenti interno è disattivato. Per provare l’ultima
 versione: `FREETUBE_PIN=latest ./install.sh` (può avere il bug SABR).
@@ -1502,6 +1514,25 @@ labwc-q4os può tornare utile per navigare, scrivere e usare le web app. Il
 resto — nuove app e nuove funzioni — arriverà un passo alla volta.
 
 E, detto tra noi: **salviamo i Chromebook e i vecchi netbook dalla munnizza**.
+
+## Test e ringraziamenti
+
+I test sono stati fatti sia su una **macchina virtuale** (VM: un computer
+simulato dentro un programma) sia su un **PC reale** (bare metal, cioè
+hardware vero). Per provare anche il **touchscreen** (lo schermo che risponde
+al tocco) ho preso un **Lenovo Chromebook E300**.
+
+Il **firmware** (il programma di base che avvia il computer) del Chromebook è
+stato modificato grazie a **MrChromebox**: https://docs.mrchromebox.tech/
+
+**Attenzione prima di comprare un Chromebook.** Su un Chromebook la modifica
+del firmware è **necessaria per installare Linux**. Prima di acquistarlo,
+controlla che il modello sia compatibile sul sito di MrChromebox:
+https://docs.mrchromebox.tech/ — Se invece compri un normale **netbook**
+(un piccolo portatile), non serve nessuna modifica al firmware.
+
+L’idea di usare **labwc** (il desktop leggero di questo progetto) viene dai
+consigli di **Riccardo Palombo**: https://www.youtube.com/@RiccardoPalombo
 
 ---
 
