@@ -7,6 +7,8 @@ Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 - Cage: fermato `labwc-update-check` durante Cage e impediti i duplicati a
   ogni riavvio di labwc. Libera RAM e lascia attivi solo i servizi di sessione
   necessari (PipeWire, portali, keyring, systemd utente).
+- `labwc-cage`: rifiuta un secondo Cage se ce n’è già uno attivo (niente
+  compositori annidati); notifiche con timeout per non bloccarsi dentro Cage.
 - Documentato perché al ritorno da Cage non viene chiesta la password: la
   sessione di login resta attiva, labwc viene solo chiuso e riavviato.
 

@@ -10,7 +10,8 @@ set -u
 
 notify() {
     if command -v notify-send >/dev/null 2>&1; then
-        notify-send -a "Cage" "$1" "${2:-}" >/dev/null 2>&1 || true
+        # Durante Cage non c'e' un demone notifiche: non bloccare lo script.
+        timeout 2 notify-send -a "Cage" "$1" "${2:-}" >/dev/null 2>&1 || true
     else
         printf 'Cage: %s %s\n' "$1" "${2:-}" >&2
     fi
@@ -25,6 +26,13 @@ if [ "${1:-}" = "--" ]; then
     shift
 fi
 [ "$#" -gt 0 ] || { notify "Nessun comando da avviare"; exit 1; }
+
+# Un solo Cage alla volta: evita compositori annidati se il comando viene
+# lanciato per errore dalla console dentro Cage o da un doppio click.
+if pgrep -x cage >/dev/null 2>&1; then
+    notify "Cage è già attivo" "Chiudi l'app corrente; per tornare usa labwc-return."
+    exit 1
+fi
 
 if [ "$ask" -eq 1 ] && command -v zenity >/dev/null 2>&1; then
     zenity --question \
