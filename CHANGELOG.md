@@ -2,6 +2,14 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.22.5]
+
+- Cage: fermato `labwc-update-check` durante Cage e impediti i duplicati a
+  ogni riavvio di labwc. Libera RAM e lascia attivi solo i servizi di sessione
+  necessari (PipeWire, portali, keyring, systemd utente).
+- Documentato perché al ritorno da Cage non viene chiesta la password: la
+  sessione di login resta attiva, labwc viene solo chiuso e riavviato.
+
 ## [1.22.4]
 
 - FreeTube: il collegamento normale apre FreeTube **dentro labwc** con la X

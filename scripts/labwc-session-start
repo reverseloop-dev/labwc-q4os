@@ -194,8 +194,12 @@ printf '1\n' > "$STATE/desktop"
 UPDATE_CHECK="$HOME/.local/bin/labwc-update-check"
 if [ -x "$UPDATE_CHECK" ]; then
     if "$UPDATE_CHECK" --is-enabled >/dev/null 2>&1; then
-        setsid -f "$UPDATE_CHECK" --startup >>"$LOG" 2>&1 || true
-        printf 'avviato: labwc-update-check\n'
+        if pgrep -f 'labwc-update-check --startup' >/dev/null 2>&1; then
+            printf 'gia attivo: labwc-update-check\n'
+        else
+            setsid -f "$UPDATE_CHECK" --startup >>"$LOG" 2>&1 || true
+            printf 'avviato: labwc-update-check\n'
+        fi
     fi
 fi
 

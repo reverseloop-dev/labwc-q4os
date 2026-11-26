@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.4**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.5**
 
 ---
 
@@ -398,6 +398,14 @@ labwc-return
 ```
 oppure `Ctrl+Alt+F1` per tornare al VT di labwc. `labwc-return` rileva il VT
 della sessione attiva e ci ritorna; se labwc non è più attivo, riavvia SDDM.
+
+**Perché al ritorno non chiede la password.** Cage chiude **labwc**, non la
+sessione di login. SDDM resta fuori e il wrapper riavvia labwc nella stessa
+sessione: non c’è stato un logout, quindi non c’è login da rifare. Restano
+attivi solo i servizi della sessione utente (systemd, PipeWire, portali,
+keyring), necessari alle app in Cage; labwc, Noctalia, Waybar, Mako, swaybg,
+Xwayland e il controllo aggiornamenti vengono terminati. Per avere il login
+serve un logout vero dalla sessione.
 
 ### FreeTube e Cage
 

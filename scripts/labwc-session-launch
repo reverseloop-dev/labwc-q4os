@@ -122,6 +122,12 @@ while :; do
     if [ -s "$CAGE_REQUEST" ]; then
         cage_cmd="$(cat "$CAGE_REQUEST")"
         rm -f "$CAGE_REQUEST"
+        # Il controllo aggiornamenti e' un servizio della sessione labwc:
+        # durante Cage non serve e non deve accumularsi a ogni riavvio.
+        for pid in $(pgrep -f 'labwc-update-check --startup' 2>/dev/null); do
+            pkill -P "$pid" 2>/dev/null || true
+            kill "$pid" 2>/dev/null || true
+        done
         printf 'cage: chiusura labwc, avvio %s\n' "$cage_cmd" >>"$LOG"
         (
             unset WAYLAND_DISPLAY DISPLAY XAUTHORITY
