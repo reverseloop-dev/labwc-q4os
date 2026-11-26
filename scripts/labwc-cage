@@ -5,8 +5,21 @@
 #  La richiesta viene scritta in ~/.local/state/labwc-q4os/cage-request:
 #  il wrapper di sessione labwc-session-launch la esegue sulla stessa TTY,
 #  quindi labwc libera DRM e RAM e Cage parte davvero come compositore.
+#
+#  Uscendo dalla console di Cage (exit) labwc-cage-help scrive
+#  cage-exit.request: il supervisore termina Cage e le app rimaste, come la
+#  X di FreeTube. Qui si ripuliscono anche i Cage orfani e i falsi
+#  "Cage e' gia' attivo".
 # =============================================================================
 set -u
+
+state="${XDG_STATE_HOME:-$HOME/.local/state}/labwc-q4os"
+mkdir -p "$state" 2>/dev/null || true
+request="$state/cage-request"
+close_req="$state/cage-exit.request"
+pid_file="$state/cage.pid"
+export LABWC_CAGE_CLOSE="$close_req"
+rm -f "$close_req"
 
 notify() {
     if command -v notify-send >/dev/null 2>&1; then
@@ -15,6 +28,89 @@ notify() {
     else
         printf 'Cage: %s %s\n' "$1" "${2:-}" >&2
     fi
+}
+
+pid_alive() {
+    local target="${1:-}" status
+    [ -n "$target" ] || return 1
+    status="$(ps -o stat= -p "$target" 2>/dev/null)" || return 1
+    [ -n "$status" ] || return 1
+    case "$status" in
+        Z*) return 1 ;;
+    esac
+    return 0
+}
+
+descendants() {
+    local parent="$1" child
+    for child in $(ps -o pid= --ppid "$parent" 2>/dev/null); do
+        descendants "$child"
+        printf '%s\n' "$child"
+    done
+}
+
+kill_tree() {
+    local target="${1:-}" children child _
+    [ -n "$target" ] || return 0
+    children="$(descendants "$target")"
+    for child in $children; do
+        kill -TERM "$child" 2>/dev/null || true
+    done
+    kill -TERM "$target" 2>/dev/null || true
+    for _ in $(seq 1 12); do
+        pid_alive "$target" || break
+        sleep 0.1
+    done
+    for child in $children; do
+        kill -KILL "$child" 2>/dev/null || true
+    done
+    kill -KILL "$target" 2>/dev/null || true
+}
+
+# Un Cage e' davvero attivo solo se il suo processo e' vivo e non zombie.
+# Un pidfile stantio viene ripulito: niente piu' falsi "Cage e' gia' attivo".
+is_descendant_of() {
+    local pid="$1" ancestor="$2" parent
+    while :; do
+        case "$pid" in
+            ''|*[!0-9]*) return 1 ;;
+        esac
+        [ "$pid" -gt 1 ] || return 1
+        parent="$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d '[:space:]')"
+        [ -n "$parent" ] || return 1
+        [ "$parent" = "$ancestor" ] && return 0
+        [ "$parent" = "$pid" ] && return 1
+        pid="$parent"
+    done
+}
+
+cage_is_active() {
+    local pid="" status labwc_pid=""
+    if [ -s "$pid_file" ]; then
+        pid="$(tr -d '[:space:]' <"$pid_file" 2>/dev/null || true)"
+        if [ -n "$pid" ]; then
+            status="$(ps -o stat= -p "$pid" 2>/dev/null)" || status=""
+            case "$status" in
+                ""|Z*) rm -f "$pid_file" "$close_req" 2>/dev/null || true ;;
+                *) return 0 ;;
+            esac
+        fi
+    fi
+    labwc_pid="$(pgrep -x labwc 2>/dev/null | head -n1 || true)"
+    for pid in $(pgrep -x cage 2>/dev/null); do
+        status="$(ps -o stat= -p "$pid" 2>/dev/null)" || continue
+        case "$status" in
+            Z*) continue ;;
+        esac
+        if [ -z "$labwc_pid" ] || is_descendant_of "$pid" "$labwc_pid"; then
+            return 0
+        fi
+        # Cage rimasto da una sessione precedente: va chiuso, non deve
+        # bloccare un nuovo AVVIA CAGE.
+        notify "Chiudo un Cage rimasto attivo" "pid $pid"
+        kill_tree "$pid"
+    done
+    return 1
 }
 
 ask=0
@@ -29,7 +125,7 @@ fi
 
 # Un solo Cage alla volta: evita compositori annidati se il comando viene
 # lanciato per errore dalla console dentro Cage o da un doppio click.
-if pgrep -x cage >/dev/null 2>&1; then
+if cage_is_active; then
     notify "Cage è già attivo" "Chiudi l'app corrente; per tornare usa labwc-return."
     exit 1
 fi
@@ -41,10 +137,6 @@ if [ "$ask" -eq 1 ] && command -v zenity >/dev/null 2>&1; then
         --ok-label="Sì" --cancel-label="No" 2>/dev/null || exit 0
 fi
 
-state="${XDG_STATE_HOME:-$HOME/.local/state}/labwc-q4os"
-mkdir -p "$state"
-request="$state/cage-request"
-
 if [ ! -f "$state/cage-supported" ]; then
     # Sessione avviata prima dell'aggiornamento: il wrapper in memoria non
     # supporta ancora la richiesta Cage. Uso il compositore annidato finché
@@ -54,6 +146,7 @@ if [ ! -f "$state/cage-supported" ]; then
     LABWC_CAGE_QUIET=1 WLR_BACKENDS=wayland WLR_RENDERER=pixman \
         WLR_NO_HARDWARE_CURSORS=1 cage -- "$@" >"$log" 2>&1 &
     cage_pid=$!
+    printf '%s\n' "$cage_pid" >"$pid_file" 2>/dev/null || true
     for _ in $(seq 1 40); do
         if wlrctl toplevel find app_id:wlroots >/dev/null 2>&1; then
             wlrctl toplevel fullscreen app_id:wlroots >/dev/null 2>&1 || true
@@ -61,8 +154,17 @@ if [ ! -f "$state/cage-supported" ]; then
         fi
         sleep 0.2
     done
-    wait "$cage_pid"
+    while pid_alive "$cage_pid"; do
+        [ -f "$close_req" ] && break
+        sleep 0.15
+    done
+    requested=0
+    [ -f "$close_req" ] && requested=1
+    rm -f "$close_req" "$pid_file"
+    kill_tree "$cage_pid"
+    wait "$cage_pid" 2>/dev/null
     status=$?
+    [ "$requested" -eq 1 ] && status=0
     rm -f "$log"
     exit "$status"
 fi

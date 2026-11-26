@@ -2,6 +2,16 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.22.14]
+
+- Cage: `exit` nella console di **AVVIA CAGE** chiude definitivamente Cage e
+  le app rimaste, come la X di FreeTube. `labwc-cage-help` scrive
+  `cage-exit.request` e il wrapper di sessione termina l'albero di processi
+  (SIGTERM, poi SIGKILL); il controllo «Cage è già attivo» ignora zombie e
+  chiude i Cage orfani di sessioni precedenti.
+- README: documentato che `exit` in Cage chiude Cage e le app rimaste; la X
+  di FreeTube resta invariata.
+
 ## [1.22.13]
 
 - FreeTube in Cage: **chiusura garantita**. La X non usa più solo

@@ -32,6 +32,46 @@ mkdir -p "$STATE" 2>/dev/null || true
 printf '\n===== labwc-session-launch %s (HOME=%s) =====\n' \
     "$(date '+%Y-%m-%d %H:%M:%S')" "$HOME" >>"$LOG" 2>&1
 
+# Helper per chiudere in modo chirurgico Cage e le app rimaste quando
+# l'utente esce dalla console (file cage-exit.request scritto da
+# labwc-cage-help), senza usare pkill -x cage alla cieca.
+cage_pid_alive() {
+    local target="${1:-}" status
+    [ -n "$target" ] || return 1
+    status="$(ps -o stat= -p "$target" 2>/dev/null)" || return 1
+    [ -n "$status" ] || return 1
+    case "$status" in
+        Z*) return 1 ;;
+    esac
+    return 0
+}
+
+cage_descendants() {
+    local parent="$1" child
+    for child in $(ps -o pid= --ppid "$parent" 2>/dev/null); do
+        cage_descendants "$child"
+        printf '%s\n' "$child"
+    done
+}
+
+cage_kill_tree() {
+    local target="${1:-}" children child _
+    [ -n "$target" ] || return 0
+    children="$(cage_descendants "$target")"
+    for child in $children; do
+        kill -TERM "$child" 2>/dev/null || true
+    done
+    kill -TERM "$target" 2>/dev/null || true
+    for _ in $(seq 1 12); do
+        cage_pid_alive "$target" || break
+        sleep 0.1
+    done
+    for child in $children; do
+        kill -KILL "$child" 2>/dev/null || true
+    done
+    kill -KILL "$target" 2>/dev/null || true
+}
+
 # Configurazione minima: se manca, ripara prima di avviare il compositor.
 config_ok=1
 for file in rc.xml menu.xml autostart; do
@@ -147,10 +187,26 @@ while :; do
             # WLR_DRM_NO_ATOMIC evita i freeze "Atomic commit failed:
             # Device or resource busy" quando una pagina web complessa tiene
             # la GPU occupata; WLR_DRM_NO_MODIFIERS evita i modifier DMABUF.
+            export LABWC_CAGE_CLOSE="$STATE/cage-exit.request"
+            rm -f "$STATE/cage.pid" "$STATE/cage-exit.request" 2>/dev/null || true
             LABWC_CAGE_QUIET=1 WLR_BACKENDS=drm,libinput \
                 WLR_DRM_NO_ATOMIC=1 WLR_DRM_NO_MODIFIERS=1 \
                 WLR_NO_HARDWARE_CURSORS=1 \
-                cage -- bash -lc "$cage_cmd"
+                cage -- bash -lc "$cage_cmd" &
+            cage_pid=$!
+            printf '%s\n' "$cage_pid" >"$STATE/cage.pid" 2>/dev/null || true
+            while cage_pid_alive "$cage_pid"; do
+                [ -f "$STATE/cage-exit.request" ] && break
+                sleep 0.15
+            done
+            if [ -f "$STATE/cage-exit.request" ]; then
+                printf 'cage: exit dalla console, chiusura di Cage e delle app\n' \
+                    >>"$LOG"
+            fi
+            rm -f "$STATE/cage-exit.request" 2>/dev/null || true
+            cage_kill_tree "$cage_pid"
+            wait "$cage_pid" 2>/dev/null || true
+            rm -f "$STATE/cage.pid" 2>/dev/null || true
         ) >>"$LOG" 2>&1
         printf 'cage: app terminata, riavvio labwc\n' >>"$LOG"
         continue

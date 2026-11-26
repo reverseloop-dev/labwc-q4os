@@ -1,8 +1,25 @@
 #!/usr/bin/env bash
 # =============================================================================
 #  labwc-cage-help - console di avvio Cage con istruzioni
+#
+#  Quando la console viene chiusa (exit, Ctrl+D, chiusura del terminale)
+#  scrive un marcatore letto dal supervisore di sessione: Cage e le app
+#  rimaste vengono terminati, come con la X di FreeTube.
 # =============================================================================
 set -u
+
+close_req="${LABWC_CAGE_CLOSE:-}"
+
+write_close_request() {
+    [ -n "$close_req" ] || return 0
+    mkdir -p "$(dirname "$close_req")" 2>/dev/null || true
+    printf '%s\n' "$$" >"$close_req" 2>/dev/null || true
+}
+
+trap write_close_request EXIT
+trap 'exit 129' HUP
+trap 'exit 143' TERM
+
 cat <<'EOF'
 
   AVVIA CAGE
@@ -17,9 +34,10 @@ cat <<'EOF'
   Per uscire da Cage e riaprire labwc automaticamente:
     exit
 
-  Salva i documenti aperti prima di chiudere le app.
+  Uscire dalla console chiude Cage e tutte le app rimaste, come la X di
+  FreeTube. Salva i documenti aperti prima di uscire.
 
   Tasti volume: vengono gestiti da keyd anche dentro Cage.
 
 EOF
-exec "${SHELL:-/bin/bash}" -i
+"${SHELL:-/bin/bash}" -i

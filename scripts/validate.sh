@@ -102,6 +102,18 @@ else
     pass "labwc-freetube-cage: nessun processo residuo"
 fi
 rm -rf "$CAGE_TMP"
+# exit nella console di Cage: labwc-cage-help deve lasciare il marcatore che
+# il wrapper di sessione usa per chiudere Cage e le app rimaste.
+CAGE_EXIT_TMP="$(mktemp -d)"
+if LABWC_CAGE_CLOSE="$CAGE_EXIT_TMP/cage-exit.request" \
+    XDG_STATE_HOME="$CAGE_EXIT_TMP/state" SHELL=/bin/true \
+    bash scripts/labwc-cage-help </dev/null >/dev/null 2>&1 &&
+    [ -s "$CAGE_EXIT_TMP/cage-exit.request" ]; then
+    pass "labwc-cage-help: exit scrive cage-exit.request"
+else
+    bad "labwc-cage-help: marcatore di uscita mancante"
+fi
+rm -rf "$CAGE_EXIT_TMP"
 if [ -s VERSION ]; then pass "VERSION"; else bad "VERSION"; fi
 if [ -s CHANGELOG.md ] &&
    grep -q "^## \[$(tr -d '[:space:]' < VERSION)\]" CHANGELOG.md; then

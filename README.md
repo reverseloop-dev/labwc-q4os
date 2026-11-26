@@ -55,7 +55,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.12**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.14**
 
 ---
 
@@ -401,6 +401,11 @@ fino ad allora Cage usa il fallback annidato. La voce **FreeTube (cage)** chiede
 di chiudere labwc. Se lanci `cage` manualmente da una console, invece, resti
 nella shell: usa `labwc-return` o `Ctrl+Alt+F1`.
 
+Nella console di **AVVIA CAGE**, digitare `exit` chiude **definitivamente**
+Cage e tutte le app rimaste, esattamente come la X di FreeTube: il wrapper di
+sessione termina l’albero di processi e labwc riparte. Non serve più
+`labwc-return` per questo caso. Salva i documenti aperti prima di uscire.
+
 **Mouse in Cage.** Cage su DRM (accesso diretto alla scheda video) legge
 direttamente mouse e tastiera: serve il backend `libinput` accanto a `drm` (`WLR_BACKENDS=drm,libinput`) e l’utente nel
 gruppo `input`. L’installer aggiunge il gruppo quando installa Cage e usa il
@@ -426,7 +431,10 @@ wrapper mostra le istruzioni prima e dopo l'app. Dalla console non lanciare
 ```bash
 labwc-return
 ```
-oppure `Ctrl+Alt+F1` per tornare al VT di labwc. `labwc-return` rileva il VT
+Nella console di **AVVIA CAGE** basta invece `exit`: Cage e le app rimaste
+vengono chiusi e labwc riparte da solo, come con la X di FreeTube.
+
+In alternativa `Ctrl+Alt+F1` riporta al VT di labwc. `labwc-return` rileva il VT
 della sessione attiva e ci ritorna; se labwc non è più attivo, riavvia SDDM.
 
 **Perché al ritorno non chiede la password.** Cage chiude **labwc**, non la
@@ -1577,10 +1585,11 @@ intervento registrato in una release. Le aree sono una stima per parole chiave
 ### Interventi per area
 
 1 quadretto = 4 voci (arrotondato per eccesso). Colonna più alta: installer e
-compatibilità con **39** interventi.
+compatibilità con **41** interventi.
 
 | Livello | 🟥 Bug | 🟩 Funzioni | 🟦 Migliorie | 🟪 Temi/UI | 🟧 Installer | 🟨 Docs | 🟫 Pulizia | ⬛ Altro |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| 11 | ⬜ | ⬜ | ⬜ | ⬜ | 🟧 | ⬜ | ⬜ | ⬜ |
 | 10 | ⬜ | ⬜ | ⬜ | ⬜ | 🟧 | ⬜ | ⬜ | ⬜ |
 | 9 | ⬜ | ⬜ | ⬜ | ⬜ | 🟧 | ⬜ | ⬜ | ⬜ |
 | 8 | ⬜ | 🟩 | ⬜ | ⬜ | 🟧 | ⬜ | ⬜ | ⬜ |
@@ -1591,7 +1600,7 @@ compatibilità con **39** interventi.
 | 3 | 🟥 | 🟩 | ⬜ | 🟪 | 🟧 | ⬜ | ⬜ | ⬛ |
 | 2 | 🟥 | 🟩 | 🟦 | 🟪 | 🟧 | 🟨 | ⬜ | ⬛ |
 | 1 | 🟥 | 🟩 | 🟦 | 🟪 | 🟧 | 🟨 | 🟫 | ⬛ |
-| **Totale** | **13** | **29** | **6** | **23** | **39** | **5** | **4** | **17** |
+| **Totale** | **13** | **29** | **6** | **23** | **41** | **5** | **4** | **17** |
 
 **Legenda**
 
@@ -1608,19 +1617,19 @@ compatibilità con **39** interventi.
 
 | Indicatore | Valore |
 | --- | ---: |
-| Release documentate (dalla 1.0 alla 1.22.13) | **41** |
-| Voci/interventi totali nel CHANGELOG | **136** |
+| Release documentate (dalla 1.0 alla 1.22.14) | **42** |
+| Voci/interventi totali nel CHANGELOG | **138** |
 | Bug corretti | **13** |
 | Nuove funzioni | **29** |
 | Migliorie e ottimizzazioni | **6** |
 | Interventi su temi e interfaccia | **23** |
-| Interventi su installer e compatibilità | **39** |
+| Interventi su installer e compatibilità | **41** |
 | Interventi su documentazione | **5** |
 | Pulizia e manutenzione | **4** |
 | Altro / note tecniche | **17** |
 | Script nel repository | **48** |
 | File nel repository | **111** |
-| Righe di script (Bash e Python) | **10.944** |
+| Righe di script (Bash e Python) | **11.132** |
 | Temi inclusi | **3** |
 
 ### Cosa è cambiato nel tempo
@@ -1632,7 +1641,8 @@ compatibilità con **39** interventi.
 - **1.14 → 1.19**: integrazione YouTube (360p), browser, wizard GTK e
   gtk-pipe-viewer.
 - **1.20 → 1.22**: **Cage** per le app a schermo intero, FreeTube, Firefox ESR,
-  touchscreen, ZRAM rifinita e chiusura di FreeTube resa affidabile.
+  touchscreen, ZRAM rifinita, chiusura di FreeTube resa affidabile e uscita
+  definitiva da Cage con `exit`.
 
 ---
 
