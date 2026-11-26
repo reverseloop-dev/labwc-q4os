@@ -1157,17 +1157,68 @@ remove_flatpak() {
     rm -rf "$HOME/.local/share/flatpak" "$HOME/.var/app/io.freetubeapp.FreeTube" 2>/dev/null || true
 }
 
+freetube_installed_version() {
+    dpkg-query -W -f='${db:Status-Status} ${Version}' freetube 2>/dev/null |
+        awk '$1 == "installed" { print $2; exit }'
+}
+
+freetube_repo_version() {
+    LC_ALL=C apt-cache policy freetube 2>/dev/null |
+        awk '/Candidate:/ { print $2; exit }'
+}
+
+version_ge() {
+    [ -n "${1:-}" ] && [ -n "${2:-}" ] && dpkg --compare-versions "$1" ge "$2"
+}
+
+# Installa FreeTube dal repo solo se manca o se la versione installata e'
+# piu' vecchia di quella disponibile. Mai reinstallare la stessa versione.
+freetube_apt_update() {
+    local installed="${1:-}" candidate
+    candidate="$(freetube_repo_version)"
+    if [ -n "$installed" ] && version_ge "$installed" "$candidate"; then
+        ok "FreeTube $installed gia' aggiornato (repo: ${candidate:-?}): nessuna reinstallazione."
+        return 0
+    fi
+    sudo apt-mark unhold freetube >/dev/null 2>&1 || true
+    if [ -n "$installed" ]; then
+        log "Aggiorno FreeTube $installed -> ${candidate:-ultima versione}..."
+    else
+        log "Installazione FreeTube dal repository APT (circa 100 MB)..."
+    fi
+    if ! sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y freetube; then
+        warn "Installazione FreeTube dal repository non riuscita."
+        return 1
+    fi
+    ok "FreeTube aggiornato dal repo APT."
+}
+
 install_freetube() {
     local key_url="https://ghaaapt.github.io/freetube-apt/freetube-archive-keyring.asc"
     local keyring="/usr/share/keyrings/freetube-archive-keyring.gpg"
     local sources="/etc/apt/sources.list.d/freetube.sources"
     local tmp_key
     local free_kb
+    local installed
+    local pin_version="0.23.15"
+    local pin_mode="${FREETUBE_PIN:-$pin_version}"
 
     if [ "$SKIP_APT" -eq 1 ]; then
         warn "FreeTube non installato con --skip-apt."
         return 1
     fi
+    installed="$(freetube_installed_version)"
+
+    # Gia' installato e non piu' vecchio del target: non toccare nulla.
+    # Il pin evita il bug SABR, quindi una versione piu' recente non va
+    # abbassata; si aggiorna solo quando quella del PC e' piu' vecchia.
+    if [ -n "$installed" ] && [ "$pin_mode" != "latest" ] &&
+        version_ge "$installed" "$pin_version"; then
+        sudo apt-mark hold freetube >/dev/null 2>&1 || true
+        ok "FreeTube $installed gia' installato: nessuna reinstallazione."
+        return 0
+    fi
+
     free_kb="$(df -Pk / 2>/dev/null | awk 'NR == 2 { print $4 }')"
     if [ -n "$free_kb" ] && [ "$free_kb" -lt 250000 ]; then
         warn "Spazio insufficiente per FreeTube: servono circa 250 MB liberi, trovati $((free_kb / 1024)) MB."
@@ -1211,18 +1262,11 @@ EOF
     # FreeTube 0.24+ usa SABR in modo obbligatorio: su molte reti/versioni
     # entra nel loop "reloading player according to SABR request".
     # 0.23.15 e' l'ultima senza SABR e riproduce i video con i vecchi flussi.
-    local pin_version="0.23.15"
     local pin_sha="2b773bba2d9f58daa78fd259de725daa8331405816b542434e9a912294dd4b89"
     local pin_url=""
     local tmp_deb=""
-    if [ "${FREETUBE_PIN:-$pin_version}" = "latest" ]; then
-        sudo apt-mark unhold freetube >/dev/null 2>&1 || true
-        log "Installazione FreeTube dal repository APT (circa 100 MB)..."
-        if ! sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y freetube; then
-            warn "Installazione FreeTube dal repository non riuscita."
-            return 1
-        fi
-        ok "FreeTube installato dal repo APT (aggiornamenti con apt)."
+    if [ "$pin_mode" = "latest" ]; then
+        freetube_apt_update "$installed" || return 1
         return 0
     fi
 
@@ -1232,27 +1276,28 @@ EOF
             ;;
         *)
             warn "FreeTube ${pin_version} pinnato solo su amd64: uso l'ultima versione (puo' avere il bug SABR)."
-            sudo apt-mark unhold freetube >/dev/null 2>&1 || true
-            sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y freetube || return 1
+            freetube_apt_update "$installed" || return 1
             return 0
             ;;
     esac
 
-    log "Installazione FreeTube ${pin_version} (senza SABR)..."
+    if [ -n "$installed" ]; then
+        log "Aggiornamento FreeTube $installed -> ${pin_version} (senza SABR)..."
+    else
+        log "Installazione FreeTube ${pin_version} (senza SABR)..."
+    fi
     tmp_deb="$(mktemp --suffix=.deb)"
     if ! curl -fL --proto '=https' --proto-redir '=https' --retry 2 \
         --max-time 300 -o "$tmp_deb" "$pin_url"; then
         rm -f "$tmp_deb"
-        warn "Download FreeTube ${pin_version} non riuscito: installo l'ultima versione."
-        sudo apt-mark unhold freetube >/dev/null 2>&1 || true
-        sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y freetube || return 1
+        warn "Download FreeTube ${pin_version} non riuscito: uso l'ultima versione."
+        freetube_apt_update "$installed" || return 1
         return 0
     fi
     if ! echo "${pin_sha}  ${tmp_deb}" | sha256sum -c - >/dev/null 2>&1; then
         rm -f "$tmp_deb"
-        warn "Checksum FreeTube ${pin_version} non valido: installo l'ultima versione."
-        sudo apt-mark unhold freetube >/dev/null 2>&1 || true
-        sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y freetube || return 1
+        warn "Checksum FreeTube ${pin_version} non valido: uso l'ultima versione."
+        freetube_apt_update "$installed" || return 1
         return 0
     fi
     if ! sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -1263,7 +1308,11 @@ EOF
     fi
     rm -f "$tmp_deb"
     sudo apt-mark hold freetube >/dev/null 2>&1 || true
-    ok "FreeTube ${pin_version} installato e bloccato (niente SABR; apt non lo aggiorna)."
+    if [ -n "$installed" ]; then
+        ok "FreeTube aggiornato a ${pin_version} e bloccato (niente SABR; apt non lo aggiorna)."
+    else
+        ok "FreeTube ${pin_version} installato e bloccato (niente SABR; apt non lo aggiorna)."
+    fi
     info "Per tornare all'ultima versione: sudo apt-mark unhold freetube && FREETUBE_PIN=latest ./install.sh"
 }
 

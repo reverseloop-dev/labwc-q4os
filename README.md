@@ -55,7 +55,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.14**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.15**
 
 ---
 
@@ -448,8 +448,10 @@ serve un logout vero dalla sessione.
 ### FreeTube e Cage
 
 FreeTube viene installato dal **repository APT dedicato** (GHaaAPT) o dal
-pacchetto ufficiale GitHub: circa **100 MB**, niente Flatpak/Flathub. Per
-evitare il loop **SABR** (un problema del sistema di streaming di YouTube,
+pacchetto ufficiale GitHub: circa **100 MB**, niente Flatpak/Flathub. Se
+FreeTube è già installato **non viene reinstallato**: l’installer confronta la
+versione del PC con quella del repo e aggiorna solo se quella del PC è più
+vecchia (nessun downgrade). Per evitare il loop **SABR** (un problema del sistema di streaming di YouTube,
 che mostra “reloading player according to SABR request”), l’installer usa **FreeTube 0.23.15**, ultima versione senza SABR: verifica lo
 SHA-256 e la blocca con `apt-mark hold`, quindi `apt upgrade` non la sostituisce
 e il controllo aggiornamenti interno è disattivato. Per provare l’ultima
@@ -1585,7 +1587,7 @@ intervento registrato in una release. Le aree sono una stima per parole chiave
 ### Interventi per area
 
 1 quadretto = 4 voci (arrotondato per eccesso). Colonna più alta: installer e
-compatibilità con **41** interventi.
+compatibilità con **42** interventi.
 
 | Livello | 🟥 Bug | 🟩 Funzioni | 🟦 Migliorie | 🟪 Temi/UI | 🟧 Installer | 🟨 Docs | 🟫 Pulizia | ⬛ Altro |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -1600,7 +1602,7 @@ compatibilità con **41** interventi.
 | 3 | 🟥 | 🟩 | ⬜ | 🟪 | 🟧 | ⬜ | ⬜ | ⬛ |
 | 2 | 🟥 | 🟩 | 🟦 | 🟪 | 🟧 | 🟨 | ⬜ | ⬛ |
 | 1 | 🟥 | 🟩 | 🟦 | 🟪 | 🟧 | 🟨 | 🟫 | ⬛ |
-| **Totale** | **13** | **29** | **6** | **23** | **41** | **5** | **4** | **17** |
+| **Totale** | **13** | **29** | **6** | **23** | **42** | **5** | **4** | **17** |
 
 **Legenda**
 
@@ -1617,13 +1619,13 @@ compatibilità con **41** interventi.
 
 | Indicatore | Valore |
 | --- | ---: |
-| Release documentate (dalla 1.0 alla 1.22.14) | **42** |
-| Voci/interventi totali nel CHANGELOG | **138** |
+| Release documentate (dalla 1.0 alla 1.22.15) | **43** |
+| Voci/interventi totali nel CHANGELOG | **139** |
 | Bug corretti | **13** |
 | Nuove funzioni | **29** |
 | Migliorie e ottimizzazioni | **6** |
 | Interventi su temi e interfaccia | **23** |
-| Interventi su installer e compatibilità | **41** |
+| Interventi su installer e compatibilità | **42** |
 | Interventi su documentazione | **5** |
 | Pulizia e manutenzione | **4** |
 | Altro / note tecniche | **17** |

@@ -2,6 +2,14 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.22.15]
+
+- Installer: FreeTube **non viene più reinstallato** a ogni esecuzione. Se la
+  versione installata è uguale o più recente di quella del repo il passo viene
+  saltato (con il pin 0.23.15 non si scarica nemmeno il `.deb`); se è più
+  vecchia viene aggiornata. Nessun downgrade, nemmeno con
+  `FREETUBE_PIN=latest`.
+
 ## [1.22.14]
 
 - Cage: `exit` nella console di **AVVIA CAGE** chiude definitivamente Cage e
