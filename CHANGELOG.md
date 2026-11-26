@@ -2,6 +2,34 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.22.13]
+
+- FreeTube in Cage: **chiusura garantita**. La X non usa più solo
+  `window.close()`: al click la pagina chiama un binding DevTools,
+  `freetube-close-overlay` esce con codice 10 e `labwc-freetube-cage` termina
+  tutto l'albero di processi (SIGTERM, attesa di 3 s, poi SIGKILL) sul gruppo
+  creato da `setsid`. Cage torna quindi sempre a labwc, anche se FreeTube va
+  nel tray o ignora la chiusura della finestra.
+- FreeTube in Cage: la X resta **sempre in primo piano**. È in Shadow DOM
+  (isolata dal CSS dell'app) e usa un popover manuale, quindi sta nel top
+  layer del browser: visibile sopra player, schermo intero, menu e dialoghi.
+  Un `MutationObserver` la ricrea se un re-render la rimuove e un controllo
+  periodico la riporta sopra se qualcosa la copre.
+- FreeTube in Cage: aggiunte le scorciatoie **Ctrl+Shift+Q** e **Alt+F4**.
+- FreeTube in Cage: se i target DevTools spariscono (finestra nascosta o
+  tray) la chiusura viene richiesta lo stesso; l'overlay viene riavviato se
+  muore, con backoff e limite di tentativi. Log in
+  `~/.local/state/labwc-q4os/freetube-cage.log`.
+- `freetube-close-overlay`: lettura robusta di `DevToolsActivePort` (file
+  completo, porta valida, path del browser), retry con backoff, un solo
+  lettore WebSocket, gestione dei reload, `--self-test`, `--print-js`,
+  `--version`.
+- `validate.sh`: controlla il nuovo helper Python (sintassi, `--self-test`,
+  `--help`, `--version`) e fa uno smoke test del wrapper con `freetube` e
+  overlay finti.
+- README: nuova sezione **Numeri del progetto** sopra la licenza, con grafico
+  a colonne colorate, legenda, scheda numeri e tappe principali.
+
 ## [1.22.12]
 
 - Browser: **LibreWolf sostituito da Firefox ESR** (pacchetto Debian), con le

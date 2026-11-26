@@ -407,7 +407,7 @@ console dentro Cage: da lì si avviano direttamente:
 ```
 chromium
 firefox-esr
-labwc-freetube-cage    # FreeTube con pulsante X
+labwc-freetube-cage    # FreeTube con pulsante X o Ctrl+Shift+Q
 ```
 Con i collegamenti **(cage)** labwc viene chiuso, l’app parte in Cage e, alla
 chiusura, labwc riparte automaticamente. Dopo un aggiornamento dello script
@@ -466,8 +466,14 @@ L’installer chiede se installarlo e crea **due** collegamenti, come per i brow
 **FreeTube (cage)** chiede conferma (avvisa che labwc verrà chiuso e che i
 file non salvati andranno persi), avvia FreeTube a schermo intero in Cage e
 mostra una **X in alto a destra** per chiuderlo; alla chiusura labwc riparte
-automaticamente. La qualità video predefinita è **360p** in entrambe le
-modalità.
+automaticamente. La X resta sempre in primo piano, anche durante la
+riproduzione a schermo intero, sopra i menu e i dialoghi. In alternativa
+funzionano **Ctrl+Shift+Q** e **Alt+F4**. La chiusura non dipende dalla
+finestra di FreeTube: se l’app finisce nel tray o si blocca sulla chiusura,
+il wrapper termina comunque il processo (prima `SIGTERM`, poi `SIGKILL`) e
+labwc riparte. Se anche la pagina fosse completamente bloccata, usa
+`Ctrl+Alt+F2` e da console `pkill -TERM -f freetube` (oppure riavvia). La
+qualità video predefinita è **360p** in entrambe le modalità.
 
 Per Chromium e Firefox ESR vengono creati due collegamenti: uno normale e uno
 con suffisso **(cage)**, che usa lo stesso meccanismo a schermo intero. Se
@@ -1213,7 +1219,7 @@ labwc-q4os/
 │   ├── labwc-cage                  # app in Cage a schermo intero
 │   ├── labwc-freetube              # FreeTube normale in labwc
 │   ├── labwc-freetube-cage         # FreeTube in Cage con pulsante X
-│   ├── freetube-close-overlay      # X dentro FreeTube (Cage)
+│   ├── freetube-close-overlay      # X sempre in primo piano dentro FreeTube (Cage)
 │   ├── labwc-cage-help             # console AVVIA CAGE con esempi
 │   ├── labwc-return                # torna da console/Cage a labwc
 │   ├── labwc-audio-key             # helper root keyd per volume
@@ -1568,6 +1574,74 @@ https://docs.mrchromebox.tech/ — Se invece compri un normale **netbook**
 
 L’idea di usare **labwc** (il desktop leggero di questo progetto) viene dai
 consigli di **Riccardo Palombo**: https://www.youtube.com/@RiccardoPalombo
+
+---
+
+## Numeri del progetto
+
+Tutti i numeri vengono dal [`CHANGELOG.md`](CHANGELOG.md): ogni voce è un
+intervento registrato in una release. Le aree sono una stima per parole chiave
+(una voce può riguardare più aspetti, qui conta l'area principale).
+
+### Interventi per area
+
+1 quadretto = 4 voci (arrotondato per eccesso). Colonna più alta: installer e
+compatibilità con **39** interventi.
+
+| Livello | 🟥 Bug | 🟩 Funzioni | 🟦 Migliorie | 🟪 Temi/UI | 🟧 Installer | 🟨 Docs | 🟫 Pulizia | ⬛ Altro |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| 10 | ⬜ | ⬜ | ⬜ | ⬜ | 🟧 | ⬜ | ⬜ | ⬜ |
+| 9 | ⬜ | ⬜ | ⬜ | ⬜ | 🟧 | ⬜ | ⬜ | ⬜ |
+| 8 | ⬜ | 🟩 | ⬜ | ⬜ | 🟧 | ⬜ | ⬜ | ⬜ |
+| 7 | ⬜ | 🟩 | ⬜ | ⬜ | 🟧 | ⬜ | ⬜ | ⬜ |
+| 6 | ⬜ | 🟩 | ⬜ | 🟪 | 🟧 | ⬜ | ⬜ | ⬜ |
+| 5 | ⬜ | 🟩 | ⬜ | 🟪 | 🟧 | ⬜ | ⬜ | ⬛ |
+| 4 | 🟥 | 🟩 | ⬜ | 🟪 | 🟧 | ⬜ | ⬜ | ⬛ |
+| 3 | 🟥 | 🟩 | ⬜ | 🟪 | 🟧 | ⬜ | ⬜ | ⬛ |
+| 2 | 🟥 | 🟩 | 🟦 | 🟪 | 🟧 | 🟨 | ⬜ | ⬛ |
+| 1 | 🟥 | 🟩 | 🟦 | 🟪 | 🟧 | 🟨 | 🟫 | ⬛ |
+| **Totale** | **13** | **29** | **6** | **23** | **39** | **5** | **4** | **17** |
+
+**Legenda**
+
+- 🟥 **Bug corretti** — errori, regressioni, cose che non funzionavano.
+- 🟩 **Nuove funzioni** — comandi, script, scorciatoie, pannelli.
+- 🟦 **Migliorie** — prestazioni, RAM, velocità, semplificazioni.
+- 🟪 **Temi e interfaccia** — temi, icone, Waybar, Fuzzel, Mako, menu.
+- 🟧 **Installer e compatibilità** — pacchetti, Debian, browser, Cage, driver.
+- 🟨 **Documentazione** — README, CHANGELOG, guide e aiuto integrato.
+- 🟫 **Pulizia e manutenzione** — rimozioni, sostituzioni, migrazioni.
+- ⬛ **Altro** — note tecniche e casi particolari.
+
+### Scheda numeri
+
+| Indicatore | Valore |
+| --- | ---: |
+| Release documentate (dalla 1.0 alla 1.22.13) | **41** |
+| Voci/interventi totali nel CHANGELOG | **136** |
+| Bug corretti | **13** |
+| Nuove funzioni | **29** |
+| Migliorie e ottimizzazioni | **6** |
+| Interventi su temi e interfaccia | **23** |
+| Interventi su installer e compatibilità | **39** |
+| Interventi su documentazione | **5** |
+| Pulizia e manutenzione | **4** |
+| Altro / note tecniche | **17** |
+| Script nel repository | **48** |
+| File nel repository | **111** |
+| Righe di script (Bash e Python) | **10.944** |
+| Temi inclusi | **3** |
+
+### Cosa è cambiato nel tempo
+
+- **1.0 → 1.8**: nasce il desktop Labwc con temi, Waybar, Fuzzel, Mako,
+  wlogout, menu e prime correzioni.
+- **1.9 → 1.13**: installer, aggiornamenti, login SDDM e configurazione
+  automatica.
+- **1.14 → 1.19**: integrazione YouTube (360p), browser, wizard GTK e
+  gtk-pipe-viewer.
+- **1.20 → 1.22**: **Cage** per le app a schermo intero, FreeTube, Firefox ESR,
+  touchscreen, ZRAM rifinita e chiusura di FreeTube resa affidabile.
 
 ---
 

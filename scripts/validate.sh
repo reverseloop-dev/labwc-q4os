@@ -28,8 +28,8 @@ done < <(find . -path ./.git -prune -o -type f \( -name '*.sh' -o -path './scrip
 # --- 2. sintassi Python ------------------------------------------------------
 check "sintassi Python"
 PYCACHE_DIR="$(mktemp -d)"
-if PYTHONPYCACHEPREFIX="$PYCACHE_DIR" python3 -m py_compile scripts/generate-wallpapers.py scripts/render-menu.py scripts/labwc-zram scripts/labwc-app-manager scripts/labwc-update-gui scripts/labwc-login-theme scripts/labwc-fuzzel-apps scripts/labwc-preferences scripts/labwc-install-wizard scripts/generate-icons.py; then
-    pass "Python: sfondi, menu, zram, app manager, update GUI, login, fuzzel, preferences, icone"
+if PYTHONPYCACHEPREFIX="$PYCACHE_DIR" python3 -m py_compile scripts/generate-wallpapers.py scripts/render-menu.py scripts/labwc-zram scripts/labwc-app-manager scripts/labwc-update-gui scripts/labwc-login-theme scripts/labwc-fuzzel-apps scripts/labwc-preferences scripts/labwc-install-wizard scripts/freetube-close-overlay scripts/generate-icons.py; then
+    pass "Python: sfondi, menu, zram, app manager, update GUI, login, fuzzel, preferences, overlay FreeTube, icone"
 else
     bad "py_compile"
 fi
@@ -49,6 +49,59 @@ if LABWC_POWER_DRY_RUN=1 bash scripts/labwc-power-menu --action reboot | grep -q
 else
     bad "labwc-power-menu --action (dry-run)"
 fi
+if python3 scripts/freetube-close-overlay --self-test | grep -q 'SELFTEST_OK'; then
+    pass "freetube-close-overlay --self-test"
+else
+    bad "freetube-close-overlay --self-test"
+fi
+if python3 scripts/freetube-close-overlay --version | grep -q '^freetube-close-overlay 2$'; then
+    pass "freetube-close-overlay --version"
+else
+    bad "freetube-close-overlay --version"
+fi
+CAGE_JS="$(mktemp)"
+if python3 scripts/freetube-close-overlay --help >/dev/null 2>&1 &&
+    python3 scripts/freetube-close-overlay --print-js >"$CAGE_JS" &&
+    grep -q 'labwcCloseX' "$CAGE_JS" &&
+    grep -q 'showPopover' "$CAGE_JS" &&
+    grep -q 'MutationObserver' "$CAGE_JS"; then
+    pass "freetube-close-overlay --help/--print-js"
+else
+    bad "freetube-close-overlay --help/--print-js"
+fi
+rm -f "$CAGE_JS"
+# Smoke test del wrapper: FreeTube finto che ignora SIGTERM e overlay che
+# chiede la chiusura. Il wrapper deve escalare a SIGKILL e uscire con 0.
+CAGE_TMP="$(mktemp -d)"
+mkdir -p "$CAGE_TMP/bin" "$CAGE_TMP/home/.config/FreeTube"
+cat >"$CAGE_TMP/bin/freetube" <<'STUB'
+#!/usr/bin/env bash
+printf '9999\n/devtools/browser/mock\n' > "$XDG_CONFIG_HOME/FreeTube/DevToolsActivePort"
+trap '' TERM
+while :; do sleep 0.1; done
+STUB
+chmod 0755 "$CAGE_TMP/bin/freetube"
+cat >"$CAGE_TMP/overlay" <<'STUB'
+import time
+time.sleep(0.2)
+raise SystemExit(10)
+STUB
+chmod 0755 "$CAGE_TMP/overlay"
+if HOME="$CAGE_TMP/home" XDG_CONFIG_HOME="$CAGE_TMP/home/.config" \
+    XDG_STATE_HOME="$CAGE_TMP/home/.local/state" \
+    PATH="$CAGE_TMP/bin:$PATH" LABWC_FREETUBE_OVERLAY="$CAGE_TMP/overlay" \
+    timeout 20 bash scripts/labwc-freetube-cage; then
+    pass "labwc-freetube-cage: chiusura forzata del process tree"
+else
+    bad "labwc-freetube-cage: chiusura forzata del process tree"
+fi
+if pgrep -f "$CAGE_TMP/bin/freetube" >/dev/null 2>&1; then
+    bad "labwc-freetube-cage: processo FreeTube rimasto attivo"
+    pkill -KILL -f "$CAGE_TMP/bin/freetube" 2>/dev/null || true
+else
+    pass "labwc-freetube-cage: nessun processo residuo"
+fi
+rm -rf "$CAGE_TMP"
 if [ -s VERSION ]; then pass "VERSION"; else bad "VERSION"; fi
 if [ -s CHANGELOG.md ] &&
    grep -q "^## \[$(tr -d '[:space:]' < VERSION)\]" CHANGELOG.md; then

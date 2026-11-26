@@ -1,107 +1,617 @@
 #!/usr/bin/env python3
-"""freetube-close-overlay - pulsante X dentro FreeTube quando gira in Cage.
+"""freetube-close-overlay - pulsante X sempre visibile dentro FreeTube in Cage.
 
-Cage non disegna decorazioni (e FreeTube su Wayland non ne fornisce), quindi
-in modalita' Cage non ci sarebbe modo di chiudere la finestra. Questo helper
-si collega al DevTools di FreeTube (gia' avviato con --remote-debugging-port=0)
-e aggiunge un pulsante X in alto a destra che chiama window.close().
+Cage non disegna decorazioni e FreeTube su Wayland non ne fornisce: senza questo
+helper non ci sarebbe modo di chiudere la finestra. Lo script si collega al
+DevTools di FreeTube (avviato con --remote-debugging-port=0, solo localhost) e
+inietta una X che resta nel top layer del browser, quindi sopra il player, i
+menu e i dialoghi.
 
-Uso: freetube-close-overlay /percorso/DevToolsActivePort
+La chiusura non dipende da window.close(): al click la pagina chiama un binding
+CDP, l'overlay esce con codice 10 e il wrapper labwc-freetube-cage termina
+l'intero albero di processi (SIGTERM, poi SIGKILL). Se FreeTube finisce nel
+tray o nasconde la finestra, i target DevTools spariscono: l'overlay lo rileva
+e chiede comunque la chiusura.
+
+Uso: freetube-close-overlay /percorso/DevToolsActivePort [freetube-pid]
+
+Codici di uscita: 0 = app terminata o segnale, 10 = chiusura richiesta,
+1 = errore (websockets mancante), 2 = uso errato.
 """
 
+import argparse
 import asyncio
+import contextlib
 import json
 import os
+import random
+import shutil
+import signal
 import sys
+import tempfile
 import urllib.request
 
-import websockets
+BINDING = "labwcCloseX"
+CLOSE_EXIT = 10
+JS_VERSION = 3
 
 JS = r"""
 (() => {
-  if (document.getElementById('labwc-close-x')) {
-    return 'exists';
+  const V = 3;
+  if (window.__labwcX && window.__labwcX.v === V) {
+    try { window.__labwcX.ensure(); } catch (e) {}
+    return window.__labwcCloseReq ? 'req' : 'ok';
   }
-  const b = document.createElement('button');
-  b.id = 'labwc-close-x';
-  b.type = 'button';
-  b.textContent = '\u2715';
-  b.title = 'Chiudi FreeTube';
-  b.setAttribute('aria-label', 'Chiudi FreeTube');
-  b.style.cssText = [
-    'position:fixed', 'top:8px', 'right:8px', 'z-index:2147483647',
-    'width:40px', 'height:40px', 'border-radius:20px', 'border:0',
-    'background:#c01c28', 'color:#fff', 'font:bold 22px sans-serif',
-    'line-height:40px', 'padding:0', 'cursor:pointer',
-    'box-shadow:0 2px 8px #0008'
-  ].join(';');
-  b.addEventListener('click', () => window.close());
-  document.body.appendChild(b);
-  return 'added';
+  const supported = typeof HTMLElement.prototype.showPopover === 'function';
+  const host = document.createElement('labwc-close-x');
+  host.setAttribute('title', 'Chiudi FreeTube');
+  host.style.cssText = [
+    'all:initial',
+    'position:fixed',
+    'top:8px',
+    'right:8px',
+    'bottom:auto',
+    'left:auto',
+    'width:44px',
+    'height:44px',
+    'z-index:2147483647',
+    'pointer-events:auto',
+    'contain:layout style',
+    'display:block',
+    'margin:0',
+    'padding:0',
+    'border:0',
+    'background:transparent',
+    'overflow:visible'
+  ].map(function (rule) { return rule + ' !important'; }).join(';') + ';';
+  if (supported) host.setAttribute('popover', 'manual');
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = '\u2715';
+  btn.title = 'Chiudi FreeTube';
+  btn.setAttribute('aria-label', 'Chiudi FreeTube');
+  const buttonCss = [
+    'all:initial',
+    'display:block',
+    'box-sizing:border-box',
+    'width:44px',
+    'height:44px',
+    'margin:0',
+    'padding:0',
+    'border-radius:22px',
+    'border:2px solid #fff',
+    'background:#c01c28',
+    'color:#fff',
+    'font:bold 22px/38px sans-serif',
+    'text-align:center',
+    'cursor:pointer',
+    'box-shadow:0 2px 10px rgba(0,0,0,.65)',
+    'opacity:.6',
+    'touch-action:manipulation',
+    'user-select:none',
+    '-webkit-user-select:none'
+  ].map(function (rule) { return rule + ' !important'; }).join(';') + ';';
+
+  let root = null;
+  try { root = host.attachShadow({ mode: 'closed' }); } catch (e) { root = null; }
+  if (root) {
+    const style = document.createElement('style');
+    style.textContent = 'button{' + buttonCss + '}' +
+      'button:hover,button:focus{opacity:1 !important;outline:2px solid #fff !important;outline-offset:1px !important}';
+    root.appendChild(style);
+    btn.style.cssText = buttonCss;
+    root.appendChild(btn);
+  } else {
+    btn.style.cssText = buttonCss;
+    host.appendChild(btn);
+  }
+
+  let closing = false;
+  const close = function () {
+    if (closing) return;
+    closing = true;
+    window.__labwcCloseReq = Date.now();
+    try { btn.textContent = '\u2026'; btn.disabled = true; } catch (e) {}
+    try {
+      if (typeof window.labwcCloseX === 'function') window.labwcCloseX('click');
+    } catch (e) {}
+    setTimeout(function () {
+      try { window.close(); } catch (e) {}
+    }, 1200);
+  };
+
+  btn.addEventListener('pointerdown', function (e) { e.stopPropagation(); }, true);
+  btn.addEventListener('pointerup', function (e) { e.stopPropagation(); }, true);
+  btn.addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    close();
+  }, true);
+
+  window.addEventListener('keydown', function (e) {
+    const key = (e.key || '').toLowerCase();
+    if ((e.ctrlKey && e.shiftKey && key === 'q') || (e.altKey && key === 'f4')) {
+      e.preventDefault();
+      e.stopPropagation();
+      close();
+    }
+  }, true);
+
+  const canHost = function (el) {
+    return !!el && el.nodeType === 1 &&
+      !/^(VIDEO|IFRAME|IMG|CANVAS|OBJECT|EMBED|SVG)$/i.test(el.tagName);
+  };
+
+  let lastReassert = 0;
+  const reassert = function () {
+    if (!host.isConnected) return;
+    const now = Date.now();
+    if (now - lastReassert < 500) return;
+    const rect = host.getBoundingClientRect();
+    if (rect.width < 2 || rect.height < 2) return;
+    const hit = document.elementFromPoint(
+      rect.left + rect.width / 2,
+      rect.top + rect.height / 2
+    );
+    if (hit && (hit === host || host.contains(hit))) return;
+    lastReassert = now;
+    try {
+      host.hidePopover();
+      host.showPopover();
+    } catch (e) {}
+  };
+
+  const ensure = function () {
+    const doc = document.documentElement;
+    if (!doc) return;
+    if (supported) {
+      if (!host.isConnected) doc.appendChild(host);
+      try {
+        if (!host.matches(':popover-open')) host.showPopover();
+      } catch (e) {}
+      reassert();
+    } else {
+      const parent = canHost(document.fullscreenElement)
+        ? document.fullscreenElement
+        : doc;
+      if (host.parentNode !== parent) parent.appendChild(host);
+      if (!host.isConnected) doc.appendChild(host);
+    }
+  };
+
+  let queued = false;
+  const schedule = function () {
+    if (queued) return;
+    queued = true;
+    const run = function () {
+      queued = false;
+      try { ensure(); } catch (e) {}
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
+    else setTimeout(run, 16);
+  };
+
+  const boot = function () {
+    try {
+      new MutationObserver(schedule).observe(document.documentElement, {
+        childList: true,
+        subtree: true
+      });
+    } catch (e) {}
+    schedule();
+  };
+
+  document.addEventListener('fullscreenchange', schedule, true);
+  document.addEventListener('fullscreenerror', schedule, true);
+  document.addEventListener('toggle', schedule, true);
+  document.addEventListener('visibilitychange', schedule, true);
+  window.addEventListener('focus', schedule, true);
+  window.addEventListener('pageshow', schedule, true);
+  window.addEventListener('resize', schedule, true);
+
+  window.__labwcX = { v: V, ensure: ensure, close: close };
+  if (document.documentElement) boot();
+  else {
+    document.addEventListener('DOMContentLoaded', boot, true);
+    setTimeout(boot, 250);
+  }
+  try { ensure(); } catch (e) {}
+  return window.__labwcCloseReq ? 'req' : 'ok';
 })()
 """
 
+HEARTBEAT = (
+    "(() => {"
+    " if (window.__labwcCloseReq) return 'req';"
+    " if (window.__labwcX) { window.__labwcX.ensure(); return 'ok'; }"
+    " return 'missing';"
+    "})()"
+)
+
+
+def log(message):
+    print(f"freetube-close-overlay: {message}", file=sys.stderr, flush=True)
+
 
 def read_port(path):
-    with open(path, encoding="utf-8") as f:
-        return f.readline().strip()
+    """Legge DevToolsActivePort solo quando e' completo e plausibile."""
+    try:
+        with open(path, encoding="utf-8") as handle:
+            lines = [line.strip() for line in handle.read().splitlines() if line.strip()]
+    except (OSError, UnicodeError):
+        return None
+    if len(lines) < 2:
+        return None
+    try:
+        port = int(lines[0], 10)
+    except ValueError:
+        return None
+    if not 1 <= port <= 65535:
+        return None
+    if not lines[1].startswith("/devtools/browser/"):
+        return None
+    return port, lines[1]
 
 
-def page_ws_url(port):
-    with urllib.request.urlopen(
-        f"http://127.0.0.1:{port}/json/list", timeout=3
-    ) as response:
-        targets = json.load(response)
+def http_json(port, path, timeout=2.0):
+    # ProxyHandler vuoto: 127.0.0.1 non deve mai passare da un proxy.
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    url = f"http://127.0.0.1:{port}{path}"
+    with opener.open(url, timeout=timeout) as response:
+        return json.load(response)
+
+
+def list_pages(port, browser_path):
+    """Target page, verificando che la porta appartenga a questa istanza."""
+    version = http_json(port, "/json/version")
+    browser_ws = version.get("webSocketDebuggerUrl", "")
+    if not browser_ws.endswith(browser_path):
+        # File DevToolsActivePort vecchio: la porta ora e' di un'altra istanza.
+        return None
+    targets = http_json(port, "/json/list")
+    pages = []
     for target in targets:
-        if target.get("type") == "page" and target.get("webSocketDebuggerUrl"):
-            return target["webSocketDebuggerUrl"]
-    return None
+        if target.get("type") != "page":
+            continue
+        ws_url = target.get("webSocketDebuggerUrl")
+        if not ws_url or ws_url.startswith("devtools://"):
+            continue
+        pages.append(ws_url)
+    return pages
 
 
-async def evaluate(ws, expression, msg_id):
-    await ws.send(json.dumps({
-        "id": msg_id,
-        "method": "Runtime.evaluate",
-        "params": {"expression": expression, "returnByValue": True},
-    }))
-    while True:
-        message = json.loads(await asyncio.wait_for(ws.recv(), timeout=5))
-        if message.get("id") == msg_id:
-            return message
+class CDP:
+    """Client minimale: un solo lettore, risposte nei Future, eventi in coda."""
 
+    def __init__(self, ws):
+        self.ws = ws
+        self.next_id = 0
+        self.pending = {}
+        self.events = asyncio.Queue()
+        self.reader = None
 
-async def watch(port_file, app_pid=None):
-    msg_id = 0
-    while True:
-        if app_pid is not None:
-            try:
-                os.kill(app_pid, 0)
-            except OSError:
-                return
+    def start(self):
+        self.reader = asyncio.create_task(self._read())
+
+    async def _read(self):
         try:
-            url = page_ws_url(read_port(port_file))
-            if not url:
-                await asyncio.sleep(1)
-                continue
-            async with websockets.connect(url) as ws:
-                while True:
-                    if app_pid is not None:
-                        try:
-                            os.kill(app_pid, 0)
-                        except OSError:
-                            return
-                    msg_id += 1
-                    await evaluate(ws, JS, msg_id)
-                    await asyncio.sleep(2)
+            while True:
+                message = json.loads(await self.ws.recv())
+                message_id = message.get("id")
+                if message_id is not None:
+                    future = self.pending.pop(message_id, None)
+                    if future is not None and not future.done():
+                        future.set_result(message)
+                elif "method" in message:
+                    self.events.put_nowait(message)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            for future in self.pending.values():
+                if not future.done():
+                    future.set_exception(ConnectionError(f"DevTools disconnesso: {exc!r}"))
+            self.pending.clear()
+
+    async def call(self, method, params=None, timeout=5.0):
+        self.next_id += 1
+        message_id = self.next_id
+        future = asyncio.get_running_loop().create_future()
+        self.pending[message_id] = future
+        await self.ws.send(json.dumps({
+            "id": message_id,
+            "method": method,
+            "params": params or {},
+        }))
+        try:
+            return await asyncio.wait_for(future, timeout)
+        finally:
+            self.pending.pop(message_id, None)
+
+    async def stop(self):
+        if self.reader is None:
+            return
+        self.reader.cancel()
+        with contextlib.suppress(BaseException):
+            await self.reader
+
+
+class Watcher:
+    def __init__(self, port_file, app_pid):
+        self.port_file = port_file
+        self.app_pid = app_pid
+        self.stop = asyncio.Event()
+        self.close_requested = asyncio.Event()
+        self.workers = {}
+        self.had_page = False
+        self.empty_since = None
+
+    def app_alive(self):
+        if self.app_pid is None:
+            return True
+        try:
+            os.kill(self.app_pid, 0)
+        except OSError:
+            return False
+        return True
+
+    async def evaluate(self, cdp, expression, context_id=None):
+        params = {"expression": expression, "returnByValue": True}
+        if context_id is not None:
+            params["contextId"] = context_id
+        try:
+            reply = await cdp.call("Runtime.evaluate", params)
         except Exception:
-            await asyncio.sleep(1)
+            return None
+        result = reply.get("result") or {}
+        if result.get("exceptionDetails"):
+            return None
+        return (result.get("result") or {}).get("value")
+
+    async def bind(self, cdp, context_id=None):
+        params = {"name": BINDING}
+        if context_id is not None:
+            params["executionContextId"] = context_id
+        try:
+            await cdp.call("Runtime.addBinding", params)
+        except Exception:
+            pass
+
+    async def install(self, cdp, context_id=None):
+        await self.bind(cdp, context_id)
+        return await self.evaluate(cdp, JS, context_id)
+
+    async def page_worker(self, ws_url):
+        import websockets
+
+        backoff = 0.2
+        failures = 0
+        while not self.stop.is_set():
+            cdp = None
+            try:
+                async with websockets.connect(
+                    ws_url,
+                    max_size=None,
+                    ping_interval=None,
+                    open_timeout=5,
+                    close_timeout=1,
+                ) as ws:
+                    cdp = CDP(ws)
+                    cdp.start()
+                    await cdp.call("Runtime.enable")
+                    await self.install(cdp)
+                    try:
+                        await cdp.call("Page.enable")
+                        await cdp.call(
+                            "Page.addScriptToEvaluateOnNewDocument",
+                            {"source": JS},
+                        )
+                    except Exception:
+                        pass
+                    backoff = 0.2
+                    if await self.page_loop(cdp) == "req":
+                        self.close_requested.set()
+                        return
+                    failures = 0
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                failures += 1
+                # Un log per i primi errori e poi uno ogni 30 tentativi: la
+                # pagina puo' non essere pronta per qualche secondo.
+                if failures == 1 or failures % 30 == 0:
+                    log(f"connessione persa ({failures}): {exc!r}")
+            finally:
+                if cdp is not None:
+                    await cdp.stop()
+            if self.stop.is_set():
+                return
+            await asyncio.sleep(backoff * (1 + random.random() * 0.4))
+            backoff = min(backoff * 2, 3.0)
+
+    async def page_loop(self, cdp):
+        while not self.stop.is_set():
+            try:
+                event = await asyncio.wait_for(cdp.events.get(), timeout=1.0)
+            except asyncio.TimeoutError:
+                value = await self.evaluate(cdp, HEARTBEAT)
+                if value == "req":
+                    return "req"
+                if value is None:
+                    raise ConnectionError("DevTools non risponde")
+                if value == "missing":
+                    await self.install(cdp)
+                continue
+            method = event.get("method")
+            params = event.get("params") or {}
+            if method == "Runtime.bindingCalled":
+                if params.get("name") == BINDING:
+                    return "req"
+            elif method == "Runtime.executionContextCreated":
+                context = params.get("context") or {}
+                context_id = context.get("id")
+                if context_id is not None:
+                    await self.install(cdp, context_id)
+            elif method == "Runtime.executionContextsCleared":
+                await self.bind(cdp)
+            elif method == "Page.frameNavigated":
+                await self.install(cdp)
+            elif method == "Inspector.targetCrashed":
+                log("renderer di FreeTube bloccato o terminato")
+        return None
+
+    def spawn_workers(self, pages):
+        for url in [u for u, t in self.workers.items() if t.done()]:
+            del self.workers[url]
+        for url in pages:
+            task = self.workers.get(url)
+            if task is None or task.done():
+                self.workers[url] = asyncio.create_task(self.page_worker(url))
+
+    async def run(self):
+        while not self.stop.is_set():
+            if not self.app_alive():
+                return 0
+            pages = None
+            info = read_port(self.port_file)
+            if info is not None:
+                port, browser_path = info
+                try:
+                    pages = list_pages(port, browser_path)
+                except Exception:
+                    pages = None
+            if pages:
+                self.had_page = True
+                self.empty_since = None
+                self.spawn_workers(pages)
+            elif pages is not None and self.had_page:
+                # Nessun target page: finestra nascosta, tray o renderer sparito.
+                now = asyncio.get_running_loop().time()
+                if self.empty_since is None:
+                    self.empty_since = now
+                elif now - self.empty_since > 4.0:
+                    log("nessuna finestra FreeTube: richiedo la chiusura")
+                    return CLOSE_EXIT
+            try:
+                await asyncio.wait_for(self.close_requested.wait(), timeout=1.0)
+            except asyncio.TimeoutError:
+                pass
+            if self.close_requested.is_set():
+                return CLOSE_EXIT
+        return 0
+
+
+async def watch(port_file, app_pid):
+    watcher = Watcher(port_file, app_pid)
+    loop = asyncio.get_running_loop()
+    for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        try:
+            loop.add_signal_handler(sig, watcher.stop.set)
+        except (NotImplementedError, RuntimeError):
+            pass
+    try:
+        return await watcher.run()
+    finally:
+        watcher.stop.set()
+        tasks = list(watcher.workers.values())
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        watcher.workers.clear()
+
+
+def self_test():
+    tmpdir = tempfile.mkdtemp(prefix="freetube-close-overlay-")
+
+    def write(name, text):
+        path = os.path.join(tmpdir, name)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        return path
+
+    try:
+        good = write("good", "9222\n/devtools/browser/abc-123\n")
+        if read_port(good) != (9222, "/devtools/browser/abc-123"):
+            raise SystemExit("read_port: file valido non riconosciuto")
+        if read_port(write("short", "9222\n")) is not None:
+            raise SystemExit("read_port: file incompleto accettato")
+        if read_port(write("empty", "")) is not None:
+            raise SystemExit("read_port: file vuoto accettato")
+        if read_port(write("badport", "nope\n/devtools/browser/x\n")) is not None:
+            raise SystemExit("read_port: porta non numerica accettata")
+        if read_port(write("range", "0\n/devtools/browser/x\n")) is not None:
+            raise SystemExit("read_port: porta fuori range accettata")
+        if read_port(write("badpath", "9222\n/devtools/page/x\n")) is not None:
+            raise SystemExit("read_port: path errato accettato")
+        if read_port(os.path.join(tmpdir, "missing")) is not None:
+            raise SystemExit("read_port: file mancante accettato")
+        for needle in (
+            "labwcCloseX",
+            "showPopover",
+            "attachShadow",
+            "fullscreenchange",
+            "MutationObserver",
+            "elementFromPoint",
+            "__labwcCloseReq",
+        ):
+            if needle not in JS:
+                raise SystemExit(f"JavaScript senza {needle}")
+        if JS_VERSION != 3:
+            raise SystemExit("versione JavaScript inattesa")
+        print("SELFTEST_OK")
+        return 0
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(
+        prog="freetube-close-overlay",
+        description="Pulsante X e chiusura garantita di FreeTube in Cage.",
+    )
+    parser.add_argument(
+        "port_file", nargs="?",
+        help="percorso del file DevToolsActivePort di FreeTube",
+    )
+    parser.add_argument(
+        "app_pid", nargs="?", type=int,
+        help="pid di FreeTube, per uscire quando l'app termina",
+    )
+    parser.add_argument(
+        "--self-test", action="store_true",
+        help="test interno senza rete e senza websockets",
+    )
+    parser.add_argument(
+        "--print-js", action="store_true",
+        help="stampa il JavaScript iniettato nella pagina",
+    )
+    parser.add_argument(
+        "--version", action="version", version="freetube-close-overlay 2",
+    )
+    return parser
+
+
+def main(argv=None):
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.print_js:
+        print(JS.strip())
+        return 0
+    if args.self_test:
+        return self_test()
+    if not args.port_file:
+        parser.error("serve il percorso di DevToolsActivePort")
+    try:
+        import websockets  # noqa: F401
+    except ImportError:
+        log("python3-websockets non installato")
+        return 1
+    try:
+        return asyncio.run(watch(args.port_file, args.app_pid))
+    except KeyboardInterrupt:
+        return 0
 
 
 if __name__ == "__main__":
-    if len(sys.argv) not in (2, 3):
-        raise SystemExit("uso: freetube-close-overlay DevToolsActivePort [freetube-pid]")
-    app_pid = int(sys.argv[2]) if len(sys.argv) == 3 else None
-    try:
-        asyncio.run(watch(sys.argv[1], app_pid))
-    except KeyboardInterrupt:
-        pass
+    sys.exit(main())

@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  labwc-freetube-cage - FreeTube in Cage con pulsante X per chiuderlo.
+#  labwc-freetube-cage - FreeTube in Cage con chiusura garantita.
 #
-#  Cage non disegna decorazioni. FreeTube viene avviato con il DevTools su
-#  porta casuale (solo localhost) e freetube-close-overlay aggiunge una X
-#  dentro la pagina: al click FreeTube si chiude e labwc riparte.
+#  FreeTube parte con il DevTools in ascolto solo su localhost;
+#  freetube-close-overlay inietta una X sempre in primo piano (top layer).
+#  Al click, o con Ctrl+Shift+Q / Alt+F4, l'overlay esce con codice 10: qui
+#  terminiamo tutto l'albero di processi (SIGTERM, poi SIGKILL) e Cage torna
+#  a labwc. L'overlay viene riavviato se muore, cosi' la X non sparisce mai.
 # =============================================================================
 set -u
 
@@ -12,38 +14,159 @@ if ! command -v freetube >/dev/null 2>&1; then
     exit 1
 fi
 
+state="${XDG_STATE_HOME:-$HOME/.local/state}/labwc-q4os"
+mkdir -p "$state" 2>/dev/null || true
+log="$state/freetube-cage.log"
+: >"$log" 2>/dev/null || true
+
+log_line() {
+    printf '%s %s\n' "$(date +%H:%M:%S)" "$*" >>"$log" 2>/dev/null || true
+}
+
 data="${XDG_CONFIG_HOME:-$HOME/.config}/FreeTube"
-overlay="$HOME/.local/bin/freetube-close-overlay"
-mkdir -p "$data" 2>/dev/null || true
-rm -f "$data/DevToolsActivePort"
-
-freetube --ozone-platform=wayland --remote-debugging-port=0 \
-    --remote-debugging-address=127.0.0.1 &
-pid=$!
-
 port_file="$data/DevToolsActivePort"
+overlay="${LABWC_FREETUBE_OVERLAY:-$HOME/.local/bin/freetube-close-overlay}"
+mkdir -p "$data" 2>/dev/null || true
+rm -f "$port_file"
+
+app_args=(freetube --ozone-platform=wayland --remote-debugging-port=0
+          --remote-debugging-address=127.0.0.1)
+
+# setsid mette FreeTube in una sessione e in un gruppo di processi propri:
+# TERM/KILL sul gruppo raggiungono anche i figli di Electron. In un processo
+# di background non interattivo setsid non fa fork, quindi $! resta il pid.
+setsid "${app_args[@]}" >>"$log" 2>&1 &
+pid=$!
+pgid="$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d '[:space:]')"
+self_pgid="$(ps -o pgid= -p $$ 2>/dev/null | tr -d '[:space:]')"
+if [ -z "$pgid" ] || [ "$pgid" = "$self_pgid" ]; then
+    # setsid assente o non applicato: si uccidono pid e discendenti.
+    pgid=""
+fi
+log_line "FreeTube avviato (pid $pid, pgid ${pgid:-nessuno})"
+
+app_reaped=0
 overlay_pid=""
+
+pid_alive() {
+    local target="${1:-}" status
+    [ -n "$target" ] || return 1
+    status="$(ps -o stat= -p "$target" 2>/dev/null)" || return 1
+    [ -n "$status" ] || return 1
+    case "$status" in
+        Z*) return 1 ;;
+    esac
+    return 0
+}
+
+descendants() {
+    local parent="$1" child
+    for child in $(ps -o pid= --ppid "$parent" 2>/dev/null); do
+        descendants "$child"
+        printf '%s\n' "$child"
+    done
+}
+
+terminate_tree() {
+    local target="${1:-}" group="${2:-}" children child _
+    [ -n "$target" ] || return 0
+    children="$(descendants "$target")"
+    if [ -n "$group" ]; then
+        kill -TERM -- "-$group" 2>/dev/null || true
+    fi
+    kill -TERM "$target" 2>/dev/null || true
+    for _ in $(seq 1 30); do
+        pid_alive "$target" || break
+        sleep 0.1
+    done
+    if [ -n "$group" ]; then
+        kill -KILL -- "-$group" 2>/dev/null || true
+    fi
+    for child in $children; do
+        kill -KILL "$child" 2>/dev/null || true
+    done
+    kill -KILL "$target" 2>/dev/null || true
+    wait "$target" 2>/dev/null || true
+    app_reaped=1
+}
+
 cleanup() {
+    trap - EXIT TERM INT HUP
     if [ -n "$overlay_pid" ]; then
-        kill "$overlay_pid" 2>/dev/null || true
+        kill -TERM "$overlay_pid" 2>/dev/null || true
+        kill -KILL "$overlay_pid" 2>/dev/null || true
+        wait "$overlay_pid" 2>/dev/null || true
+        overlay_pid=""
+    fi
+    if [ "$app_reaped" -eq 0 ]; then
+        terminate_tree "$pid" "$pgid"
     fi
 }
-trap cleanup EXIT TERM INT
-for _ in $(seq 1 150); do
-    if [ -s "$port_file" ]; then
-        if [ -x "$overlay" ] && command -v python3 >/dev/null 2>&1; then
-            python3 "$overlay" "$port_file" "$pid" &
-            overlay_pid=$!
-        fi
+trap cleanup EXIT
+trap 'exit 143' TERM
+trap 'exit 130' INT
+trap 'exit 129' HUP
+
+overlay_attempts=0
+overlay_backoff=1
+overlay_disabled=0
+
+start_overlay() {
+    if [ "$overlay_disabled" -eq 1 ]; then
+        return 0
+    fi
+    if [ ! -f "$overlay" ] || ! command -v python3 >/dev/null 2>&1; then
+        log_line "overlay non disponibile: FreeTube resta senza pulsante X"
+        overlay_disabled=1
+        return 0
+    fi
+    python3 "$overlay" "$port_file" "$pid" >>"$log" 2>&1 &
+    overlay_pid=$!
+    log_line "overlay avviato (pid $overlay_pid)"
+}
+
+status=0
+close_requested=0
+start_overlay
+
+while :; do
+    if ! pid_alive "$pid"; then
+        wait "$pid" 2>/dev/null
+        status=$?
+        app_reaped=1
         break
     fi
-    if ! kill -0 "$pid" 2>/dev/null; then
-        exit 1
+    if [ -n "$overlay_pid" ] && ! pid_alive "$overlay_pid"; then
+        wait "$overlay_pid" 2>/dev/null
+        overlay_status=$?
+        overlay_pid=""
+        if [ "$overlay_status" -eq 10 ]; then
+            log_line "chiusura richiesta dalla X o dalla scorciatoia"
+            close_requested=1
+            break
+        fi
+        overlay_attempts=$((overlay_attempts + 1))
+        if [ "$overlay_attempts" -gt 20 ]; then
+            log_line "overlay terminato ($overlay_status): troppi riavvii"
+            overlay_disabled=1
+        else
+            log_line "overlay terminato ($overlay_status): riavvio tra ${overlay_backoff}s"
+            sleep "$overlay_backoff"
+            overlay_backoff=$((overlay_backoff * 2))
+            if [ "$overlay_backoff" -gt 10 ]; then
+                overlay_backoff=10
+            fi
+            start_overlay
+        fi
     fi
-    sleep 0.2
+    sleep 0.3
 done
 
-wait "$pid"
-status=$?
-cleanup
+if [ "$close_requested" -eq 1 ]; then
+    terminate_tree "$pid" "$pgid"
+    exit 0
+fi
+if [ "$app_reaped" -eq 0 ]; then
+    terminate_tree "$pid" "$pgid"
+fi
 exit "$status"
