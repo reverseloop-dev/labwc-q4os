@@ -1,0 +1,157 @@
+#!/usr/bin/env python3
+"""labwc-touch-tap - tap sul touchscreen: 2 dita = destro, 3 dita = Esc.
+
+Serve a chiudere lo schermo intero (FreeTube/browser) senza tastiera.
+Un dito resta il click sinistro nativo di labwc/app.
+Non prende in esclusiva il touchscreen: legge gli eventi e inietta un
+puntatore/tastiera virtuali via /dev/uinput.
+"""
+
+import math
+import sys
+import time
+
+from evdev import AbsInfo, InputDevice, UInput, ecodes as e
+
+TAP_MS = 320
+MULTI_DOWN_MS = 260
+MOVE_FRAC = 0.025
+
+
+def log(message):
+    print(f"touch-tap: {message}", flush=True)
+
+
+def make_pointer():
+    events = {
+        e.EV_ABS: [
+            (e.ABS_X, AbsInfo(0, 0, 32767, 0, 0, 0)),
+            (e.ABS_Y, AbsInfo(0, 0, 32767, 0, 0, 0)),
+        ],
+        e.EV_KEY: [e.BTN_LEFT, e.BTN_RIGHT],
+    }
+    return UInput(events, name="labwc-touch-tap", bustype=e.BUS_USB)
+
+
+def make_keyboard():
+    return UInput({e.EV_KEY: [e.KEY_ESC]}, name="labwc-touch-tap-kbd",
+                  bustype=e.BUS_USB)
+
+
+def main():
+    if len(sys.argv) != 2:
+        raise SystemExit("uso: labwc-touch-tap /dev/input/eventX")
+    dev = InputDevice(sys.argv[1])
+    try:
+        ax = dev.absinfo(e.ABS_MT_POSITION_X)
+        ay = dev.absinfo(e.ABS_MT_POSITION_Y)
+    except (KeyError, OSError):
+        ax = dev.absinfo(e.ABS_X)
+        ay = dev.absinfo(e.ABS_Y)
+    xmin, xmax = ax.min, ax.max
+    ymin, ymax = ay.min, ay.max
+    if xmax <= xmin or ymax <= ymin:
+        raise SystemExit("touchscreen senza range ABS valido")
+
+    pointer = make_pointer()
+    keyboard = make_keyboard()
+    time.sleep(0.4)
+    log(f"attivo su {dev.path} ({xmin}-{xmax}, {ymin}-{ymax})")
+
+    xrange = xmax - xmin
+    yrange = ymax - ymin
+    move_limit = max(8.0, xrange * MOVE_FRAC)
+
+    pos = {}
+    active = {}
+    taps = []
+    first_down = None
+    max_move = 0.0
+    cur_slot = 0
+
+    def click(button, x, y):
+        ux = int((x - xmin) * 32767 / xrange)
+        uy = int((y - ymin) * 32767 / yrange)
+        pointer.write(e.EV_ABS, e.ABS_X, ux)
+        pointer.write(e.EV_ABS, e.ABS_Y, uy)
+        pointer.syn()
+        time.sleep(0.03)
+        pointer.write(e.EV_KEY, button, 1)
+        pointer.syn()
+        time.sleep(0.05)
+        pointer.write(e.EV_KEY, button, 0)
+        pointer.syn()
+
+    def escape():
+        keyboard.write(e.EV_KEY, e.KEY_ESC, 1)
+        keyboard.syn()
+        time.sleep(0.05)
+        keyboard.write(e.EV_KEY, e.KEY_ESC, 0)
+        keyboard.syn()
+
+    try:
+        for event in dev.read_loop():
+            if event.type == e.EV_ABS:
+                if event.code == e.ABS_MT_SLOT:
+                    cur_slot = event.value
+                elif event.code == e.ABS_MT_POSITION_X:
+                    pos.setdefault(cur_slot, [0, 0])[0] = event.value
+                    a = active.get(cur_slot)
+                    if a is not None:
+                        a[3] = event.value
+                        if a[1] is not None and a[2] is not None:
+                            max_move = max(max_move, math.hypot(
+                                a[3] - a[1], a[4] - a[2]))
+                        elif a[1] is None and a[4] is not None:
+                            a[1], a[2] = a[3], a[4]
+                elif event.code == e.ABS_MT_POSITION_Y:
+                    pos.setdefault(cur_slot, [0, 0])[1] = event.value
+                    a = active.get(cur_slot)
+                    if a is not None:
+                        a[4] = event.value
+                        if a[1] is not None and a[2] is not None:
+                            max_move = max(max_move, math.hypot(
+                                a[3] - a[1], a[4] - a[2]))
+                        elif a[2] is None and a[3] is not None:
+                            a[1], a[2] = a[3], a[4]
+                elif event.code == e.ABS_MT_TRACKING_ID:
+                    now = time.monotonic()
+                    if event.value >= 0:
+                        if first_down is None:
+                            first_down = now
+                            taps = []
+                            max_move = 0.0
+                        # [down_time, start_x, start_y, last_x, last_y]
+                        active[cur_slot] = [now, None, None, None, None]
+                    elif cur_slot in active:
+                        down, sx, sy, lx, ly = active.pop(cur_slot)
+                        if lx is None:
+                            lx, ly = sx or 0, sy or 0
+                        taps.append((lx, ly, down))
+                        if not active and first_down is not None:
+                            duration = (now - first_down) * 1000
+                            times = [t for _, _, t in taps]
+                            spread = (max(times) - min(times)) * 1000
+                            fingers = len(taps)
+                            if (duration <= TAP_MS
+                                    and spread <= MULTI_DOWN_MS
+                                    and max_move <= move_limit
+                                    and fingers in (2, 3)):
+                                cx = sum(x for x, _, _ in taps) / fingers
+                                cy = sum(y for _, y, _ in taps) / fingers
+                                if fingers == 2:
+                                    click(e.BTN_RIGHT, cx, cy)
+                                    log("2 dita: tasto destro")
+                                else:
+                                    escape()
+                                    log("3 dita: Esc")
+                            first_down = None
+                            taps = []
+                            max_move = 0.0
+    except OSError:
+        # Touchscreen rimossa (sospensione/riconnessione): esci pulito.
+        pass
+
+
+if __name__ == "__main__":
+    main()

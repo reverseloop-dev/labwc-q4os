@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.7**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.8**
 
 ---
 
@@ -362,15 +362,28 @@ Flag: `--browser chromium|librewolf|none`; restano validi `--chromium`,
 non può essere installato, ma le estensioni vengono configurate se è già
 presente.
 
-**SMTube** non viene installato: l’ultima release è ferma al 2021 e il
-pacchetto non è disponibile in Debian 13/Q4OS 6. Al suo posto viene proposto
-**FreeTube**, client YouTube con GUI, installato dal pacchetto ufficiale `.deb`.
+Per YouTube è stato scelto **FreeTube**: client con interfaccia grafica,
+installato dal pacchetto ufficiale `.deb`. È l’unica app YouTube inclusa:
+niente SMTube o lettori WebKit obsoleti.
 
 ### Tasti volume e AVVIA CAGE
 
 I tasti **volume su/giù/mute** vengono intercettati da `keyd` e funzionano
-anche dentro Cage. Nel menu **TOOL reverseloop** la voce **AVVIA CAGE** chiude
-labwc e apre una console dentro Cage: da lì si avviano direttamente:
+anche dentro Cage.
+
+**Cos’è Cage e perché lo uso.** labwc è il desktop normale: barra, menu,
+finestre, sfondo. **Cage** invece è un compositore minimale che mostra **una
+sola applicazione a tutto schermo**, senza barra, senza menu e senza desktop.
+Quando si avvia un’app in Cage, labwc viene **chiuso davvero** (non è una
+finestra a schermo intero dentro labwc): restano in memoria solo Cage e l’app.
+Ho scelto Cage per i PC vecchi e i Chromebook con poca RAM: un video o un
+browser occupano quasi tutta la memoria disponibile, quindi Cage toglie di
+mezzo tutto il resto. Alla chiusura dell’app, labwc riparte da solo. Poiché
+labwc viene chiuso, **salva i documenti prima**: le modifiche non salvate
+vanno perse.
+
+Nel menu **TOOL reverseloop** la voce **AVVIA CAGE** chiude labwc e apre una
+console dentro Cage: da lì si avviano direttamente:
 ```
 chromium
 librewolf
@@ -390,10 +403,16 @@ cursore software. Serve un logout/login una volta dopo l’aggiornamento; senza
 uno dei due requisiti le app in Cage non ricevono il puntatore, anche se Cage
 si avvia.
 
-**Touchpad.** Tap a due dita e click a due dita inviano il **tasto destro**
-(`tapButtonMap lrm`, `clickMethod clickfinger`); vale anche per il touchpad
-“Elan Touchpad” dei Chromebook. È configurato in `rc.xml` e si applica con
-`labwc --reconfigure` o al login.
+**Touchpad.** Tap a due dita invia il **tasto destro**. Il click fisico usa
+le aree del touchpad: **in basso a sinistra = sinistro**, **in basso a destra
+= destro** (`tapButtonMap lrm`, `clickMethod buttonAreas`); vale anche per il
+touchpad “Elan Touchpad” dei Chromebook. È configurato in `rc.xml` e si
+applica con `labwc --reconfigure` o al login.
+
+**Touchscreen.** Un dito è il click sinistro nativo. **Due dita = tasto
+destro**, **tre dita = Esc**: serve a uscire dallo schermo intero di FreeTube
+o del browser, sia in labwc sia in Cage, senza tastiera. Funziona tramite
+`labwc-touch-tap` e `/dev/uinput` (l’installer dà accesso al gruppo `input`).
 
 **Tornare a labwc dopo Cage.** Se lanci `cage` manualmente dalla console, il
 wrapper mostra le istruzioni prima e dopo l'app. Dalla console non lanciare
@@ -1199,6 +1218,7 @@ labwc-q4os/
 │   ├── labwc-power-menu           # menu sessione Fuzzel/Zenity
 │   ├── labwc-sysinfo              # versioni e informazioni sistema
 │   ├── labwc-touchscreen          # rileva /dev/input/eventX del touchscreen
+│   ├── labwc-touch-tap            # tap touch: 2 dita=destro, 3 dita=Esc
 │   ├── labwc-session-launch      # wrapper sessione (login Plasma/SDDM)
 │   ├── make-checksums             # rigenera SHA256SUMS per il bootstrap
 │   ├── labwc-doctor               # diagnostica e riparazione

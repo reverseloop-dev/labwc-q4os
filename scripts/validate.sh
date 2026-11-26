@@ -269,6 +269,7 @@ for f in install.sh bootstrap.sh scripts/labwc-theme-apply scripts/labwc-theme-s
          scripts/labwc-desktop scripts/labwc-desktop-state scripts/labwc-desktop-status scripts/labwc-desktop-menu \
          scripts/labwc-power-menu scripts/labwc-sysinfo \
          scripts/labwc-touchscreen \
+         scripts/labwc-touch-tap \
          scripts/labwc-session-start scripts/validate.sh scripts/generate-wallpapers.py \
          scripts/render-menu.py scripts/generate-icons.py; do
     if [ -x "$f" ]; then pass "$f"; else bad "$f non eseguibile"; fi

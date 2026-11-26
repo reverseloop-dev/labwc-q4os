@@ -891,6 +891,7 @@ TOUCH_PKGS=(
     wvkbd
     lisgd
     libinput-tools
+    python3-evdev
     wlr-randr
 )
 
@@ -1862,6 +1863,21 @@ configure_touchscreen() {
     else
         warn "Impossibile aggiungere $user_name al gruppo input: i gesti touch non partiranno."
     fi
+
+    # labwc-touch-tap inietta click e Esc via /dev/uinput. Di default e'
+    # root:root 0600: diamo accesso al gruppo input (gia' usato per evdev).
+    sudo install -d -m 0755 /etc/udev/rules.d
+    printf '%s\n' \
+        '# labwc-q4os: touch tap -> click destro / Esc' \
+        'KERNEL=="uinput", GROUP="input", MODE="0660"' |
+        sudo tee /etc/udev/rules.d/60-labwc-q4os-uinput.rules >/dev/null
+    sudo udevadm control --reload-rules 2>/dev/null || true
+    sudo udevadm trigger --name-match=uinput 2>/dev/null || true
+    if [ -e /dev/uinput ]; then
+        sudo chgrp input /dev/uinput 2>/dev/null || true
+        sudo chmod 0660 /dev/uinput 2>/dev/null || true
+    fi
+    info "Touch: tap a 2 dita = destro, 3 dita = Esc (via uinput)."
 }
 
 # -----------------------------------------------------------------------------
@@ -1922,6 +1938,7 @@ for helper in \
     labwc-power-menu \
     labwc-sysinfo \
     labwc-touchscreen \
+    labwc-touch-tap \
     labwc-login-theme \
     labwc-fuzzel-apps \
     labwc-minimized \
@@ -2547,7 +2564,7 @@ for variant in nordic-cobalt muted-crimson sage-emerald; do
     [ -f "/usr/share/labwc-q4os/login-themes/$variant/Main.qml" ] ||
         die "tema login mancante: $variant"
 done
-for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-doctor labwc-app-manager labwc-update-check labwc-update-copy labwc-update-popup labwc-update-run labwc-update-gui labwc-preferences labwc-desktop labwc-desktop-state labwc-desktop-status labwc-desktop-menu labwc-power-menu labwc-sysinfo labwc-touchscreen labwc-login-theme labwc-fuzzel-apps labwc-minimized labwc-install-wizard labwc-cage labwc-freetube labwc-freetube-cage freetube-close-overlay labwc-cage-help; do
+for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-doctor labwc-app-manager labwc-update-check labwc-update-copy labwc-update-popup labwc-update-run labwc-update-gui labwc-preferences labwc-desktop labwc-desktop-state labwc-desktop-status labwc-desktop-menu labwc-power-menu labwc-sysinfo labwc-touchscreen labwc-touch-tap labwc-login-theme labwc-fuzzel-apps labwc-minimized labwc-install-wizard labwc-cage labwc-freetube labwc-freetube-cage freetube-close-overlay labwc-cage-help; do
     [ -x "$BIN/$helper" ] || die "helper non eseguibile: $helper"
 done
 ok "Tutto in ordine."

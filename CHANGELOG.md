@@ -2,6 +2,18 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.22.8]
+
+- Touchpad: click fisico in basso a sinistra = sinistro, in basso a destra =
+  destro (`clickMethod buttonAreas`); il tap a due dita resta tasto destro.
+- Touchscreen: nuovo `labwc-touch-tap`. Due dita = tasto destro, tre dita =
+  Esc per uscire dallo schermo intero di FreeTube/browser, anche in Cage.
+  Un dito resta il click sinistro nativo.
+- Installer: regola udev per `/dev/uinput` accessibile al gruppo `input`,
+  pacchetto `python3-evdev`, avvio del demone tap e self-heal del marker touch.
+- README: spiegazione semplice di cos’è Cage e perché viene usato, prima
+  degli esempi di avvio app.
+
 ## [1.22.7]
 
 - FreeTube: l’installer usa **0.23.15**, ultima versione senza SABR, e la

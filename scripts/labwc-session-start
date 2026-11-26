@@ -189,8 +189,27 @@ if command -v cliphist >/dev/null 2>&1 && command -v wl-paste >/dev/null 2>&1; t
 fi
 
 # Touchscreen: tastiera su schermo e gesti (attivati dall'installer)
+if [ ! -f "$CONFIG/labwc/touchscreen.enabled" ] &&
+    [ -r /etc/labwc-q4os/install-options ] &&
+    grep -qx 'TOUCH=1' /etc/labwc-q4os/install-options 2>/dev/null; then
+    printf '1\n' >"$CONFIG/labwc/touchscreen.enabled"
+    chmod 0644 "$CONFIG/labwc/touchscreen.enabled" 2>/dev/null || true
+fi
 if [ -f "$CONFIG/labwc/touchscreen.enabled" ]; then
     touch_event="$("$HOME/.local/bin/labwc-touchscreen" 2>/dev/null | head -n1 || true)"
+    TOUCH_TAP="$HOME/.local/bin/labwc-touch-tap"
+    if [ -n "$touch_event" ] && [ -x "$TOUCH_TAP" ] &&
+        command -v python3 >/dev/null 2>&1; then
+        pkill -f "$TOUCH_TAP" 2>/dev/null || true
+        sleep 0.2
+        setsid -f "$TOUCH_TAP" "$touch_event" >>"$LOG" 2>&1 &
+        sleep 0.4
+        if pgrep -f "$TOUCH_TAP" >/dev/null 2>&1; then
+            printf 'touch: tap 2 dita=destro, 3 dita=Esc su %s\n' "$touch_event"
+        else
+            printf 'touch: labwc-touch-tap non partito (serve /dev/uinput 0660 gruppo input?)\n'
+        fi
+    fi
     if command -v wvkbd-mobintl >/dev/null 2>&1; then
         start_once wvkbd-mobintl wvkbd-mobintl --hidden -L 280
         sleep 0.2
