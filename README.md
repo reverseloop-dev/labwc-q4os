@@ -333,8 +333,9 @@ L'installer permette di scegliere con una breve descrizione:
 1. **Chromium** — motore di Chrome, massima compatibilità con le web app;
    estensioni dal Chrome Web Store. Usa più RAM: scegli questo se le web app
    devono funzionare senza sorprese.
-2. **Firefox ESR** — Firefox stabile e leggero: più privacy, estensioni dal
-   catalogo Mozilla e meno RAM di Chromium. Consigliato sui PC datati.
+2. **Firefox ESR** (`firefox-esr`) — Firefox stabile e leggero: più privacy,
+   estensioni dal catalogo Mozilla e meno RAM di Chromium. Consigliato sui PC
+   datati.
 3. **Entrambi** — installa Chromium e Firefox ESR, ognuno con le sue estensioni.
 4. **Nessuno** — non installa e non modifica nessun browser.
 
@@ -351,8 +352,8 @@ installa dal Chrome Web Store:
 - **Privacy Badger** (`pkehgijcmpdhfbdbbnkijodmdjhbjlgp`);
 - **enhanced-h264ify** (`omkfmpieigblcllmkgbflkikinpkodlk`).
 
-**Firefox ESR** arriva dal repository Debian. La policy in
-`/etc/firefox-esr/policies/policies.json` (copiata anche in
+**Firefox ESR** arriva dal repository Debian; il comando è `firefox-esr`. La
+policy in `/etc/firefox-esr/policies/policies.json` (copiata anche in
 `/usr/share/firefox-esr/distribution/`) aggiunge dal catalogo Mozilla:
 
 - **uBlock Origin** (`uBlock0@raymondhill.net`);
@@ -650,7 +651,7 @@ La **prima domanda** è: *“Vuoi modificare i parametri prima di aggiornare?”
    Labwc selezionabile al login (TDM resta installato).
 8. **tema iniziale** — blu Nordic Cobalt, rosso Muted Crimson o verde Sage
    Emerald.
-9. **browser** — Chromium, Firefox ESR o nessuno, con una riga che spiega a cosa
+9. **browser** — Chromium, Firefox ESR, entrambi o nessuno, con una riga che spiega a cosa
    serve ciascuno. Il browser scelto non viene reinstallato; se l'altro è già
    installato, chiede se disinstallarlo (default no). Le tre estensioni vengono
    configurate automaticamente.
