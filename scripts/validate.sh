@@ -429,7 +429,8 @@ fi
 if python3 - "$TMP/.config/labwc/menu.xml" <<'PY'
 import sys, unicodedata, xml.etree.ElementTree as ET
 root = ET.parse(sys.argv[1]).getroot()
-skip = {"root-menu", "client-menu", "client-send-to-desktop-menu"}
+# desktop-menu: la scala schermo e' volutamente in cima (labwc non ha scroll).
+skip = {"root-menu", "client-menu", "client-send-to-desktop-menu", "desktop-menu"}
 def key(text):
     normalized = unicodedata.normalize("NFKD", text.casefold())
     return "".join(c for c in normalized if not unicodedata.combining(c))

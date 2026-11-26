@@ -497,18 +497,43 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
         ("Editor rapido del menu", item("Editor rapido del menu", helper("labwc-menu-editor"))),
         ("Ricarica menu e desktop", item("Ricarica menu e desktop", helper("labwc-reload"))),
         ("Aiuto, scorciatoie e sistema", item("Aiuto, scorciatoie e sistema", helper("labwc-help"))),
-        ("Informazioni di sistema", item("Informazioni di sistema", f"terminator -x {helper('labwc-sysinfo')}")),
-        ("Cattura schermo (area)", item("Cattura schermo (area)", helper("labwc-screenshot", "region"))),
-        ("Cattura schermo (intero)", item("Cattura schermo (intero)", helper("labwc-screenshot", "full"))),
-        ("ZRAM — memoria compressa", item("ZRAM — memoria compressa", helper("labwc-zram"))),
-        ("Controlli aggiornamenti script labwc-q4os", item("Controlli aggiornamenti script labwc-q4os", helper("labwc-update-gui"))),
         ("Preferenze della scrivania Labwc", item("Preferenze della scrivania Labwc", helper("labwc-preferences"))),
-        ("Scala dimensioni dello schermo", item("Scala dimensioni dello schermo", helper("labwc-screen-scaling"))),
-        ("Diagnostica e ripara desktop", item("Diagnostica e ripara desktop", f"terminator -x {helper('labwc-doctor')} --fix")),
         ("Blocca schermo", item("Blocca schermo", "swaylock -f")),
         ("Menu sessione (blocca, esci, riavvia, spegni)", item("Menu sessione (blocca, esci, riavvia, spegni)", helper("labwc-power-menu"))),
         ("Riconfigura labwc", item("Riconfigura labwc", "labwc --reconfigure")),
     ]
+
+    # Sotto-menu per non allungare troppo TOOL reverseloop: labwc non ha lo
+    # scroll nei menu, quindi gli strumenti dello schermo stanno qui.
+    screen_entries: list[tuple[str, str]] = [
+        ("Cattura schermo (area)", item("Cattura schermo (area)", helper("labwc-screenshot", "region"))),
+        ("Cattura schermo (intero)", item("Cattura schermo (intero)", helper("labwc-screenshot", "full"))),
+    ]
+    screen_entries.sort(key=lambda row: menu_sort_key(row[0]))
+    tool_entries.append((
+        "Schermo e monitor",
+        submenu(
+            "screen-menu",
+            "Schermo e monitor",
+            "".join(body for _label, body in screen_entries),
+        ),
+    ))
+
+    system_entries: list[tuple[str, str]] = [
+        ("Informazioni di sistema", item("Informazioni di sistema", f"terminator -x {helper('labwc-sysinfo')}")),
+        ("Diagnostica e ripara desktop", item("Diagnostica e ripara desktop", f"terminator -x {helper('labwc-doctor')} --fix")),
+        ("Controlli aggiornamenti script labwc-q4os", item("Controlli aggiornamenti script labwc-q4os", helper("labwc-update-gui"))),
+        ("ZRAM — memoria compressa", item("ZRAM — memoria compressa", helper("labwc-zram"))),
+    ]
+    system_entries.sort(key=lambda row: menu_sort_key(row[0]))
+    tool_entries.append((
+        "Sistema e diagnostica",
+        submenu(
+            "system-menu",
+            "Sistema e diagnostica",
+            "".join(body for _label, body in system_entries),
+        ),
+    ))
 
     theme_entries: list[tuple[str, str]] = [
         (label, item(label, helper("labwc-theme-switcher", theme_id)))
@@ -529,6 +554,11 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     )
 
     tool_entries.sort(key=lambda row: menu_sort_key(row[0]))
+    # labwc non ha lo scroll: la scala schermo sta in cima, sempre visibile.
+    tool_entries.insert(1, (
+        "Scala dimensioni dello schermo",
+        item("Scala dimensioni dello schermo", helper("labwc-screen-scaling")),
+    ))
     desktop_body = "".join(body for _label, body in tool_entries)
     parts.append(submenu("desktop-menu", "TOOL reverseloop", desktop_body))
 

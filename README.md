@@ -55,7 +55,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.16**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.17**
 
 ---
 
@@ -811,10 +811,11 @@ Il menu e' generato dinamicamente da `scripts/render-menu.py` leggendo i file
 1. **★ App preferite** — scelte dall'utente, in cima al menu.
 2. **Categorie** — Internet, Multimedia, Grafica, Ufficio, Sviluppo, Giochi,
    Istruzione, Scienza, Sistema, Impostazioni, Accessori, Altre applicazioni.
-3. **TOOL reverseloop** — preferenze della scrivania, desktop 1–4, gestione
-   app/preferite, cambio tema, editor rapido Fuzzel, ricarica, aiuto,
-   screenshot, pannello ZRAM, controlli aggiornamenti, diagnostica, blocco
-   schermo, **scala dimensioni dello schermo** e menu sessione.
+3. **TOOL reverseloop** — in cima la **scala dimensioni dello schermo**;
+   preferenze della scrivania, desktop 1–4, gestione app/preferite, cambio
+   tema, editor rapido Fuzzel, ricarica, aiuto, **Schermo e monitor**
+   (screenshot), **Sistema e diagnostica** (informazioni, Doctor, aggiornamenti,
+   ZRAM), blocco schermo e menu sessione.
 
 ### App nel menu, preferite e categorie
 
@@ -1646,7 +1647,7 @@ compatibilità con **42** interventi.
 | 3 | 🟥 | 🟩 | ⬜ | 🟪 | 🟧 | ⬜ | ⬜ | ⬛ |
 | 2 | 🟥 | 🟩 | 🟦 | 🟪 | 🟧 | 🟨 | ⬜ | ⬛ |
 | 1 | 🟥 | 🟩 | 🟦 | 🟪 | 🟧 | 🟨 | 🟫 | ⬛ |
-| **Totale** | **13** | **32** | **7** | **23** | **41** | **5** | **4** | **17** |
+| **Totale** | **13** | **32** | **7** | **24** | **41** | **5** | **4** | **17** |
 
 **Legenda**
 
@@ -1663,19 +1664,19 @@ compatibilità con **42** interventi.
 
 | Indicatore | Valore |
 | --- | ---: |
-| Release documentate (dalla 1.0 alla 1.22.16) | **44** |
-| Voci/interventi totali nel CHANGELOG | **142** |
+| Release documentate (dalla 1.0 alla 1.22.17) | **45** |
+| Voci/interventi totali nel CHANGELOG | **143** |
 | Bug corretti | **13** |
 | Nuove funzioni | **32** |
 | Migliorie e ottimizzazioni | **7** |
-| Interventi su temi e interfaccia | **23** |
+| Interventi su temi e interfaccia | **24** |
 | Interventi su installer e compatibilità | **41** |
 | Interventi su documentazione | **5** |
 | Pulizia e manutenzione | **4** |
 | Altro / note tecniche | **17** |
 | Script nel repository | **48** |
 | File nel repository | **111** |
-| Righe di script (Bash e Python) | **12.361** |
+| Righe di script (Bash e Python) | **12.393** |
 | Temi inclusi | **3** |
 
 ### Cosa è cambiato nel tempo

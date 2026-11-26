@@ -2,6 +2,14 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.22.17]
+
+- Menu **TOOL reverseloop**: labwc non ha lo scroll, quindi la voce **Scala
+  dimensioni dello schermo** è in cima e sempre visibile. Gli strumenti sono
+  raggruppati nei sottomenu **Schermo e monitor** (screenshot) e **Sistema e
+  diagnostica** (informazioni, Doctor, aggiornamenti, ZRAM) per non tagliare
+  le ultime voci sui display piccoli.
+
 ## [1.22.16]
 
 - Nuovo **indicatore batteria** in basso: trasparente, contorno con effetto
