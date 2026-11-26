@@ -1513,6 +1513,37 @@ resto — nuove app e nuove funzioni — arriverà un passo alla volta.
 
 E, detto tra noi: **salviamo i Chromebook e i vecchi netbook dalla munnizza**.
 
+## Sviluppi futuri
+
+Il viaggio è ancora lungo, ma il prossimo passo è già chiaro. Più avanti
+voglio approfondire **Cage** (il compositore Wayland in modalità kiosk:
+https://github.com/cage-kiosk/cage) per ampliare il progetto e renderlo ancora
+più completo.
+
+L’obiettivo è una modalità di avvio **ultra-leggera**, basata solo su un
+**menu testuale** (una schermata a caratteri, senza desktop grafico) da cui
+lanciare le applicazioni direttamente in modalità Cage kiosk. Così restano
+attivi solo il compositore e l’app, con il minimo consumo di risorse e
+batteria. È pensata soprattutto per macchine con **1 GB di RAM**, sempre su
+base Debian.
+
+Il piano prevede:
+
+- **Utility per il menu shell**: una piccola applicazione dedicata per
+  aggiungere, modificare e organizzare le voci del menu senza dover toccare
+  a mano i file di configurazione.
+- **App principali ottimizzate**: partire da quelle che uso e provo di più in
+  questa modalità — **Chromium**, **LibreWolf** e **FreeTube** — con gli
+  accorgimenti necessari per il kiosk.
+- **Uscita dall’app**: Cage avvia la finestra a schermo intero, senza
+  decorazioni e senza pulsanti di chiusura. Serve quindi una **X** oppure un
+  pulsante/scorciatoia dedicata per chiudere l’app e tornare al menu.
+
+**Perché mi interessa.** In treno uso il PC per guardare YouTube, leggere un
+PDF o le notizie sul web. La cosa fondamentale, per me, resta **risparmiare
+batteria**: una modalità con solo Cage e l’app aperta consuma meno di un
+desktop completo e allunga l’autonomia.
+
 ## Test e ringraziamenti
 
 I test sono stati fatti sia su una **macchina virtuale** sia su un **PC reale** (
