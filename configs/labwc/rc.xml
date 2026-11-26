@@ -349,6 +349,17 @@
   <libinput>
     <device category="touchpad">
       <tap>yes</tap>
+      <tapButtonMap>lrm</tapButtonMap>
+      <tapAndDrag>yes</tapAndDrag>
+      <clickMethod>clickfinger</clickMethod>
+      <naturalScroll>yes</naturalScroll>
+      <scrollFactor>1.0</scrollFactor>
+    </device>
+    <device category="Elan Touchpad">
+      <tap>yes</tap>
+      <tapButtonMap>lrm</tapButtonMap>
+      <tapAndDrag>yes</tapAndDrag>
+      <clickMethod>clickfinger</clickMethod>
       <naturalScroll>yes</naturalScroll>
       <scrollFactor>1.0</scrollFactor>
     </device>

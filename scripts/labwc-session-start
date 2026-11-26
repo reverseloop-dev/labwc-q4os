@@ -38,10 +38,35 @@ start_once() {
 }
 
 # Shell scelta dall'installer (marker ~/.config/labwc/shell): waybar di default.
-shell_mode="waybar"
+# Se il marker manca (installazione interrotta o config ripristinata), lo
+# ricaviamo da /etc/labwc-q4os/install-options e lo riscriviamo: altrimenti
+# una macchina con Noctalia resterebbe senza barra/launcher.
+shell_mode=""
 if [ -r "$CONFIG/labwc/shell" ]; then
     shell_mode="$(tr -d '[:space:]' < "$CONFIG/labwc/shell")"
 fi
+case "$shell_mode" in
+    waybar|noctalia) ;;
+    *) shell_mode="" ;;
+esac
+if [ -z "$shell_mode" ] && [ -r /etc/labwc-q4os/install-options ]; then
+    shell_mode="$(sed -n 's/^SHELL=//p' /etc/labwc-q4os/install-options |
+        head -n1 | tr -d '[:space:]')"
+fi
+case "$shell_mode" in
+    waybar|noctalia) ;;
+    *)
+        if command -v noctalia >/dev/null 2>&1 &&
+            ! command -v waybar >/dev/null 2>&1; then
+            shell_mode=noctalia
+        else
+            shell_mode=waybar
+        fi
+        ;;
+esac
+mkdir -p "$CONFIG/labwc"
+printf '%s\n' "$shell_mode" >"$CONFIG/labwc/shell"
+chmod 0644 "$CONFIG/labwc/shell" 2>/dev/null || true
 use_noctalia=0
 if [ "$shell_mode" = "noctalia" ]; then
     if command -v noctalia >/dev/null 2>&1; then
@@ -71,7 +96,16 @@ if [ "$use_noctalia" -eq 1 ]; then
     fi
     # Noctalia parte subito: l'overlay 99-labwc-q4os.toml disattiva i download
     # all'avvio (offline_mode), quindi non dipende dal DNS del login.
-    start_once noctalia noctalia
+    # Un'istanza orfana di un labwc precedente non deve far saltare l'avvio:
+    # la fermiamo e ne avviamo una nuova sulla sessione corrente.
+    if pgrep -x noctalia >/dev/null 2>&1; then
+        pkill -x noctalia >/dev/null 2>&1 || true
+        for _ in $(seq 1 20); do
+            pgrep -x noctalia >/dev/null 2>&1 || break
+            sleep 0.1
+        done
+    fi
+    setsid -f noctalia >>"$LOG" 2>&1 || printf 'avvio fallito: noctalia\n'
 else
     # Una sola shell attiva: se Noctalia era partita, la fermiamo.
     pkill -x noctalia >/dev/null 2>&1 || true

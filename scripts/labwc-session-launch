@@ -88,9 +88,17 @@ printf 'exec labwc\n' >>"$LOG"
         sleep 0.25
     done
     sleep 2.5
-    shell_mode="waybar"
+    shell_mode=""
     [ -r "$XDG_CONFIG_HOME/labwc/shell" ] &&
         shell_mode="$(tr -d '[:space:]' < "$XDG_CONFIG_HOME/labwc/shell")"
+    case "$shell_mode" in
+        waybar|noctalia) ;;
+        *) shell_mode="" ;;
+    esac
+    if [ -z "$shell_mode" ] && [ -r /etc/labwc-q4os/install-options ]; then
+        shell_mode="$(sed -n 's/^SHELL=//p' /etc/labwc-q4os/install-options |
+            head -n1 | tr -d '[:space:]')"
+    fi
     if [ "$shell_mode" = "noctalia" ] && command -v noctalia >/dev/null 2>&1; then
         expected="noctalia"
     else
@@ -133,7 +141,10 @@ while :; do
             unset WAYLAND_DISPLAY DISPLAY XAUTHORITY
             # drm,libinput: solo "drm" disattiva il backend input di wlroots,
             # quindi Cage non vede mouse e tastiera.
-            LABWC_CAGE_QUIET=1 WLR_BACKENDS=drm,libinput WLR_RENDERER=pixman \
+            # Niente WLR_RENDERER=pixman: su Intel i915 le superfici DMABUF
+            # di FreeTube/Electron restano nere. Lasciare il renderer
+            # automatico (GLES2), che compone anche le superfici DMABUF.
+            LABWC_CAGE_QUIET=1 WLR_BACKENDS=drm,libinput \
                 WLR_NO_HARDWARE_CURSORS=1 \
                 cage -- bash -lc "$cage_cmd"
         ) >>"$LOG" 2>&1

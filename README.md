@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.5**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.6**
 
 ---
 
@@ -389,6 +389,11 @@ gruppo `input`. L’installer aggiunge il gruppo quando installa Cage e usa il
 cursore software. Serve un logout/login una volta dopo l’aggiornamento; senza
 uno dei due requisiti le app in Cage non ricevono il puntatore, anche se Cage
 si avvia.
+
+**Touchpad.** Tap a due dita e click a due dita inviano il **tasto destro**
+(`tapButtonMap lrm`, `clickMethod clickfinger`); vale anche per il touchpad
+“Elan Touchpad” dei Chromebook. È configurato in `rc.xml` e si applica con
+`labwc --reconfigure` o al login.
 
 **Tornare a labwc dopo Cage.** Se lanci `cage` manualmente dalla console, il
 wrapper mostra le istruzioni prima e dopo l'app. Dalla console non lanciare

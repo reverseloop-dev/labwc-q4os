@@ -2,6 +2,19 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.22.6]
+
+- Noctalia: se manca `~/.config/labwc/shell` (installazione interrotta o
+  config ripristinata) viene ricavato da `/etc/labwc-q4os/install-options` e
+  riscritto; Noctalia orfana di una sessione precedente viene fermata e
+  riavviata. Risolve il login senza barra/launcher.
+- Touchpad: due dita = tasto destro sia in tap sia in click
+  (`tapButtonMap lrm`, `clickMethod clickfinger`), anche per “Elan Touchpad”.
+- Cage: rimosso `WLR_RENDERER=pixman`; su Intel i915 le superfici DMABUF di
+  FreeTube restavano nere. Il renderer automatico (GLES2) le compone.
+- Cage: confermati `WLR_BACKENDS=drm,libinput` e gruppo `input` per mouse e
+  tastiera.
+
 ## [1.22.5]
 
 - Cage: fermato `labwc-update-check` durante Cage e impediti i duplicati a
