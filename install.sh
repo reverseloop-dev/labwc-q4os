@@ -82,9 +82,9 @@ Opzioni:
   --no-touch          Disattiva la configurazione touchscreen
   --lookswitcher      Installa LookSwitcher, selettore temi per Trinity (solo Trinity)
   --no-lookswitcher   Non proporre/installare LookSwitcher
-  --browser NOME      Browser: chromium|librewolf|both|none (default: chromium)
-  --chromium          Scegli Chromium senza chiedere (compatibilità)
-  --librewolf         Scegli LibreWolf senza chiedere
+  --browser NOME      Browser: chromium|firefox|both|none (default: chromium)
+  --chromium          Scegli Chromium (web app, Chrome Web Store; piu' RAM)
+  --firefox           Scegli Firefox ESR (leggero, privacy; meno RAM)
   --no-chromium       Nessun browser (compatibilità)
   --no-browser        Nessun browser
   --qpdfview          Installa qpdfview (lettore PDF leggero) senza chiedere
@@ -131,11 +131,11 @@ while [ "$#" -gt 0 ]; do
         --lookswitcher) WANT_LOOKSWITCHER=1; shift ;;
         --no-lookswitcher) WANT_LOOKSWITCHER=0; shift ;;
         --browser)
-            [ "$#" -ge 2 ] || die "--browser richiede un valore (chromium|librewolf|none)"
+            [ "$#" -ge 2 ] || die "--browser richiede un valore (chromium|firefox|none)"
             WANT_BROWSER="$2"; shift 2 ;;
         --browser=*) WANT_BROWSER="${1#*=}"; shift ;;
         --chromium) WANT_BROWSER=chromium; shift ;;
-        --librewolf) WANT_BROWSER=librewolf; shift ;;
+        --firefox|--firefox-esr) WANT_BROWSER=firefox; shift ;;
         --both-browsers) WANT_BROWSER=both; shift ;;
         --no-chromium|--no-browser) WANT_BROWSER=none; shift ;;
         --qpdfview) WANT_QPDFVIEW=1; shift ;;
@@ -159,8 +159,9 @@ done
 
 if [ -n "$WANT_BROWSER" ]; then
     case "$WANT_BROWSER" in
-        chromium|librewolf|both|none) ;;
-        *) die "Valore --browser non valido: $WANT_BROWSER (chromium|librewolf|none)" ;;
+        chromium|firefox|both|none) ;;
+        librewolf) WANT_BROWSER=firefox; REMOVE_BROWSER=librewolf ;;
+        *) die "Valore --browser non valido: $WANT_BROWSER (chromium|firefox|none)" ;;
     esac
 fi
 
@@ -206,7 +207,8 @@ load_saved_options() {
     fi
     value="$(option_value BROWSER || true)"
     case "$value" in
-        chromium|librewolf|both|none) WANT_BROWSER="$value" ;;
+        chromium|firefox|both|none) WANT_BROWSER="$value" ;;
+        librewolf) WANT_BROWSER=firefox; REMOVE_BROWSER=librewolf ;;
     esac
     if [ -z "$WANT_BROWSER" ]; then
         # Migrazione dalle vecchie opzioni: CHROMIUM=1/0.
@@ -283,8 +285,8 @@ theme_label() {
 browser_label() {
     case "$1" in
         chromium) printf 'Chromium' ;;
-        librewolf) printf 'LibreWolf' ;;
-        both) printf 'Chromium + LibreWolf' ;;
+        firefox) printf 'Firefox ESR' ;;
+        both) printf 'Chromium + Firefox ESR' ;;
         *) printf 'nessuno' ;;
     esac
 }
@@ -309,14 +311,14 @@ run_install_wizard() {
     if [ "$DM_NAME" = "tdm" ] || [ "$DM_NAME" = "tdm-trinity" ]; then
         sddm_available=1
     fi
-    local chromium_here=0 librewolf_here=0
+    local chromium_here=0 firefox_here=0
     if have chromium || have chromium-browser; then chromium_here=1; fi
-    if have librewolf; then librewolf_here=1; fi
+    if have firefox-esr; then firefox_here=1; fi
 
     local browser_default="${WANT_BROWSER:-}"
     if [ -z "$browser_default" ]; then
-        if [ "$chromium_here" -eq 0 ] && [ "$librewolf_here" -eq 1 ]; then
-            browser_default="librewolf"
+        if [ "$chromium_here" -eq 0 ] && [ "$firefox_here" -eq 1 ]; then
+            browser_default="firefox"
         else
             browser_default="chromium"
         fi
@@ -339,15 +341,15 @@ run_install_wizard() {
         --lookswitcher "$look_default" --lookswitcher-available "$trinity_here" \
         --qpdfview 1 --freetube 1 \
         --sddm "$sddm_default" --sddm-available "$sddm_available" \
-        --chromium-installed "$chromium_here" --librewolf-installed "$librewolf_here"
+        --chromium-installed "$chromium_here" --firefox-installed "$firefox_here"
 }
 
 apply_wizard_output() {
     local line key value
     while IFS='=' read -r key value; do
         case "$key" in
-            BROWSER) case "$value" in chromium|librewolf|both|none) WANT_BROWSER="$value" ;; esac ;;
-            REMOVE_BROWSER) case "$value" in chromium|librewolf) REMOVE_BROWSER="$value" ;; esac ;;
+            BROWSER) case "$value" in chromium|firefox|both|none) WANT_BROWSER="$value" ;; esac ;;
+            REMOVE_BROWSER) case "$value" in chromium|firefox) REMOVE_BROWSER="$value" ;; esac ;;
             SHELL) case "$value" in waybar|noctalia) WANT_SHELL="$value" ;; esac ;;
             ZRAM) case "$value" in 0|1) ENABLE_ZRAM="$value" ;; esac ;;
             SWAPPINESS) case "$value" in 0|1) ENABLE_SWAPPINESS="$value" ;; esac ;;
@@ -720,9 +722,9 @@ if [ -z "$THEME" ]; then
 fi
 
 chromium_installed=0
-librewolf_installed=0
+firefox_installed=0
 if have chromium || have chromium-browser; then chromium_installed=1; fi
-if have librewolf; then librewolf_installed=1; fi
+if have firefox-esr; then firefox_installed=1; fi
 
 if [ -z "$WANT_BROWSER" ]; then
     if [ "$QUICK_UPDATE" = "1" ]; then
@@ -731,20 +733,21 @@ if [ -z "$WANT_BROWSER" ]; then
         WANT_BROWSER=chromium
     else
         default_choice=1
-        if [ "$chromium_installed" -eq 0 ] && [ "$librewolf_installed" -eq 1 ]; then
+        if [ "$chromium_installed" -eq 0 ] && [ "$firefox_installed" -eq 1 ]; then
             default_choice=2
         fi
         printf '\n%sBrowser:%s\n' "$C_BOLD" "$C_RESET"
-        printf '  1) Chromium — motore di Chrome: massima compatibilità con le web app,\n'
-        printf '     estensioni dal Chrome Web Store. Scelta consigliata per TuxLab.\n'
-        printf '  2) LibreWolf — Firefox senza telemetria, più privacy e meno pubblicità;\n'
-        printf '     repository esterno, estensioni dal catalogo Mozilla.\n'
-        printf '  3) Entrambi — Chromium e LibreWolf, ognuno con le sue estensioni.\n'
+        printf '  1) Chromium — motore di Chrome: massima compatibilità con le web app\n'
+        printf '     e Chrome Web Store. Usa più RAM: scegli questo se le web app\n'
+        printf '     devono funzionare senza sorprese.\n'
+        printf '  2) Firefox ESR — Firefox stabile e leggero: più privacy, estensioni\n'
+        printf '     Mozilla e meno RAM di Chromium. Consigliato su PC datati.\n'
+        printf '  3) Entrambi — Chromium e Firefox ESR, ognuno con le sue estensioni.\n'
         printf '  4) Nessuno — non installare e non modificare nessun browser.\n'
-        choice="$(ask_choice "Browser (1=Chromium, 2=LibreWolf, 3=Entrambi, 4=Nessuno)" "$default_choice" 1 2 3 4)"
+        choice="$(ask_choice "Browser (1=Chromium, 2=Firefox ESR, 3=Entrambi, 4=Nessuno)" "$default_choice" 1 2 3 4)"
         case "$choice" in
             1) WANT_BROWSER=chromium ;;
-            2) WANT_BROWSER=librewolf ;;
+            2) WANT_BROWSER=firefox ;;
             3) WANT_BROWSER=both ;;
             4) WANT_BROWSER=none ;;
         esac
@@ -753,14 +756,14 @@ fi
 
 # Se si sceglie un browser e l'altro e' gia' installato, chiedi se rimuoverlo.
 if [ "$ASSUME_YES" -eq 0 ] && [ "$GUI_CHOICES" -eq 0 ] && [ "$WANT_BROWSER" != "both" ]; then
-    if [ "$WANT_BROWSER" = "chromium" ] && [ "$librewolf_installed" -eq 1 ]; then
-        note "Hai scelto Chromium. LibreWolf è già installato: puoi tenerlo o rimuoverlo."
-        if ask_yes_no "LibreWolf e' gia' installato. Vuoi disinstallarlo per usare solo Chromium?" no; then
-            REMOVE_BROWSER=librewolf
+    if [ "$WANT_BROWSER" = "chromium" ] && [ "$firefox_installed" -eq 1 ]; then
+        note "Hai scelto Chromium. Firefox ESR è già installato: puoi tenerlo o rimuoverlo."
+        if ask_yes_no "Firefox ESR e' gia' installato. Vuoi disinstallarlo per usare solo Chromium?" no; then
+            REMOVE_BROWSER=firefox
         fi
-    elif [ "$WANT_BROWSER" = "librewolf" ] && [ "$chromium_installed" -eq 1 ]; then
-        note "Hai scelto LibreWolf. Chromium è già installato: puoi tenerlo o rimuoverlo."
-        if ask_yes_no "Chromium e' gia' installato. Vuoi disinstallarlo per usare solo LibreWolf?" no; then
+    elif [ "$WANT_BROWSER" = "firefox" ] && [ "$chromium_installed" -eq 1 ]; then
+        note "Hai scelto Firefox ESR. Chromium è già installato: puoi tenerlo o rimuoverlo."
+        if ask_yes_no "Chromium e' gia' installato. Vuoi disinstallarlo per usare solo Firefox ESR?" no; then
             REMOVE_BROWSER=chromium
         fi
     fi
@@ -1316,20 +1319,20 @@ PY
     fi
 }
 
-install_librewolf_extensions() {
-    # Questa build di LibreWolf applica la policy distribuita dal pacchetto;
-    # /etc/librewolf/policies non viene letta, quindi si aggiorna il file in
+install_firefox_extensions() {
+    # Questa build di Firefox ESR applica la policy distribuita dal pacchetto;
+    # /etc/firefox-esr/policies ha priorità sulla policy del pacchetto; si aggiorna anche
     # /usr/share. Un aggiornamento del pacchetto lo sostituisce e l'installer
     # lo ripristina alla successiva esecuzione.
-    local policy_file="/usr/share/librewolf/distribution/policies.json"
+    local policy_file="/etc/firefox-esr/policies/policies.json"
     local policy_dir
     policy_dir="$(dirname "$policy_file")"
-    local dist_policy="$policy_file"
-    local ext_dir="/usr/share/librewolf/distribution/extensions"
+    local dist_policy="/usr/share/firefox-esr/distribution/policies.json"
+    local ext_dir="/usr/share/firefox-esr/distribution/extensions"
     local xpi="$ext_dir/{9a41dee2-b924-4161-a971-7fb35c053a4a}.xpi"
 
-    if ! have librewolf; then
-        warn "LibreWolf non installato: estensioni non configurate."
+    if ! have firefox-esr; then
+        warn "Firefox ESR non installato: estensioni non configurate."
         return 0
     fi
     local ff_xpi="$ext_dir/youtube-360@labwc-q4os.xpi"
@@ -1338,17 +1341,17 @@ install_librewolf_extensions() {
         grep -q 'jid1-MnnxcxisBPnSXQ@jetpack' "$policy_file" &&
         grep -q '9a41dee2-b924-4161-a971-7fb35c053a4a' "$policy_file" &&
         grep -q 'youtube.it/' "$policy_file"; then
-        info "LibreWolf: estensioni e preferito YouTube gia' configurati: nessuna modifica."
+        info "Firefox ESR: estensioni e preferito YouTube gia' configurati: nessuna modifica."
         return 0
     fi
 
     mkdir -p "$BACKUP_DIR/system"
     if [ -r "$policy_file" ]; then
-        sudo cat "$policy_file" >"$BACKUP_DIR/system/librewolf-distribution-policies.json" 2>/dev/null || true
+        sudo cat "$policy_file" >"$BACKUP_DIR/system/firefox-esr-distribution-policies.json" 2>/dev/null || true
     fi
     sudo install -d -m 0755 "$policy_dir"
     # /etc ha priorita' sulla policy del pacchetto: parti da quella del
-    # pacchetto per non perdere le protezioni predefinite di LibreWolf.
+    # pacchetto per non perdere le protezioni predefinite di Firefox ESR.
     sudo python3 - "$dist_policy" "$policy_file" <<'PY'
 import json
 import os
@@ -1357,7 +1360,7 @@ import tempfile
 
 dist, dst = sys.argv[1], sys.argv[2]
 data = None
-for path in (dst, dist, "/usr/lib/librewolf/distribution/policies.json"):
+for path in (dst, dist, "/usr/lib/firefox-esr/distribution/policies.json"):
     try:
         with open(path, encoding="utf-8") as handle:
             data = json.load(handle)
@@ -1367,7 +1370,10 @@ for path in (dst, dist, "/usr/lib/librewolf/distribution/policies.json"):
 if data is None:
     data = {}
 policies = data.setdefault("policies", {})
-policies.setdefault("Preferences", {})["xpinstall.signatures.required"] = False
+prefs = policies.setdefault("Preferences", {})
+prefs["xpinstall.signatures.required"] = {"Value": False, "Status": "default"}
+prefs["dom.ipc.processCount"] = {"Value": 2, "Status": "default"}
+prefs["browser.tabs.unloadOnLowMemory"] = {"Value": True, "Status": "default"}
 policies["DisplayBookmarksToolbar"] = True
 bookmark_url = "https://youtube.it/"
 bookmarks = policies.setdefault("Bookmarks", [])
@@ -1401,9 +1407,12 @@ os.chmod(tmp, 0o644)
 os.replace(tmp, dst)
 PY
     sudo chmod 0644 "$policy_file"
+    if [ -d "$(dirname "$dist_policy")" ]; then
+        sudo install -m 0644 "$policy_file" "$dist_policy"
+    fi
 
     # enhanced-h264ify da policy non viene installata da questa build di
-    # LibreWolf; il file in distribution/extensions invece viene caricato.
+    # Firefox ESR; il file in distribution/extensions invece viene caricato.
     local tmp_xpi
     sudo install -d -m 0755 "$ext_dir"
     tmp_xpi="$(mktemp)"
@@ -1415,7 +1424,7 @@ PY
         warn "enhanced-h264ify non scaricata: riprova con l'aggiornamento."
     fi
     rm -f "$tmp_xpi"
-    # Estensione locale 360p per LibreWolf: la build installata non accetta
+    # Estensione locale 360p per Firefox ESR: la build installata non accetta
     # XPI non firmati via policy, quindi usiamo distribution/extensions.
     local ff_src="$REPO_DIR/configs/firefox/youtube-360"
     local ff_tmp
@@ -1432,41 +1441,26 @@ with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as archive:
 PY
     sudo install -m 0644 "$ff_tmp" "$ff_xpi"
     rm -f "$ff_tmp"
-    ok "LibreWolf: estensioni e YouTube 360p installate."
+    ok "Firefox ESR: estensioni e YouTube 360p installate."
 }
 
-install_librewolf() {
+install_firefox() {
     if [ "$SKIP_APT" -eq 1 ]; then
-        if have librewolf; then
-            info "LibreWolf gia' installato; repository non modificato (--skip-apt)."
+        if have firefox-esr; then
+            info "Firefox ESR gia' installato; nessuna modifica (--skip-apt)."
             return 0
         fi
-        warn "LibreWolf non installato e --skip-apt attivo."
+        warn "Firefox ESR non installato e --skip-apt attivo."
         return 1
     fi
 
-    # Anche se il binario esiste, il repository serve per gli aggiornamenti
-    # futuri: extrepo resta la fonte APT ufficiale di LibreWolf.
-    log "Configurazione del repository LibreWolf (extrepo)..."
-    install_packages extrepo
-    if ! have extrepo; then
-        warn "extrepo non disponibile: LibreWolf non installato."
-        return 1
-    fi
-    if ! sudo extrepo enable librewolf; then
-        warn "Repository LibreWolf non abilitato: browser non installato."
-        return 1
-    fi
-    sudo env DEBIAN_FRONTEND=noninteractive apt-get update -qq ||
-        warn "apt-get update dopo LibreWolf ha segnalato errori: proseguo."
-
-    if have librewolf; then
-        info "LibreWolf gia' installato: aggiornamenti dal repository ufficiale."
+    if have firefox-esr; then
+        info "Firefox ESR gia' installato: aggiornamenti dal repository Debian."
         return 0
     fi
-    log "Installazione LibreWolf..."
-    install_packages librewolf
-    have librewolf
+    log "Installazione Firefox ESR dal repository Debian..."
+    install_packages firefox-esr
+    have firefox-esr
 }
 
 remove_browser() {
@@ -1475,6 +1469,7 @@ remove_browser() {
     local pkg
     case "$browser" in
         chromium) packages=(chromium chromium-browser) ;;
+        firefox) packages=(firefox-esr) ;;
         librewolf) packages=(librewolf) ;;
         *) return 0 ;;
     esac
@@ -1662,22 +1657,22 @@ if { [ "$WANT_BROWSER" = "chromium" ] || [ "$WANT_BROWSER" = "both" ]; }; then
     else
         warn "Chromium assente: estensioni non installate."
     fi
-elif { [ "$WANT_BROWSER" = "librewolf" ] || [ "$WANT_BROWSER" = "both" ]; }; then
-    install_librewolf || true
-    if have librewolf; then
-        log "Configurazione estensioni LibreWolf..."
-        install_librewolf_extensions
+elif { [ "$WANT_BROWSER" = "firefox" ] || [ "$WANT_BROWSER" = "both" ]; }; then
+    install_firefox || true
+    if have firefox-esr; then
+        log "Configurazione estensioni Firefox ESR..."
+        install_firefox_extensions
     else
-        warn "LibreWolf assente: estensioni non installate."
+        warn "Firefox ESR assente: estensioni non installate."
     fi
 else
     info "Nessun browser scelto: nessuna installazione."
 fi
 
-# Con "both" il primo ramo ha installato Chromium: installa anche LibreWolf
+# Con "both" il primo ramo ha installato Chromium: installa anche Firefox ESR
 # prima di configurare estensioni e preferiti di entrambi.
 if [ "$WANT_BROWSER" = "both" ]; then
-    install_librewolf || true
+    install_firefox || true
 fi
 
 # Se entrambi i browser restano installati, entrambi ricevono estensioni e
@@ -1686,8 +1681,15 @@ if [ "$WANT_BROWSER" != "none" ] && { have chromium || have chromium-browser; };
     install_browser_extensions
     install_chromium_runtime
 fi
-if [ "$WANT_BROWSER" != "none" ] && have librewolf; then
-    install_librewolf_extensions
+if [ "$WANT_BROWSER" != "none" ] && have firefox-esr; then
+    install_firefox_extensions
+fi
+
+# Migrazione da LibreWolf a Firefox ESR: rimuove le vecchie voci di menu.
+# Se si sceglie Firefox ESR, disinstalla anche LibreWolf (tranne --skip-apt).
+rm -f "$APPDATA/librewolf.desktop" "$APPDATA/librewolf-cage.desktop"
+if [ "$WANT_BROWSER" = "firefox" ] && [ "$SKIP_APT" -ne 1 ] && have librewolf; then
+    remove_browser librewolf
 fi
 
 if [ -n "$REMOVE_BROWSER" ]; then
@@ -1695,8 +1697,8 @@ if [ -n "$REMOVE_BROWSER" ]; then
     case "$WANT_BROWSER" in
         chromium)
             if have chromium || have chromium-browser; then selected_ok=1; fi ;;
-        librewolf)
-            if have librewolf; then selected_ok=1; fi ;;
+        firefox)
+            if have firefox-esr; then selected_ok=1; fi ;;
     esac
     if [ "$selected_ok" -eq 1 ] && [ "$SKIP_APT" -ne 1 ]; then
         remove_browser "$REMOVE_BROWSER"
@@ -2189,18 +2191,28 @@ chmod 0644 "$APPDATA/labwc-theme-switcher.desktop" \
 
 # Collegamenti browser: uno normale per Labwc e uno "(cage)" a schermo intero.
 create_browser_shortcuts() {
-    local browser="$1" name="$2" cmd="$3"
+    local browser="$1" name="$2" cmd="$3" icon="${4:-$1}"
     case "$WANT_BROWSER" in
         "$browser"|both) ;;
         *) return 0 ;;
     esac
+    if [ "$browser" = "firefox" ]; then
+        # Nasconde la voce di sistema: nel menu restano solo le due voci
+        # labwc-q4os (normale e cage), senza duplicati.
+        cat >"$APPDATA/firefox-esr.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Firefox ESR
+NoDisplay=true
+EOF
+    fi
     cat >"$APPDATA/$browser.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=$name
 Comment=$name nella sessione Labwc
 Exec=$cmd
-Icon=$browser
+Icon=$icon
 Terminal=false
 Categories=Network;WebBrowser;
 Keywords=browser;web;$browser;
@@ -2211,14 +2223,14 @@ Type=Application
 Name=$name (cage)
 Comment=$name a schermo intero con Cage; salva i documenti prima
 Exec=$HOME/.local/bin/labwc-cage --ask -- $cmd
-Icon=$browser
+Icon=$icon
 Terminal=false
 Categories=Network;WebBrowser;
 Keywords=browser;web;$browser;cage;
 EOF
 }
 create_browser_shortcuts chromium Chromium chromium
-create_browser_shortcuts librewolf LibreWolf librewolf
+create_browser_shortcuts firefox "Firefox ESR" firefox-esr firefox-esr
 if [ "$WANT_FREETUBE" -eq 1 ]; then
     cat >"$APPDATA/freetube.desktop" <<EOF
 [Desktop Entry]
@@ -2610,8 +2622,8 @@ ${C_GREEN}${C_BOLD}Installazione completata.${C_RESET}
               if have chromium || have chromium-browser; then
                   echo " (uBlock Origin Lite, Privacy Badger, enhanced-h264ify)"
               fi ;;
-          librewolf)
-              if have librewolf; then
+          firefox)
+              if have firefox-esr; then
                   echo " (uBlock Origin, Privacy Badger, enhanced-h264ify)"
               fi ;;
       esac

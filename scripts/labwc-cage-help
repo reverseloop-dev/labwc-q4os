@@ -9,7 +9,7 @@ cat <<'EOF'
   ==========
   Sei dentro Cage con labwc chiuso. Avvia un'app direttamente:
     chromium
-    librewolf
+    firefox-esr
     labwc-freetube-cage     (FreeTube con pulsante X)
     firefox
 

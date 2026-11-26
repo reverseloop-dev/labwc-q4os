@@ -57,7 +57,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.11**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.12**
 
 ### Parole semplici
 
@@ -114,14 +114,14 @@ un ambiente sobrio.**
   può seguire automaticamente i colori dello sfondo.
 - **App nel menu Labwc** e **App in Fuzzel**: aggiungi, organizza o rimuovi le
   applicazioni con selezione icona; le voci di sistema restano protette.
-- **Chromium** oppure **LibreWolf**, con le tre estensioni
+- **Chromium** oppure **Firefox ESR**, con le tre estensioni
   (**uBlock**, **Privacy Badger**, **enhanced-h264ify**); **qpdfview** come
   lettore PDF leggero; **FreeTube** per YouTube con GUI; **btop** per
   monitorare il sistema.
 - **Wizard di installazione** GTK: pagine colorate con il tema, angoli
   arrotondati, scelte sì/no e **Indietro/Avanti** fino alla prima pagina.
-- **Preferito YouTube 360p** in Chromium e LibreWolf; aggiornamenti delle app
-  esterne (LibreWolf, Noctalia) tramite i loro repository APT.
+- **Preferito YouTube 360p** in Chromium e Firefox ESR; aggiornamenti delle app
+  esterne (Firefox ESR, Noctalia) tramite i loro repository APT.
 - **RIDOTTO AD ICONA** sotto **File manager**: menu dinamico (pipemenu) con
   le finestre ridotte a icona; un clic le ripristina, anche con Noctalia.
 - **ZRAM**, **Labwc Doctor**, **Preferenze**, desktop 1–4 e guida integrata in
@@ -167,9 +167,9 @@ avviato con le opzioni Wayland e le decorazioni richieste.
 
 ## Correzioni recenti
 
-- **Scelta del browser**: Chromium o LibreWolf (o nessuno), con descrizione;
+- **Scelta del browser**: Chromium o Firefox ESR (o nessuno), con descrizione;
   se l'altro browser è già installato l'installer chiede se disinstallarlo.
-  LibreWolf arriva dal repository ufficiale `extrepo` e riceve le stesse tre
+  Firefox ESR arriva dal repository Debian e riceve le stesse tre
   estensioni dal catalogo Mozilla.
 - **btop** installato dallo script, con la sua voce nel menu applicazioni.
 - **Ricarica automatica dopo il login rimossa**, insieme al popup: il
@@ -331,10 +331,11 @@ manager non viene toccato; in tal caso si può avviare Labwc da TTY con
 L'installer permette di scegliere con una breve descrizione:
 
 1. **Chromium** — motore di Chrome, massima compatibilità con le web app;
-   estensioni dal Chrome Web Store. Consigliato per TuxLab.
-2. **LibreWolf** — Firefox senza telemetria, più privacy e meno pubblicità;
-   repository ufficiale esterno, estensioni dal catalogo Mozilla.
-3. **Entrambi** — installa Chromium e LibreWolf, ognuno con le sue estensioni.
+   estensioni dal Chrome Web Store. Usa più RAM: scegli questo se le web app
+   devono funzionare senza sorprese.
+2. **Firefox ESR** — Firefox stabile e leggero: più privacy, estensioni dal
+   catalogo Mozilla e meno RAM di Chromium. Consigliato sui PC datati.
+3. **Entrambi** — installa Chromium e Firefox ESR, ognuno con le sue estensioni.
 4. **Nessuno** — non installa e non modifica nessun browser.
 
 Il browser scelto **non viene reinstallato** se è già presente. Se scegli un
@@ -350,16 +351,21 @@ installa dal Chrome Web Store:
 - **Privacy Badger** (`pkehgijcmpdhfbdbbnkijodmdjhbjlgp`);
 - **enhanced-h264ify** (`omkfmpieigblcllmkgbflkikinpkodlk`).
 
-**LibreWolf** viene installato dal repository ufficiale con `extrepo`. La
-policy in `/usr/share/librewolf/distribution/policies.json` mantiene le
-protezioni predefinite del pacchetto e aggiunge dal catalogo Mozilla:
+**Firefox ESR** arriva dal repository Debian. La policy in
+`/etc/firefox-esr/policies/policies.json` (copiata anche in
+`/usr/share/firefox-esr/distribution/`) aggiunge dal catalogo Mozilla:
 
 - **uBlock Origin** (`uBlock0@raymondhill.net`);
 - **Privacy Badger** (`jid1-MnnxcxisBPnSXQ@jetpack`);
 - **enhanced-h264ify** (`9a41dee2-b924-4161-a971-7fb35c053a4a`).
 
+In più limita i processi web a **2** (`dom.ipc.processCount`) e scarica le
+schede in background quando la RAM è bassa
+(`browser.tabs.unloadOnLowMemory`): meno memoria usata, a costo di un
+isolamento leggermente minore tra le schede.
+
 Entrambi i browser ricevono il preferito **YouTube 360p** (`https://youtube.it/`).
-In Chromium l'estensione locale imposta la qualità a 360p; in LibreWolf viene
+In Chromium l'estensione locale imposta la qualità a 360p; in Firefox ESR viene
 installata la stessa estensione come XPI nella cartella `distribution`.
 
 **enhanced-h264ify** è l'addon per i video. Di default blocca **AV1**, **VP9** e
@@ -370,8 +376,8 @@ attivi. Se il PC fatica ancora, apri l'icona dell'estensione e spunta
 nerd** → **Codecs** deve mostrare `avc1`, non `av01` o `vp09`. Se il browser è
 aperto durante l'installazione, chiudilo e riaprilo per applicare la policy.
 
-Flag: `--browser chromium|librewolf|none`; restano validi `--chromium`,
-`--librewolf`, `--no-chromium` e `--no-browser`. Con `--skip-apt` il browser
+Flag: `--browser chromium|firefox|none`; restano validi `--chromium`,
+`--firefox`, `--no-chromium` e `--no-browser`. Con `--skip-apt` il browser
 non può essere installato, ma le estensioni vengono configurate se è già
 presente.
 
@@ -399,7 +405,7 @@ Nel menu **TOOL reverseloop** la voce **AVVIA CAGE** chiude labwc e apre una
 console dentro Cage: da lì si avviano direttamente:
 ```
 chromium
-librewolf
+firefox-esr
 labwc-freetube-cage    # FreeTube con pulsante X
 ```
 Con i collegamenti **(cage)** labwc viene chiuso, l’app parte in Cage e, alla
@@ -462,17 +468,16 @@ mostra una **X in alto a destra** per chiuderlo; alla chiusura labwc riparte
 automaticamente. La qualità video predefinita è **360p** in entrambe le
 modalità.
 
-Per Chromium e LibreWolf vengono creati due collegamenti: uno normale e uno
+Per Chromium e Firefox ESR vengono creati due collegamenti: uno normale e uno
 con suffisso **(cage)**, che usa lo stesso meccanismo a schermo intero. Se
 scegli entrambi i browser, l’installer installa e configura entrambi.
 
 Flag: `--freetube` / `--no-freetube`; `--both-browsers` per Chromium e
-LibreWolf insieme.
+Firefox ESR insieme.
 
-Le app con repository esterna restano aggiornabili con il sistema: LibreWolf
-usa `extrepo` (la fonte viene riconfigurata anche se il browser è già
-installato) e Noctalia usa il repository APT del progetto. Dopo un
-`apt update && apt upgrade` si aggiornano anche browser e shell.
+Firefox ESR arriva dal repository Debian e si aggiorna con
+`apt update && apt upgrade`; Noctalia usa il repository APT del progetto.
+Dopo un aggiornamento si aggiornano anche browser e shell.
 
 **qpdfview** è proposto come lettore PDF leggero, adatto ai PC vecchi:
 l'installer chiede se installarlo, non lo reinstalla se c'è già e non tocca le
@@ -599,12 +604,12 @@ cd labwc-q4os
 | `--touch` / `--no-touch` | Installa o esclude tastiera su schermo e gesti touch |
 | `--shell waybar\|noctalia` | Barra/launcher: Waybar+Fuzzel (default) o Noctalia v5 |
 | `--lookswitcher` / `--no-lookswitcher` | Selettore temi LookSwitcher per Trinity (solo Trinity) |
-| `--browser chromium\|librewolf\|both\|none` | Sceglie uno o entrambi i browser e le estensioni |
-| `--chromium` / `--librewolf` | Scorciatoie per `--browser chromium` / `librewolf` |
+| `--browser chromium\|firefox\|both\|none` | Sceglie uno o entrambi i browser e le estensioni |
+| `--chromium` / `--firefox` | Scorciatoie per `--browser chromium` / `firefox` |
 | `--no-chromium` / `--no-browser` | Nessun browser (compatibilità) |
 | `--qpdfview` / `--no-qpdfview` | Installa o esclude qpdfview, lettore PDF leggero |
 | `--freetube` / `--no-freetube` | Installa o esclude FreeTube 0.23.15 (senza SABR) |
-| `--both-browsers` | Installa sia Chromium sia LibreWolf |
+| `--both-browsers` | Installa sia Chromium sia Firefox ESR |
 | `--quick` | Aggiorna subito con le opzioni salvate, senza domande |
 | `--configure` | Chiede comunque tutti i parametri prima di aggiornare |
 | `--swappiness N` | Imposta `vm.swappiness` a `N` (0–200) |
@@ -645,7 +650,7 @@ La **prima domanda** è: *“Vuoi modificare i parametri prima di aggiornare?”
    Labwc selezionabile al login (TDM resta installato).
 8. **tema iniziale** — blu Nordic Cobalt, rosso Muted Crimson o verde Sage
    Emerald.
-9. **browser** — Chromium, LibreWolf o nessuno, con una riga che spiega a cosa
+9. **browser** — Chromium, Firefox ESR o nessuno, con una riga che spiega a cosa
    serve ciascuno. Il browser scelto non viene reinstallato; se l'altro è già
    installato, chiede se disinstallarlo (default no). Le tre estensioni vengono
    configurate automaticamente.
@@ -1238,7 +1243,7 @@ labwc-q4os/
 │   ├── help.txt                   # guida italiana
 │   └── validate.sh                # controlli statici e smoke test
 ├── configs/chromium/youtube-360/  # estensione locale YouTube a 360p (Chromium)
-├── configs/firefox/youtube-360/   # estensione locale YouTube a 360p (LibreWolf)
+├── configs/firefox/youtube-360/   # estensione locale YouTube a 360p (Firefox ESR)
 ├── preview/                       # anteprime sfondi, icone, GUI
 ├── LICENSE
 └── README.md
@@ -1533,7 +1538,7 @@ Il piano prevede:
   aggiungere, modificare e organizzare le voci del menu senza dover toccare
   a mano i file di configurazione.
 - **App principali ottimizzate**: partire da quelle che uso e provo di più in
-  questa modalità — **Chromium**, **LibreWolf** e **FreeTube** — con gli
+  questa modalità — **Chromium**, **Firefox ESR** e **FreeTube** — con gli
   accorgimenti necessari per il kiosk.
 - **Uscita dall’app**: Cage avvia la finestra a schermo intero, senza
   decorazioni e senza pulsanti di chiusura. Serve quindi una **X** oppure un
@@ -1541,7 +1546,7 @@ Il piano prevede:
 
 In contesti come un viaggio in treno, l’utilizzo è in genere legato a
 un’unica attività per volta: lettura tramite lettore PDF, riproduzione video
-su YouTube o navigazione web con Chromium o LibreWolf. Limitare l’ambiente a
+su YouTube o navigazione web con Chromium o Firefox ESR. Limitare l’ambiente a
 una singola applicazione attiva aiuta a mantenere il sistema snello,
 riducendo i consumi e semplificando l’uso in movimento.
 

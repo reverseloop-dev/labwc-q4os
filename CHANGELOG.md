@@ -2,6 +2,19 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.22.12]
+
+- Browser: **LibreWolf sostituito da Firefox ESR** (pacchetto Debian), con le
+  stesse estensioni (uBlock Origin, Privacy Badger, enhanced-h264ify), il
+  preferito YouTube 360p e la policy in `/etc/firefox-esr/policies`.
+- Firefox ESR: `dom.ipc.processCount=2` e
+  `browser.tabs.unloadOnLowMemory=true` per ridurre la RAM.
+- Creati i collegamenti **Firefox ESR** e **Firefox ESR (cage)**; migrazione
+  con rimozione delle vecchie voci e del pacchetto LibreWolf.
+- Installer testuale e wizard GTK: descrizione del perché scegliere Chromium
+  (compatibilità web app, più RAM) o Firefox ESR (più leggero, privacy).
+- Testato su Lenovo Chromebook E300 in Cage con YouTube, Wikipedia e più schede.
+
 ## [1.22.11]
 
 - Cage su Intel i915: aggiunti `WLR_DRM_NO_ATOMIC=1` e

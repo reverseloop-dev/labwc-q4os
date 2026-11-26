@@ -113,7 +113,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sddm", default="0")
     parser.add_argument("--sddm-available", default="0")
     parser.add_argument("--chromium-installed", default="0")
-    parser.add_argument("--librewolf-installed", default="0")
+    parser.add_argument("--firefox-installed", default="0")
     return parser.parse_args()
 
 
@@ -283,27 +283,27 @@ def main() -> int:
         return button
 
     initial_browser = args.browser
-    if initial_browser not in {"chromium", "librewolf", "both", "none"}:
-        if bool_arg(args.chromium_installed) and bool_arg(args.librewolf_installed):
+    if initial_browser not in {"chromium", "firefox", "both", "none"}:
+        if bool_arg(args.chromium_installed) and bool_arg(args.firefox_installed):
             initial_browser = "both"
-        elif bool_arg(args.librewolf_installed):
-            initial_browser = "librewolf"
+        elif bool_arg(args.firefox_installed):
+            initial_browser = "firefox"
         else:
             initial_browser = "chromium"
     chromium_check = browser_option(
         "chromium", "Chromium",
-        "Motore Chrome: massima compatibilità con le web app; estensioni dal Chrome Web Store.",
+        "Motore Chrome: massima compatibilità con le web app e Chrome Web Store. Usa più RAM; scegli se le web app devono funzionare senza sorprese.",
         initial_browser in {"chromium", "both"},
     )
-    librewolf_check = browser_option(
-        "librewolf", "LibreWolf",
-        "Firefox senza telemetria: più privacy; repository esterno e estensioni Mozilla.",
-        initial_browser in {"librewolf", "both"},
+    firefox_check = browser_option(
+        "firefox", "Firefox ESR",
+        "Firefox stabile e leggero: più privacy, estensioni Mozilla e meno RAM di Chromium. Consigliato su PC datati.",
+        initial_browser in {"firefox", "both"},
     )
     browser_page.pack_start(browser_card, False, False, 0)
 
     remove_check = Gtk.CheckButton(label="Disinstalla l'altro browser, se presente")
-    if bool_arg(args.chromium_installed) or bool_arg(args.librewolf_installed):
+    if bool_arg(args.chromium_installed) or bool_arg(args.firefox_installed):
         browser_page.pack_start(remove_check, False, False, 0)
     add_page("browser", "Browser", browser_scroll)
 
@@ -459,13 +459,13 @@ def main() -> int:
 
     def selected_browser() -> str:
         chromium = chromium_check.get_active()
-        librewolf = librewolf_check.get_active()
-        if chromium and librewolf:
+        firefox = firefox_check.get_active()
+        if chromium and firefox:
             return "both"
         if chromium:
             return "chromium"
-        if librewolf:
-            return "librewolf"
+        if firefox:
+            return "firefox"
         return "none"
 
     def selected_shell() -> str:
@@ -481,7 +481,12 @@ def main() -> int:
         if "summary" not in [name for name, _label, _widget in pages]:
             return
         browser = selected_browser()
-        browser_text = {"both": "Chromium + LibreWolf", "none": "nessuno"}.get(browser, browser)
+        browser_text = {
+            "both": "Chromium + Firefox ESR",
+            "firefox": "Firefox ESR",
+            "chromium": "Chromium",
+            "none": "nessuno",
+        }.get(browser, browser)
         lines = [
             f"Browser: {browser_text}",
             f"Shell: {'Noctalia v5' if selected_shell() == 'noctalia' else 'Waybar + Fuzzel'}",
@@ -524,8 +529,8 @@ def main() -> int:
         remove = ""
         if remove_check.get_parent() is not None and remove_check.get_active():
             if browser == "chromium":
-                remove = "librewolf"
-            elif browser == "librewolf":
+                remove = "firefox"
+            elif browser == "firefox":
                 remove = "chromium"
         values = [
             f"BROWSER={browser}",
