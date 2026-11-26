@@ -11,7 +11,7 @@ set -euo pipefail
 REPO_URL="https://github.com/reverseloop-dev/labwc-q4os.git"
 REPO_HTTPS="https://github.com/reverseloop-dev/labwc-q4os"
 CACHE="${LABWC_Q4OS_CACHE:-$HOME/.cache/labwc-q4os-src}"
-MANIFEST_SHA256="ade510fcaddc8456d30b800a04ea1e14ee529c82696c471fd2396b80a4fdacd0"
+MANIFEST_SHA256="7bb1cd7a3f6aa68228c5c608ac6173414e6627e1602f024f3ce0e0f3eadc6dab"
 
 die() { printf '[labwc-q4os] ERRORE: %s\n' "$*" >&2; exit 1; }
 
