@@ -1076,11 +1076,23 @@ EOF
 }
 
 install_cage_helper() {
-    if [ "$SKIP_APT" -eq 1 ]; then
+    if [ "$SKIP_APT" -eq 0 ]; then
+        install_packages cage
+    fi
+    if ! command -v cage >/dev/null 2>&1; then
         return 0
     fi
-    install_packages cage
-    if ! command -v cage >/dev/null 2>&1; then
+    # Cage legge /dev/input direttamente: senza gruppo input non vede
+    # mouse e tastiera, anche se il wrapper di sessione e' corretto.
+    local user_name="${USER:-$(id -un)}"
+    if ! id -nG "$user_name" 2>/dev/null | tr ' ' '\n' | grep -qx input; then
+        if sudo usermod -aG input "$user_name"; then
+            info "Utente aggiunto al gruppo input: Cage funziona dal prossimo login."
+        else
+            warn "Impossibile aggiungere $user_name al gruppo input: Cage non ricevera' mouse e tastiera."
+        fi
+    fi
+    if [ "$SKIP_APT" -eq 1 ]; then
         return 0
     fi
     # /usr/local/bin precede /usr/bin: la console mostra le istruzioni.
@@ -2084,6 +2096,17 @@ Type=Application
 Name=FreeTube
 Comment=YouTube con GUI; avvisa che labwc verra chiuso
 Exec=$HOME/.local/bin/labwc-freetube
+Icon=video-x-generic
+Terminal=false
+Categories=AudioVideo;Video;
+Keywords=youtube;video;freetube;cage;
+EOF
+    cat >"$APPDATA/freetube-cage.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=FreeTube (cage)
+Comment=FreeTube a schermo intero con Cage; salva i documenti prima
+Exec=$HOME/.local/bin/labwc-cage --ask -- freetube
 Icon=video-x-generic
 Terminal=false
 Categories=AudioVideo;Video;

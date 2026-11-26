@@ -125,7 +125,9 @@ while :; do
         printf 'cage: chiusura labwc, avvio %s\n' "$cage_cmd" >>"$LOG"
         (
             unset WAYLAND_DISPLAY DISPLAY XAUTHORITY
-            LABWC_CAGE_QUIET=1 WLR_BACKENDS=drm WLR_RENDERER=pixman \
+            # drm,libinput: solo "drm" disattiva il backend input di wlroots,
+            # quindi Cage non vede mouse e tastiera.
+            LABWC_CAGE_QUIET=1 WLR_BACKENDS=drm,libinput WLR_RENDERER=pixman \
                 WLR_NO_HARDWARE_CURSORS=1 \
                 cage -- bash -lc "$cage_cmd"
         ) >>"$LOG" 2>&1

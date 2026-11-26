@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.2**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.3**
 
 ---
 
@@ -383,10 +383,12 @@ fino ad allora Cage usa il fallback annidato. Anche FreeTube chiede conferma pri
 di chiudere labwc. Se lanci `cage` manualmente da una console, invece, resti
 nella shell: usa `labwc-return` o `Ctrl+Alt+F1`.
 
-**Mouse in Cage.** Cage su DRM legge direttamente mouse e tastiera: l’installer
-aggiunge l’utente al gruppo `input` e usa il cursore software. Serve un
-logout/login una volta dopo l’aggiornamento; senza gruppo `input` le app in
-Cage non ricevono il puntatore.
+**Mouse in Cage.** Cage su DRM legge direttamente mouse e tastiera: serve il
+backend `libinput` accanto a `drm` (`WLR_BACKENDS=drm,libinput`) e l’utente nel
+gruppo `input`. L’installer aggiunge il gruppo quando installa Cage e usa il
+cursore software. Serve un logout/login una volta dopo l’aggiornamento; senza
+uno dei due requisiti le app in Cage non ricevono il puntatore, anche se Cage
+si avvia.
 
 **Tornare a labwc dopo Cage.** Se lanci `cage` manualmente dalla console, il
 wrapper mostra le istruzioni prima e dopo l'app. Dalla console non lanciare
@@ -402,9 +404,10 @@ della sessione attiva e ci ritorna; se labwc non è più attivo, riavvia SDDM.
 FreeTube viene installato da un **repository APT dedicato** (GHaaAPT, non
 ufficiale ma con pacchetto FreeTube ufficiale): circa **100 MB**, niente
 Flatpak/Flathub, aggiornamenti con `apt update && apt upgrade`. L’installer
-chiede se installarlo e crea un collegamento con popup **Sì/No**: avvisa che
-labwc verrà chiuso e che i file non salvati andranno persi. Con **Sì** FreeTube
-parte in Cage a schermo intero; alla chiusura labwc riparte automaticamente.
+chiede se installarlo e crea **due** collegamenti, come per i browser:
+**FreeTube** (popup **Sì/No**: avvisa che labwc verrà chiuso e che i file non
+salvati andranno persi) e **FreeTube (cage)**. Con **Sì** FreeTube parte in
+Cage a schermo intero; alla chiusura labwc riparte automaticamente.
 
 Per Chromium e LibreWolf vengono creati due collegamenti: uno normale e uno
 con suffisso **(cage)**, che usa lo stesso meccanismo a schermo intero. Se

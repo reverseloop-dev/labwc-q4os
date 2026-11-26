@@ -2,6 +2,16 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.22.3]
+
+- Cage: corretto il mouse che non funzionava. `WLR_BACKENDS=drm` disattivava
+  il backend `libinput` di wlroots: ora è `drm,libinput`, quindi Cage apre
+  davvero `/dev/input/event*`.
+- Cage: l’utente viene aggiunto al gruppo `input` anche quando il touchscreen
+  non è attivo (prima avveniva solo con `--touch`).
+- FreeTube: aggiunto il collegamento **FreeTube (cage)** accanto a FreeTube.
+- Serve un logout/login una volta per applicare gruppo `input` e wrapper.
+
 ## [1.22.2]
 
 - FreeTube: aggiunto **repo APT dedicato** (GHaaAPT) con chiave firmata;
