@@ -56,7 +56,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.3**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.4**
 
 ---
 
@@ -374,12 +374,12 @@ labwc e apre una console dentro Cage: da lì si avviano direttamente:
 ```
 chromium
 librewolf
-freetube
+labwc-freetube-cage    # FreeTube con pulsante X
 ```
 Con i collegamenti **(cage)** labwc viene chiuso, l’app parte in Cage e, alla
 chiusura, labwc riparte automaticamente. Dopo un aggiornamento dello script
 serve **un logout/login una volta** per caricare il nuovo wrapper di sessione;
-fino ad allora Cage usa il fallback annidato. Anche FreeTube chiede conferma prima
+fino ad allora Cage usa il fallback annidato. La voce **FreeTube (cage)** chiede conferma prima
 di chiudere labwc. Se lanci `cage` manualmente da una console, invece, resti
 nella shell: usa `labwc-return` o `Ctrl+Alt+F1`.
 
@@ -405,9 +405,12 @@ FreeTube viene installato da un **repository APT dedicato** (GHaaAPT, non
 ufficiale ma con pacchetto FreeTube ufficiale): circa **100 MB**, niente
 Flatpak/Flathub, aggiornamenti con `apt update && apt upgrade`. L’installer
 chiede se installarlo e crea **due** collegamenti, come per i browser:
-**FreeTube** (popup **Sì/No**: avvisa che labwc verrà chiuso e che i file non
-salvati andranno persi) e **FreeTube (cage)**. Con **Sì** FreeTube parte in
-Cage a schermo intero; alla chiusura labwc riparte automaticamente.
+**FreeTube** apre FreeTube in labwc con la normale X della finestra;
+**FreeTube (cage)** chiede conferma (avvisa che labwc verrà chiuso e che i
+file non salvati andranno persi), avvia FreeTube a schermo intero in Cage e
+mostra una **X in alto a destra** per chiuderlo; alla chiusura labwc riparte
+automaticamente. La qualità video predefinita è **360p** in entrambe le
+modalità.
 
 Per Chromium e LibreWolf vengono creati due collegamenti: uno normale e uno
 con suffisso **(cage)**, che usa lo stesso meccanismo a schermo intero. Se
@@ -1156,7 +1159,9 @@ labwc-q4os/
 │   ├── labwc-minimized            # pipemenu finestre ridotte ad icona
 │   ├── labwc-install-wizard        # wizard GTK colorato, avanti/indietro
 │   ├── labwc-cage                  # app in Cage a schermo intero
-│   ├── labwc-freetube              # FreeTube: Cage/Labwc/Annulla
+│   ├── labwc-freetube              # FreeTube normale in labwc
+│   ├── labwc-freetube-cage         # FreeTube in Cage con pulsante X
+│   ├── freetube-close-overlay      # X dentro FreeTube (Cage)
 │   ├── labwc-cage-help             # console AVVIA CAGE con esempi
 │   ├── labwc-return                # torna da console/Cage a labwc
 │   ├── labwc-audio-key             # helper root keyd per volume

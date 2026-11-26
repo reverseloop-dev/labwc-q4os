@@ -2,6 +2,17 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.22.4]
+
+- FreeTube: il collegamento normale apre FreeTube **dentro labwc** con la X
+  della finestra; non chiede più di passare da Cage.
+- FreeTube (cage): aggiunto un pulsante **X in alto a destra** dentro la
+  pagina, perché Cage non disegna decorazioni. La X chiude FreeTube e riporta
+  a labwc.
+- FreeTube: qualità video predefinita **360p** in entrambe le modalità
+  (`defaultQuality` in `settings.db`).
+- Installer: aggiunto `python3-websockets` per il pulsante X di FreeTube.
+
 ## [1.22.3]
 
 - Cage: corretto il mouse che non funzionava. `WLR_BACKENDS=drm` disattivava

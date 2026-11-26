@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  labwc-freetube - FreeTube con scelta Cage / Labwc / Annulla
+#  labwc-freetube - FreeTube normale nella sessione Labwc.
+#
+#  La voce "FreeTube (cage)" usa labwc-freetube-cage: chiude labwc, avvia
+#  FreeTube in Cage e aggiunge il pulsante X.
 # =============================================================================
 set -u
 if command -v freetube >/dev/null 2>&1; then
-    exec "$HOME/.local/bin/labwc-cage" --ask -- freetube
+    exec freetube --ozone-platform=wayland
 fi
 if command -v notify-send >/dev/null 2>&1; then
     notify-send -a "FreeTube" "FreeTube non installato" \

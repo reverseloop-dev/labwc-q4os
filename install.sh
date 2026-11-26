@@ -842,6 +842,7 @@ CORE_PKGS=(
     python3-pil
     python3-gi
     python3-gi-cairo
+    python3-websockets
     gir1.2-gtk-3.0
     libgtk-3-bin
     qml6-module-qtquick
@@ -1205,6 +1206,54 @@ EOF
         return 1
     fi
     ok "FreeTube installato dal repo APT (aggiornamenti con apt)."
+}
+
+configure_freetube() {
+    local dir="$CONFIG/FreeTube"
+    local db="$dir/settings.db"
+
+    if pgrep -x freetube >/dev/null 2>&1; then
+        warn "FreeTube e' aperto: chiudilo e rilancia l'installer per applicare i 360p."
+        return 1
+    fi
+    mkdir -p "$dir"
+    chmod 0700 "$dir" 2>/dev/null || true
+    if python3 - "$db" <<'PY'
+import json
+import os
+import sys
+
+path = sys.argv[1]
+docs = []
+if os.path.exists(path):
+    with open(path, encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                doc = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(doc, dict) and "_id" in doc:
+                docs.append(doc)
+
+docs = [doc for doc in docs if doc.get("_id") != "defaultQuality"]
+docs.append({"_id": "defaultQuality", "value": "360"})
+
+tmp = path + ".labwc-q4os.tmp"
+with open(tmp, "w", encoding="utf-8") as handle:
+    for doc in docs:
+        handle.write(json.dumps(doc, separators=(",", ":"), ensure_ascii=False))
+        handle.write("\n")
+os.chmod(tmp, 0o600)
+os.replace(tmp, path)
+PY
+    then
+        ok "FreeTube: qualita' video predefinita 360p."
+    else
+        warn "Impossibile impostare la qualita' FreeTube a 360p."
+    fi
 }
 
 install_librewolf_extensions() {
@@ -1611,6 +1660,9 @@ fi
 
 if [ "$WANT_FREETUBE" -eq 1 ]; then
     install_freetube || true
+    if command -v freetube >/dev/null 2>&1; then
+        configure_freetube || true
+    fi
 else
     info "FreeTube non richiesto: nessuna modifica."
 fi
@@ -1820,6 +1872,8 @@ for helper in \
     labwc-install-wizard \
     labwc-cage \
     labwc-freetube \
+    labwc-freetube-cage \
+    freetube-close-overlay \
     labwc-cage-help \
     labwc-return \
     labwc-session-start
@@ -2094,7 +2148,7 @@ if [ "$WANT_FREETUBE" -eq 1 ]; then
 [Desktop Entry]
 Type=Application
 Name=FreeTube
-Comment=YouTube con GUI; avvisa che labwc verra chiuso
+Comment=YouTube con GUI nella sessione Labwc
 Exec=$HOME/.local/bin/labwc-freetube
 Icon=video-x-generic
 Terminal=false
@@ -2105,8 +2159,8 @@ EOF
 [Desktop Entry]
 Type=Application
 Name=FreeTube (cage)
-Comment=FreeTube a schermo intero con Cage; salva i documenti prima
-Exec=$HOME/.local/bin/labwc-cage --ask -- freetube
+Comment=FreeTube a schermo intero con Cage; pulsante X per chiudere
+Exec=$HOME/.local/bin/labwc-cage --ask -- $HOME/.local/bin/labwc-freetube-cage
 Icon=video-x-generic
 Terminal=false
 Categories=AudioVideo;Video;
@@ -2437,7 +2491,7 @@ for variant in nordic-cobalt muted-crimson sage-emerald; do
     [ -f "/usr/share/labwc-q4os/login-themes/$variant/Main.qml" ] ||
         die "tema login mancante: $variant"
 done
-for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-doctor labwc-app-manager labwc-update-check labwc-update-copy labwc-update-popup labwc-update-run labwc-update-gui labwc-preferences labwc-desktop labwc-desktop-state labwc-desktop-status labwc-desktop-menu labwc-power-menu labwc-sysinfo labwc-touchscreen labwc-login-theme labwc-fuzzel-apps labwc-minimized labwc-install-wizard labwc-cage labwc-freetube labwc-cage-help; do
+for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-doctor labwc-app-manager labwc-update-check labwc-update-copy labwc-update-popup labwc-update-run labwc-update-gui labwc-preferences labwc-desktop labwc-desktop-state labwc-desktop-status labwc-desktop-menu labwc-power-menu labwc-sysinfo labwc-touchscreen labwc-login-theme labwc-fuzzel-apps labwc-minimized labwc-install-wizard labwc-cage labwc-freetube labwc-freetube-cage freetube-close-overlay labwc-cage-help; do
     [ -x "$BIN/$helper" ] || die "helper non eseguibile: $helper"
 done
 ok "Tutto in ordine."

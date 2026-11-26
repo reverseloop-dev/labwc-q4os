@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-freetube-cage - FreeTube in Cage con pulsante X per chiuderlo.
+#
+#  Cage non disegna decorazioni. FreeTube viene avviato con il DevTools su
+#  porta casuale (solo localhost) e freetube-close-overlay aggiunge una X
+#  dentro la pagina: al click FreeTube si chiude e labwc riparte.
+# =============================================================================
+set -u
+
+if ! command -v freetube >/dev/null 2>&1; then
+    exit 1
+fi
+
+data="${XDG_CONFIG_HOME:-$HOME/.config}/FreeTube"
+overlay="$HOME/.local/bin/freetube-close-overlay"
+mkdir -p "$data" 2>/dev/null || true
+rm -f "$data/DevToolsActivePort"
+
+freetube --ozone-platform=wayland --remote-debugging-port=0 \
+    --remote-debugging-address=127.0.0.1 &
+pid=$!
+
+port_file="$data/DevToolsActivePort"
+overlay_pid=""
+for _ in $(seq 1 150); do
+    if [ -s "$port_file" ]; then
+        if [ -x "$overlay" ] && command -v python3 >/dev/null 2>&1; then
+            python3 "$overlay" "$port_file" &
+            overlay_pid=$!
+        fi
+        break
+    fi
+    if ! kill -0 "$pid" 2>/dev/null; then
+        exit 1
+    fi
+    sleep 0.2
+done
+
+wait "$pid"
+status=$?
+if [ -n "$overlay_pid" ]; then
+    kill "$overlay_pid" 2>/dev/null || true
+fi
+exit "$status"
