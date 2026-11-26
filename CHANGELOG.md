@@ -2,6 +2,16 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.22.11]
+
+- Cage su Intel i915: aggiunti `WLR_DRM_NO_ATOMIC=1` e
+  `WLR_DRM_NO_MODIFIERS=1`. Evitano i freeze con
+  `Atomic commit failed: Device or resource busy` quando una pagina web
+  complessa (LibreWolf, Chromium) tiene la GPU occupata.
+- La correzione vale sia per l’avvio dal menu `(cage)` sia per `labwc-cage`
+  lanciato manualmente da console.
+- README: riformulato il paragrafo sul risparmio batteria e sull’uso in treno.
+
 ## [1.22.10]
 
 - Installer: aggiunte le dipendenze per applicare il tema icone tramite

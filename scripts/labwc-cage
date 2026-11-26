@@ -73,6 +73,8 @@ sync
 
 if ! pgrep -x labwc >/dev/null 2>&1; then
     # Siamo già in una console senza labwc: Cage può partire direttamente.
+    # Legacy pageflip: su i915 evita i freeze atomic commit EBUSY.
+    export WLR_DRM_NO_ATOMIC=1 WLR_DRM_NO_MODIFIERS=1
     exec cage -- "$@"
 fi
 

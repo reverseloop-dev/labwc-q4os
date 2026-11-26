@@ -144,7 +144,11 @@ while :; do
             # Niente WLR_RENDERER=pixman: su Intel i915 le superfici DMABUF
             # di FreeTube/Electron restano nere. Lasciare il renderer
             # automatico (GLES2), che compone anche le superfici DMABUF.
+            # WLR_DRM_NO_ATOMIC evita i freeze "Atomic commit failed:
+            # Device or resource busy" quando una pagina web complessa tiene
+            # la GPU occupata; WLR_DRM_NO_MODIFIERS evita i modifier DMABUF.
             LABWC_CAGE_QUIET=1 WLR_BACKENDS=drm,libinput \
+                WLR_DRM_NO_ATOMIC=1 WLR_DRM_NO_MODIFIERS=1 \
                 WLR_NO_HARDWARE_CURSORS=1 \
                 cage -- bash -lc "$cage_cmd"
         ) >>"$LOG" 2>&1
