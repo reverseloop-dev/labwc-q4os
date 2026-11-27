@@ -46,6 +46,7 @@ THEME=""
 ASSUME_YES=0
 ENABLE_ZRAM=""
 ENABLE_SWAPPINESS=""
+ENABLE_GRUB_1S=""
 ENABLE_TOUCH=""
 WANT_LOOKSWITCHER=""
 WANT_BROWSER=""
@@ -96,6 +97,8 @@ Opzioni:
   --shell NOME        Shell desktop: waybar|noctalia (default: waybar)
   --swappiness N      Imposta vm.swappiness a N (0-200)
   --no-swappiness     Non modificare vm.swappiness
+  --grub-1s           Abbassa a 1 secondo l'attesa del menu GRUB (opt-in)
+  --no-grub-1s        Lascia invariato il timeout di GRUB
   --sddm              Installa e attiva SDDM se TDM non supporta Wayland
   --keep-tdm          Non toccare il display manager (TDM resta attivo)
   --skip-apt          Non installare pacchetti (solo configurazione)
@@ -126,6 +129,8 @@ while [ "$#" -gt 0 ]; do
             XKB_LAYOUT="$2"; shift 2 ;;
         --keyboard=*) XKB_LAYOUT="${1#*=}"; shift ;;
         --no-swappiness) ENABLE_SWAPPINESS=0; shift ;;
+        --grub-1s) ENABLE_GRUB_1S=1; shift ;;
+        --no-grub-1s) ENABLE_GRUB_1S=0; shift ;;
         --touch) ENABLE_TOUCH=1; shift ;;
         --no-touch) ENABLE_TOUCH=0; shift ;;
         --lookswitcher) WANT_LOOKSWITCHER=1; shift ;;
@@ -172,7 +177,7 @@ if [ -n "$WANT_SHELL" ]; then
     esac
 fi
 
-if [ -n "$THEME$ENABLE_ZRAM$ENABLE_SWAPPINESS$ENABLE_TOUCH$WANT_LOOKSWITCHER$WANT_SHELL$WANT_SDDM$XKB_LAYOUT$WANT_BROWSER$WANT_QPDFVIEW$WANT_FREETUBE$SWAPPINESS_VALUE" ]; then
+if [ -n "$THEME$ENABLE_ZRAM$ENABLE_SWAPPINESS$ENABLE_GRUB_1S$ENABLE_TOUCH$WANT_LOOKSWITCHER$WANT_SHELL$WANT_SDDM$XKB_LAYOUT$WANT_BROWSER$WANT_QPDFVIEW$WANT_FREETUBE$SWAPPINESS_VALUE" ]; then
     PARAM_FLAGS=1
 fi
 
@@ -199,6 +204,8 @@ load_saved_options() {
     case "$value" in 0|1) ENABLE_SWAPPINESS="$value" ;; esac
     value="$(option_value SWAPPINESS_VALUE || true)"
     [ -n "$value" ] && SWAPPINESS_VALUE="$value"
+    value="$(option_value GRUB_TIMEOUT || true)"
+    case "$value" in 0|1) ENABLE_GRUB_1S="$value" ;; esac
     value="$(option_value THEME || true)"
     case "$value" in nordic-cobalt|muted-crimson|sage-emerald) THEME="$value" ;; esac
     value="$(option_value KEYBOARD || true)"
@@ -602,6 +609,27 @@ else
     [ "$ENABLE_SWAPPINESS" -eq 1 ] && info "Senza zram: vm.swappiness=10 evita swap su disco prematuri."
 fi
 info "vm.vfs_cache_pressure=50 mantiene in cache inode/dentry e riduce il lavoro del disco."
+
+# GRUB: domanda opt-in (default No). Chi non ha GRUB o non vuole modifiche non
+# viene toccato; in caso affermativo il timeout scende a 1 secondo con backup.
+if [ -z "$ENABLE_GRUB_1S" ]; then
+    if [ "$ASSUME_YES" -eq 1 ]; then
+        ENABLE_GRUB_1S=0
+    elif [ -r /etc/default/grub ] && command -v update-grub >/dev/null 2>&1; then
+        note "GRUB: 1 secondo di attesa prima dell'avvio (menu ancora raggiungibile con Esc)."
+        if ask_yes_no "Abbassare a 1 secondo l'attesa della schermata GRUB in avvio?" no; then
+            ENABLE_GRUB_1S=1
+        else
+            ENABLE_GRUB_1S=0
+        fi
+    else
+        ENABLE_GRUB_1S=0
+        info "GRUB non rilevato: domanda sul timeout saltata."
+    fi
+fi
+if [ "$ENABLE_GRUB_1S" -eq 1 ]; then
+    info "GRUB: GRUB_TIMEOUT=1 (backup del file originale in $STATE/backups)."
+fi
 
 # Touchscreen: tastiera su schermo wvkbd + gesti lisgd, testi e pulsanti grandi.
 if [ -z "$ENABLE_TOUCH" ]; then
@@ -1825,6 +1853,68 @@ backup_tree "$APPDATA/labwc-update-gui.desktop" "config/applications/labwc-updat
 backup_tree "$APPDATA/labwc-preferences.desktop" "config/applications/labwc-preferences.desktop"
 backup_tree "$APPDATA/labwc-sysinfo.desktop" "config/applications/labwc-sysinfo.desktop"
 
+configure_grub_timeout() {
+    # Opt-in esplicito (default No): GRUB_TIMEOUT=1 con backup del file
+    # originale. Senza GRUB o senza update-grub non tocca nulla.
+    [ "${ENABLE_GRUB_1S:-0}" -eq 1 ] || {
+        info "GRUB: timeout invariato."
+        return 0
+    }
+    if [ ! -r /etc/default/grub ]; then
+        warn "GRUB: /etc/default/grub non trovato, timeout invariato."
+        return 0
+    fi
+    if grep -Eq '^GRUB_TIMEOUT=1$' /etc/default/grub; then
+        ok "GRUB: timeout gia' a 1 secondo."
+        return 0
+    fi
+    mkdir -p "$BACKUP_DIR/system"
+    sudo cp -a /etc/default/grub "$BACKUP_DIR/system/grub.default" 2>/dev/null ||
+        warn "GRUB: backup di /etc/default/grub non riuscito."
+    if sudo sed -i -E 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=1/' /etc/default/grub; then
+        grep -Eq '^GRUB_TIMEOUT=' /etc/default/grub ||
+            printf 'GRUB_TIMEOUT=1\n' | sudo tee -a /etc/default/grub >/dev/null
+        if command -v update-grub >/dev/null 2>&1; then
+            if sudo update-grub >/dev/null 2>&1; then
+                ok "GRUB: attesa ridotta a 1 secondo."
+            else
+                warn "GRUB: update-grub ha segnalato errori; controlla 'sudo update-grub'."
+            fi
+        else
+            warn "GRUB: update-grub non disponibile; esegui 'sudo update-grub' a mano."
+        fi
+    else
+        warn "GRUB: modifica di /etc/default/grub non riuscita."
+    fi
+}
+
+configure_bluetooth_policy() {
+    # Bluetooth spento di default, senza perdere la scelta dell'utente: il
+    # soft-block rfkill e' persistito da systemd-rfkill, quindi se l'utente lo
+    # accende (menu TOOL reverseloop o bluetoothctl) al riavvio resta acceso.
+    if [ ! -d /sys/class/bluetooth ] ||
+        [ -z "$(ls -A /sys/class/bluetooth 2>/dev/null || true)" ]; then
+        info "Bluetooth: nessun adattatore rilevato, stato invariato."
+        return 0
+    fi
+    if ! command -v rfkill >/dev/null 2>&1; then
+        warn "Bluetooth: rfkill non disponibile, stato invariato."
+        return 0
+    fi
+    sudo systemctl unmask bluetooth.service systemd-rfkill.service >/dev/null 2>&1 || true
+    sudo systemctl enable systemd-rfkill.service >/dev/null 2>&1 ||
+        warn "Bluetooth: impossibile abilitare systemd-rfkill (stato non persistente)."
+    if sudo sh -c 'ls /var/lib/systemd/rfkill/*bluetooth* >/dev/null 2>&1'; then
+        ok "Bluetooth: stato utente gia' salvato, resta com'e' anche al riavvio."
+        return 0
+    fi
+    if sudo rfkill block bluetooth 2>/dev/null; then
+        ok "Bluetooth: spento di default (accendilo da TOOL reverseloop > Bluetooth)."
+    else
+        warn "Bluetooth: soft-block non riuscito, stato invariato."
+    fi
+}
+
 configure_keyboard() {
     local env_file="$CONFIG/labwc/environment" tmp
     mkdir -p "$CONFIG/labwc"
@@ -1979,6 +2069,7 @@ for helper in \
     labwc-help \
     labwc-screenshot \
     labwc-zram \
+    labwc-bluetooth \
     labwc-doctor \
     labwc-app-manager \
     labwc-update-check \
@@ -2069,6 +2160,8 @@ fi
 install -m 0644 "$REPO_DIR/configs/labwc/environment" "$CONFIG/labwc/environment"
 configure_keyboard
 configure_touchscreen
+configure_grub_timeout
+configure_bluetooth_policy
 
 # Marker della shell scelta: letto da labwc-session-start, labwc-theme-apply
 # e labwc-doctor. Senza marker il comportamento resta quello classico (waybar).
@@ -2645,6 +2738,7 @@ LOOKSWITCHER=$WANT_LOOKSWITCHER
 ZRAM=$ENABLE_ZRAM
 SWAPPINESS_ENABLED=$ENABLE_SWAPPINESS
 SWAPPINESS_VALUE=$SWAPPINESS_VALUE
+GRUB_TIMEOUT=$ENABLE_GRUB_1S
 THEME=$THEME
 BROWSER=$WANT_BROWSER
 QPDFVIEW=$WANT_QPDFVIEW
@@ -2682,7 +2776,7 @@ for variant in nordic-cobalt muted-crimson sage-emerald; do
     [ -f "/usr/share/labwc-q4os/login-themes/$variant/Main.qml" ] ||
         die "tema login mancante: $variant"
 done
-for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-doctor labwc-app-manager labwc-update-check labwc-update-copy labwc-update-popup labwc-update-run labwc-update-gui labwc-preferences labwc-battery-indicator labwc-desktop labwc-desktop-state labwc-desktop-status labwc-desktop-menu labwc-power-menu labwc-sysinfo labwc-touchscreen labwc-touch-tap labwc-login-theme labwc-fuzzel-apps labwc-minimized labwc-install-wizard labwc-cage labwc-freetube labwc-freetube-cage freetube-close-overlay labwc-cage-help; do
+for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-bluetooth labwc-doctor labwc-app-manager labwc-update-check labwc-update-copy labwc-update-popup labwc-update-run labwc-update-gui labwc-preferences labwc-battery-indicator labwc-desktop labwc-desktop-state labwc-desktop-status labwc-desktop-menu labwc-power-menu labwc-sysinfo labwc-touchscreen labwc-touch-tap labwc-login-theme labwc-fuzzel-apps labwc-minimized labwc-install-wizard labwc-cage labwc-freetube labwc-freetube-cage freetube-close-overlay labwc-cage-help; do
     [ -x "$BIN/$helper" ] || die "helper non eseguibile: $helper"
 done
 ok "Tutto in ordine."

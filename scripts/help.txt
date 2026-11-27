@@ -401,6 +401,17 @@ SHELL DESKTOP (scelta in installazione con --shell):
     l'autostart non parte.
   Per cambiare: riesegui l'installer con --shell waybar oppure --shell noctalia.
 
+BLUETOOTH:
+  • spento di default; la scelta dell'utente resta anche al riavvio
+    (soft-block rfkill persistito da systemd-rfkill in /var/lib/systemd/rfkill)
+  • accendi/spegni: TOOL reverseloop > Sistema e diagnostica > Bluetooth,
+    oppure labwc-bluetooth on|off|status|toggle
+
+MENU DI AVVIO (GRUB):
+  • domanda in installazione, default No: solo se rispondi si' il timeout
+    diventa 1 secondo (backup di /etc/default/grub, poi update-grub)
+  • flag: --grub-1s / --no-grub-1s
+
 LOOKSWITCHER PER TRINITY (solo Trinity):
   • se Trinity e' installato, l'installer chiede se aggiungere LookSwitcher,
     il selettore di temi del desktop Q4OS Trinity

@@ -2,6 +2,24 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.25.0]
+
+- **Menu del tasto destro senza duplicati**: la deduplica ora usa il programma
+  eseguito (anche `flatpak run ID`) e non solo il nome; le app scelte come
+  preferite compaiono solo in *★ App preferite*, e le voci fisse (Terminale,
+  File manager, launcher) non si ripetono nelle categorie. Le voci `.desktop`
+  generate dal progetto non vengono più elencate due volte.
+- **App create dall'utente** (`.desktop` in `~/.local/share/applications`):
+  tutte sotto **TOOL reverseloop**, raggruppate nelle categorie già esistenti.
+  Un override utente di un'app di sistema resta nella categoria normale.
+- **Bluetooth spento di default**, senza perdere la scelta: soft-block `rfkill`
+  solo se non c'è uno stato salvato, `systemd-rfkill` abilitato per la
+  persistenza, nuovo helper `labwc-bluetooth` (`on|off|status|toggle`) in
+  *TOOL reverseloop > Sistema e diagnostica*.
+- **GRUB**: domanda opt-in (default No) per portare a 1 secondo l'attesa del
+  menu di avvio, con backup di `/etc/default/grub`; flag `--grub-1s` /
+  `--no-grub-1s`, scelta salvata in `/etc/labwc-q4os/install-options`.
+
 ## [1.24.1]
 
 - **Sfondi**: il logo **reverseloop-dev** è ora al centro dei tre wallpaper,

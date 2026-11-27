@@ -85,6 +85,15 @@ CATEGORY_ORDER = [
     "Altre applicazioni",
 ]
 
+# App create dall'utente: stanno in $XDG_DATA_HOME/applications ma non sono
+# voci del progetto (labwc-*.desktop) ne' scorciatoie *-cage generate da
+# install.sh. Finiscono in TOOL reverseloop, raggruppate per categoria.
+USER_APPS_DIR = Path(
+    os.environ.get("XDG_DATA_HOME", HOME / ".local/share")
+) / "applications"
+PROJECT_DESKTOP_PREFIXES = ("labwc-",)
+PROJECT_DESKTOP_SUFFIXES = ("-cage",)
+
 # Sottocategorie per il menu Impostazioni: evita un elenco lunghissimo
 # (labwc non ha lo scroll nei menu).
 SETTINGS_GROUPS = [
@@ -162,6 +171,7 @@ class App:
     command: str
     category: str
     icon: str = ""
+    is_user: bool = False
 
     @property
     def sort_key(self) -> str:
@@ -261,6 +271,56 @@ def first_command(exec_line: str) -> str:
     return parts[0]
 
 
+def command_fingerprint(command: str) -> str:
+    """Firma stabile del programma eseguito.
+
+    Ignora argomenti, variabili d'ambiente e percorso assoluto: due voci che
+    lanciano lo stesso binario (es. /usr/bin/firefox e firefox-esr) risultano
+    duplicate. Per Flatpak/Snap usa l'ID dell'applicazione.
+    """
+    try:
+        parts = shlex.split(command)
+    except ValueError:
+        parts = command.split()
+    while parts and os.path.basename(parts[0]) == "env":
+        parts.pop(0)
+        while parts and "=" in parts[0] and not parts[0].startswith("/"):
+            parts.pop(0)
+    if not parts:
+        return ""
+    base = os.path.basename(parts[0])
+    if base in ("flatpak", "snap"):
+        for token in parts[1:]:
+            if not token.startswith("-") and token not in ("run", "override"):
+                return f"{base}:{token}"
+        return base
+    return base
+
+
+def is_project_desktop(desktop_id: str) -> bool:
+    """True per le voci .desktop installate dal progetto."""
+    return desktop_id.startswith(PROJECT_DESKTOP_PREFIXES) or desktop_id.endswith(
+        PROJECT_DESKTOP_SUFFIXES
+    )
+
+
+def references_helper(exec_line: str, name: str) -> bool:
+    """True se il comando lancia davvero un eseguibile omonimo della voce."""
+    try:
+        tokens = shlex.split(exec_line)
+    except ValueError:
+        tokens = exec_line.split()
+    for token in tokens:
+        if os.path.basename(token) != name:
+            continue
+        if "/" in token:
+            if os.path.isfile(token) and os.access(token, os.X_OK):
+                return True
+        elif shutil.which(token):
+            return True
+    return False
+
+
 def executable_exists(exec_line: str) -> bool:
     token = first_command(exec_line)
     if not token:
@@ -290,7 +350,8 @@ def choose_category(categories: str) -> str:
 def load_apps(placements: dict[str, str] | None = None) -> list[App]:
     apps: list[App] = []
     seen_ids: set[str] = set()
-    seen_signatures: set[tuple[str, str]] = set()
+    seen_fingerprints: dict[str, list[str]] = {}
+    system_names: set[str] = set()
 
     for directory in desktop_dirs():
         if not directory.is_dir():
@@ -340,6 +401,16 @@ def load_apps(placements: dict[str, str] | None = None) -> list[App]:
                 continue
             if not executable_exists(exec_line):
                 continue
+            # Le voci generate dal progetto (Exec=~/.local/bin/labwc-*) sono
+            # gia' elencate a mano in TOOL reverseloop: non vanno ripetute
+            # nelle categorie.
+            if desktop_id.startswith("labwc-") and references_helper(
+                exec_line, desktop_id
+            ):
+                continue
+
+            if path.parent != USER_APPS_DIR:
+                system_names.add(menu_sort_key(name))
 
             if is_true(data.get("Terminal", "")):
                 command = f"terminator -x sh -c {shlex.quote(exec_line)}"
@@ -359,12 +430,30 @@ def load_apps(placements: dict[str, str] | None = None) -> list[App]:
                 command=command,
                 category=category,
                 icon=data.get("Icon", ""),
+                is_user=(
+                    path.parent == USER_APPS_DIR
+                    and not is_project_desktop(desktop_id)
+                ),
             )
-            signature = (application.name.casefold(), application.command)
-            if signature in seen_signatures:
+            # Deduplica: stesso programma eseguito e nome uguale o contenuto
+            # nell'altro (es. "Firefox" / "Firefox ESR" che lanciano lo stesso
+            # binario). Voci con nomi diversi restano separate.
+            fingerprint = command_fingerprint(command) or command
+            sort_name = menu_sort_key(name)
+            previous_names = seen_fingerprints.setdefault(fingerprint, [])
+            if any(
+                sort_name == old or sort_name in old or old in sort_name
+                for old in previous_names
+            ):
                 continue
-            seen_signatures.add(signature)
+            previous_names.append(sort_name)
             apps.append(application)
+
+    # Un override utente di un'app di sistema (stesso nome) resta nel menu
+    # principale come le altre app: non e' una "app creata dall'utente".
+    for app in apps:
+        if app.is_user and menu_sort_key(app.name) in system_names:
+            app.is_user = False
 
     apps.sort(key=lambda a: (a.category, a.sort_key))
     return apps
@@ -467,10 +556,32 @@ def settings_body(apps: list["App"]) -> str:
     return body
 
 
+# Voci fisse del menu radice: se un'app del sistema lancia lo stesso programma
+# non va ripetuta in una categoria.
+PINNED_ROOT_COMMANDS = ("terminator", "pcmanfm", "fuzzel")
+
+
 def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
+    favorites = sorted(favorites, key=lambda row: menu_sort_key(row[1]))
+    favorite_ids = {fav[0] for fav in favorites}
+    favorite_keys = {
+        (menu_sort_key(label), command_fingerprint(command) or command)
+        for _id, label, command in favorites
+    }
+    pinned = {command_fingerprint(command) for command in PINNED_ROOT_COMMANDS}
+
     groups: dict[str, list[App]] = {}
+    user_groups: dict[str, list[App]] = {}
     for app in apps:
-        groups.setdefault(app.category, []).append(app)
+        fingerprint = command_fingerprint(app.command) or app.command
+        # Una voce per app: le preferite compaiono solo nel loro sottomenu e le
+        # voci fisse (Terminale, File manager, launcher) non si ripetono.
+        if app.desktop_id in favorite_ids or (app.sort_key, fingerprint) in favorite_keys:
+            continue
+        if not app.is_user and fingerprint in pinned:
+            continue
+        target = user_groups if app.is_user else groups
+        target.setdefault(app.category, []).append(app)
 
     parts: list[str] = []
     parts.append('<?xml version="1.0" encoding="UTF-8"?>\n')
@@ -512,7 +623,6 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     parts.append("    <separator />\n")
 
     favorites_body = ""
-    favorites = sorted(favorites, key=lambda row: menu_sort_key(row[1]))
     if favorites:
         for _, label, command in favorites:
             favorites_body += item(label, command)
@@ -572,6 +682,7 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
         ("Diagnostica e ripara desktop", item("Diagnostica e ripara desktop", f"terminator -x {helper('labwc-doctor')} --fix")),
         ("Controlli aggiornamenti script labwc-q4os", item("Controlli aggiornamenti script labwc-q4os", helper("labwc-update-gui"))),
         ("ZRAM — memoria compressa", item("ZRAM — memoria compressa", helper("labwc-zram"))),
+        ("Bluetooth: accendi o spegni", item("Bluetooth: accendi o spegni", helper("labwc-bluetooth"))),
     ]
 
     theme_entries: list[tuple[str, str]] = [
@@ -599,6 +710,24 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
         ("Sessione", submenu("session-tools-menu", "Sessione", sorted_body(session_entries))),
         ("Sistema e diagnostica", submenu("system-menu", "Sistema e diagnostica", sorted_body(system_entries))),
     ]
+
+    # App create dall'utente: tutte dentro TOOL reverseloop, raggruppate con
+    # le categorie gia' esistenti (nessuna voce ripetuta nel menu principale).
+    for category in sorted(user_groups, key=menu_sort_key):
+        rows = sorted(
+            user_groups[category], key=lambda app: menu_sort_key(app.name)
+        )
+        slug = re.sub(r"[^a-z0-9]+", "-", category.casefold()).strip("-")
+        tool_entries.append(
+            (
+                category,
+                submenu(
+                    f"user-cat-{slug}",
+                    category,
+                    "".join(item(app.name, app.command) for app in rows),
+                ),
+            )
+        )
 
     tool_entries.sort(key=lambda row: menu_sort_key(row[0]))
     desktop_body = "".join(body for _label, body in tool_entries)
@@ -725,6 +854,7 @@ def json_state() -> None:
                 "command": app.command,
                 "favorite": app.desktop_id in favorite_ids,
                 "placement": placements.get(app.desktop_id, ""),
+                "user": app.is_user,
             }
             for app in apps
         ],

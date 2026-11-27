@@ -1,0 +1,196 @@
+#!/usr/bin/env python3
+"""
+labwc-bluetooth - accende o spegne il Bluetooth e ricorda la scelta.
+
+All'installazione il Bluetooth e' spento di default. Lo stato di soft-block
+rfkill viene salvato da systemd-rfkill (/var/lib/systemd/rfkill): se accendi il
+Bluetooth al riavvio resta acceso, se lo spegni resta spento.
+
+Uso:
+  labwc-bluetooth            finestra (zenity) o stato nel terminale
+  labwc-bluetooth status     "acceso" / "spento" / "assente"
+  labwc-bluetooth toggle     alterna lo stato
+  labwc-bluetooth on|off     forza lo stato
+  labwc-bluetooth --notify   notifica lo stato (per scorciatoie)
+"""
+
+from __future__ import annotations
+
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+ADAPTERS_DIR = Path("/sys/class/bluetooth")
+
+
+def notify(title: str, body: str) -> None:
+    for command in (
+        ["notify-send", "-a", "labwc-q4os", title, body],
+        ["zenity", "--info", f"--title={title}", f"--text={body}", "--timeout=4"],
+    ):
+        if shutil.which(command[0]):
+            try:
+                subprocess.run(
+                    command, check=False, stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL, timeout=10,
+                )
+                return
+            except (OSError, subprocess.SubprocessError):
+                continue
+
+
+def adapters() -> list[str]:
+    try:
+        return sorted(p.name for p in ADAPTERS_DIR.iterdir() if p.name.startswith("hci"))
+    except OSError:
+        return []
+
+
+def rfkill_state() -> str | None:
+    """"blocked", "unblocked" o None se rfkill non risponde."""
+    if not shutil.which("rfkill"):
+        return None
+    try:
+        result = subprocess.run(
+            ["rfkill", "list", "bluetooth"], capture_output=True,
+            text=True, timeout=5, check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    if "Soft blocked: yes" in result.stdout or "Hard blocked: yes" in result.stdout:
+        return "blocked"
+    return "unblocked"
+
+
+def powered() -> bool | None:
+    """Stato Powered di BlueZ; None se bluetoothctl non risponde."""
+    if not shutil.which("bluetoothctl"):
+        return None
+    try:
+        result = subprocess.run(
+            ["bluetoothctl", "show"], capture_output=True, text=True,
+            timeout=5, check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    return "Powered: yes" in result.stdout
+
+
+def status() -> str:
+    if not adapters():
+        return "assente"
+    state = rfkill_state()
+    if state == "blocked":
+        return "spento"
+    if state is None:
+        return "sconosciuto"
+    powered_state = powered()
+    if powered_state is None:
+        # rfkill non blocca ma BlueZ non risponde: conta lo sblocco.
+        return "acceso"
+    return "acceso" if powered_state else "spento"
+
+
+def root_runner() -> list[str]:
+    """rfkill richiede privilegi: pkexec con sessione grafica, altrimenti sudo."""
+    if os.geteuid() == 0:
+        return []
+    if shutil.which("pkexec") and (
+        os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY")
+    ):
+        return ["pkexec"]
+    if shutil.which("sudo"):
+        return ["sudo", "-n"]
+    return []
+
+
+def run_root(*args: str) -> bool:
+    command = root_runner() + list(args)
+    try:
+        return subprocess.run(command, check=False, timeout=30).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def bluetoothctl(*args: str) -> None:
+    if not shutil.which("bluetoothctl"):
+        return
+    try:
+        subprocess.run(
+            ["bluetoothctl", *args], capture_output=True, timeout=10, check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return
+
+
+def set_power(on: bool) -> int:
+    if not adapters():
+        notify("Bluetooth", "Nessun adattatore Bluetooth rilevato.")
+        return 0
+    if on:
+        if not run_root("rfkill", "unblock", "bluetooth"):
+            notify("Bluetooth", "Sblocco non riuscito (Serve la password di amministratore).")
+            return 1
+        bluetoothctl("power", "on")
+    else:
+        bluetoothctl("power", "off")
+        if not run_root("rfkill", "block", "bluetooth"):
+            notify("Bluetooth", "Spegnimento non riuscito (serve la password di amministratore).")
+            return 1
+    notify("Bluetooth", f"Bluetooth {status()}. La scelta resta anche al riavvio.")
+    return 0
+
+
+def gui_prompt() -> int:
+    current = status()
+    if current == "assente" or current == "sconosciuto":
+        notify("Bluetooth", f"Stato: {current}.")
+        return 0
+    if not shutil.which("zenity"):
+        print(f"Bluetooth {current}: usa 'labwc-bluetooth on|off'.")
+        return 0
+    text = (
+        "Il Bluetooth e' acceso: vuoi spegnerlo?"
+        if current == "acceso"
+        else "Il Bluetooth e' spento: vuoi accenderlo?"
+    )
+    result = subprocess.run(
+        ["zenity", "--question", "--title=Bluetooth", f"--text={text}",
+         "--ok-label=Si", "--cancel-label=No"],
+        check=False,
+    )
+    if result.returncode != 0:
+        return 0
+    return set_power(current != "acceso")
+
+
+def main(argv: list[str]) -> int:
+    action = argv[1] if len(argv) > 1 else ""
+    if action in ("status", "--status"):
+        print(status())
+        return 0
+    if action == "--notify":
+        notify("Bluetooth", f"Bluetooth {status()}.")
+        return 0
+    if action in ("on", "off"):
+        return set_power(action == "on")
+    if action == "toggle":
+        current = status()
+        if current == "assente":
+            notify("Bluetooth", "Nessun adattatore Bluetooth rilevato.")
+            return 0
+        return set_power(current != "acceso")
+    if action in ("-h", "--help"):
+        print(__doc__)
+        return 0
+    return gui_prompt()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))

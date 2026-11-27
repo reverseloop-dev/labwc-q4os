@@ -137,7 +137,16 @@ un ambiente sobrio.**
   esatta, riempimento proporzionale e contorno neon; posizione e percentuale si
   scelgono dalle **Preferenze**.
 - **Menu corto**: Impostazioni e TOOL reverseloop raggruppati in sottomenu
-  tematici, così le voci non vengono tagliate.
+  tematici, così le voci non vengono tagliate. Le app create dall'utente
+  (file `.desktop` in `~/.local/share/applications`) finiscono tutte dentro
+  **TOOL reverseloop**, nelle stesse categorie del menu principale, e le
+  chiamate duplicate (stesso programma, preferite, voci fisse) vengono
+  eliminate: ogni app compare una sola volta.
+- **Bluetooth** spento di default; se lo accendi da *TOOL reverseloop >
+  Bluetooth* (o con `bluetoothctl`) resta acceso anche dopo il riavvio, e se
+  lo spegni resta spento.
+- **GRUB** (solo se rispondi sì alla domanda, default no): attesa del menu di
+  avvio ridotta a **1 secondo**, con backup di `/etc/default/grub`.
 - **Aggiornamenti interattivi**: controllo versione, popup di avviso con
   chiusura dopo 15 s e aggiornamento nel terminale che rifà le domande.
 - zram e swappiness configurabili durante l'installazione.
@@ -148,8 +157,8 @@ swappiness, touchscreen, LookSwitcher, qpdfview). La shell
 completa con layout tastiera, display manager e tema. Poi parte
 l'installazione. Ogni domanda ha un flag corrispondente (`--keyboard`,
 `--zram`, `--touch`, `--lookswitcher`, `--shell`, `--sddm`, `--theme`,
-`--browser`, `--qpdfview`); `--quick` e `--configure` forzano aggiornamento
-rapido o configurazione.
+`--browser`, `--qpdfview`, `--grub-1s`); `--quick` e `--configure` forzano
+aggiornamento rapido o configurazione.
 
 ---
 
@@ -526,6 +535,12 @@ sfondi resta quella del progetto. Su macchine **senza adattatore Bluetooth**
 il servizio `bluetooth` viene mascherato: BlueZ non può partire e senza questo
 Noctalia aspetterebbe 25 secondi il D-Bus a ogni login. Con un adattatore il
 servizio resta normale.
+
+Con un adattatore il Bluetooth parte **spento**: l'installer applica un
+soft-block `rfkill` solo se non esiste già uno stato salvato. `systemd-rfkill`
+registra in `/var/lib/systemd/rfkill` l'ultima scelta, quindi se lo accendi
+(menu *TOOL reverseloop > Bluetooth*, `labwc-bluetooth on` o `bluetoothctl`)
+al riavvio resta acceso, e se lo spegni resta spento.
 
 Vale anche il contrario: scegliendo **Waybar + Fuzzel** viene rimosso il
 pacchetto `noctalia`. Le configurazioni restano, così puoi cambiare idea
@@ -1487,12 +1502,14 @@ sudo systemctl disable --now zramswap.service
 
 - Lo script **non** viene eseguito come root; usa `sudo` solo per `apt`,
   `/usr/share/wayland-sessions` e i file in `/etc`.
-- Non modifica il display manager, la sessione predefinita, GRUB o i driver.
+- Non modifica il display manager, la sessione predefinita o i driver. Il menu
+  GRUB viene toccato solo se rispondi sì alla domanda sul timeout di 1 secondo
+  (default no), con backup di `/etc/default/grub`.
 - Le configurazioni esistenti vengono salvate prima di essere sostituite.
 - `apt-get` usa `--no-install-recommends` e opzioni non interattive.
 - Nessun dato viene inviato all'esterno: sfondi e menu sono generati in locale.
-- Le app nel menu vengono filtrate in base a `NoDisplay`, `Hidden`, `TryExec`
-  ed esistenza dell'eseguibile.
+- Le app nel menu vengono filtrate in base a `NoDisplay`, `Hidden`, `TryExec`,
+  esistenza dell'eseguibile e duplicati (stesso programma).
 
 ### Verifica di integrità del codice
 
