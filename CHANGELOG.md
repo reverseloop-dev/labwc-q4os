@@ -7,6 +7,9 @@ Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 - **Correzione**: `NO_RESTORE_PROMPT` è ora inizializzata a `0`. Con
   `set -u` lo script si fermava alla riga della domanda di ripristino se
   `--no-restore` non veniva passato (variabile non assegnata).
+- **README**: chiusura corretta di due sezioni a tendina (non spezzano più i
+  blocchi di codice); dalla sezione *Da MentisOS a labwc-q4os* in poi il
+  contenuto resta sempre visibile, compresi i comandi `curl` di installazione.
 
 ## [1.27.0]
 

@@ -1549,9 +1549,6 @@ jq . ~/.config/waybar/config.jsonc
 **Il menu non si aggiorna**
 ```bash
 labwc --reconfigure
-
-</details>
-
 # oppure
 labwc-reload
 ```
@@ -1603,6 +1600,8 @@ sudo rm -f /etc/sysctl.d/99-labwc-performance.conf
 sudo systemctl disable --now zramswap.service
 ```
 
+</details>
+
 ---
 
 ## Sicurezza e comportamento
@@ -1621,6 +1620,8 @@ sudo systemctl disable --now zramswap.service
 - Nessun dato viene inviato all'esterno: sfondi e menu sono generati in locale.
 - Le app nel menu vengono filtrate in base a `NoDisplay`, `Hidden`, `TryExec`,
   esistenza dell'eseguibile e duplicati (stesso programma).
+
+</details>
 
 ### Verifica di integrità del codice
 
@@ -1647,9 +1648,6 @@ eseguito alla cieca da `main`.
 Verifica manuale consigliata, prima di eseguire il one-liner:
 
 ```bash
-
-</details>
-
 # scarica bootstrap e manifest, controlla l'hash del bootstrap
 # (confrontalo con quello pubblicato nella release / nel commit ufficiale)
 curl -fsSLO https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh
@@ -1770,17 +1768,17 @@ chiave, quindi ogni voce è contata una sola volta).
 | Indicatore | Valore |
 | --- | ---: |
 | Sezioni di release nel CHANGELOG (dalla 1.0 alla 1.27.1) | **54** |
-| Voci/interventi totali nel CHANGELOG | **169** |
-| Bug corretti | **5** |
+| Voci/interventi totali nel CHANGELOG | **170** |
+| Bug corretti | **7** |
 | Nuove funzioni | **21** |
 | Migliorie e ottimizzazioni | **4** |
-| Interventi su temi e interfaccia | **42** |
+| Interventi su temi e interfaccia | **41** |
 | Interventi su installer e compatibilità | **71** |
 | Interventi su documentazione | **3** |
 | Altro / note tecniche e manutenzione | **23** |
 | Script nel repository | **54** |
 | File nel repository (esclusi `.specify/` e `.opencode/`) | **128** |
-| Righe di script (Bash e Python) | **16.217** |
+| Righe di script (Bash e Python) | **16.227** |
 | Temi inclusi | **3** |
 
 ### Cosa è cambiato nel tempo
