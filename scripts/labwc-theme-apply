@@ -265,6 +265,13 @@ sync_login_theme() {
     fi
 }
 
+# Scala schermo: riapplica font di menu/titoli e padding dopo che il tema
+# ha riscritto themerc-override.
+if [ -x "$HOME/.local/bin/labwc-screen-scaler" ] &&
+   [ -r "$CONFIG/labwc/screen-scale.conf" ]; then
+    "$HOME/.local/bin/labwc-screen-scaler" --reapply >/dev/null 2>&1 || true
+fi
+
 runtime_reload
 
 # Il login si sincronizza dopo il desktop: se pkexec viene annullato i colori

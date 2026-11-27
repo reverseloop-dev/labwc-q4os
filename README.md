@@ -55,7 +55,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.23.1**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.24.0**
 
 ---
 
@@ -179,26 +179,24 @@ avviato con le opzioni Wayland e le decorazioni richieste.
 
 ## Correzioni recenti
 
-- **Scala dello schermo**: nuovo tool **Rust** per labwc, port del *Screen
-  scaling* di Q4OS. Slider 0–20 con **10 = 1.0×** (96 DPI): sotto 10
-  rimpicciolisce, sopra 10 ingrandisce; `Defaults`/`Apply`/`Cancel`, DPI
-  rilevato con `wlr-randr`; scrive `~/.config/labwc/screen-scale.conf` e il
-  blocco di variabili in `~/.config/labwc/environment`. Voce in **TOOL
-  reverseloop → Schermo e monitor**.
-- **Indicatore batteria**: nelle Preferenze c'è lo switch **Icona** accanto a
-  **Percentuale**, per mostrare o nascondere l'indicatore completo (icona +
-  percentuale) tramite `show_indicator` in `battery-indicator.conf`.
-- **Scroll verticale in tutte le app reverseloop**: se la finestra non entra
-  nello schermo compare la barra di scorrimento sul lato destro; le dimensioni
-  iniziali vengono limitate all'area di lavoro del monitor.
-- **README**: screenshot di **btop++** e **Firefox** in labwc (con Noctalia) e
-  in cage-kiosk, ognuno con didascalia; sezione **Correzioni recenti** ridotta
-  alle ultime 7 voci con link allo storico completo.
-- **Scelta del browser**: Chromium o Firefox ESR (o nessuno), con descrizione;
-  se l'altro browser è già installato l'installer chiede se disinstallarlo.
-- **btop** installato dallo script, con la sua voce nel menu applicazioni.
-- **Ricarica automatica dopo il login rimossa**, insieme al popup: il watchdog
-  avvia solo la shell se manca.
+- **Scala dello schermo**: due slider identici, uno per le **finestre** e uno
+  per il **menu**. Quello del menu ridimensiona anche i titoli delle finestre
+  (font in `rc.xml` e padding in `themerc-override`); prima il menu restava
+  grande. Voce in **TOOL reverseloop → Schermo e monitor**.
+- **Posizione della barra**: nelle Preferenze si sceglie **Alto** o **Basso**
+  per Waybar e Noctalia; la scelta è immediata e resta dopo login e
+  aggiornamenti (`~/.config/labwc/bar-position`).
+- **Logo al centro degli sfondi**: tre proposte tono su tono in
+  `preview/logo/` (blu, rosso, verde), con il logo **reverseloop-dev**
+  semitrasparente al centro; da scegliere una per tutti e tre i temi.
+- **Aggiornamenti**: la versione online è letta dall'API GitHub, non dal file
+  raw della branch che resta in cache CDN; le nuove release si vedono subito.
+- **Indicatore batteria**: switch **Icona** accanto a **Percentuale** per
+  mostrare o nascondere l'indicatore completo.
+- **Scroll verticale** in tutte le app reverseloop quando la finestra non
+  entra nello schermo.
+- **README**: screenshot di **btop++** (solo CPU e memoria) e **Firefox** in
+  labwc con Noctalia e in cage-kiosk, con didascalia.
 
 Tutte le modifiche, release per release: **[CHANGELOG.md](CHANGELOG.md)**.
 
@@ -755,6 +753,16 @@ labwc-generate-wallpapers
 
 Le immagini finiscono in `~/.local/share/labwc-q4os/wallpapers/`.
 
+### Logo al centro degli sfondi
+
+Tre proposte con il logo **reverseloop-dev** al centro, semitrasparente e
+**tono su tono** rispetto allo sfondo. I file sono in `preview/logo/`:
+scegliere una versione da usare per tutti e tre i temi.
+
+| Nordic Cobalt | Muted Crimson | Sage Emerald |
+|---|---|---|
+| ![Logo centro Nordic Cobalt](preview/logo/candidate-nordic-cobalt.png) | ![Logo centro Muted Crimson](preview/logo/candidate-muted-crimson.png) | ![Logo centro Sage Emerald](preview/logo/candidate-sage-emerald.png) |
+
 ### Icone coordinate al tema
 
 Ogni tema ha un set di icone SVG **originali**, moderne e stilizzate, disegnate
@@ -832,7 +840,8 @@ pannello per:
 - impostare la tastiera `it`, `us` o `it,us`;
 - selezionare i desktop **1–4**;
 - scegliere la **posizione dell'indicatore batteria** (sinistra, centro,
-  destra) e se mostrare la percentuale;
+  destra), se mostrare la percentuale e se mostrare l'icona;
+- scegliere se la barra di **Waybar o Noctalia** sta in **alto o in basso**;
 - aprire ZRAM, aggiornamenti, App nel menu e aiuto.
 
 La Waybar mostra inoltre l'indicatore **`[1] 2 3 4`**: click sull'indicatore per
@@ -844,10 +853,13 @@ con la rotellina sul desktop.
 **TOOL reverseloop → Schermo e monitor → Scala dimensioni dello schermo**
 (comando `labwc-screen-scaler`) apre il port in **Rust** del *Screen scaling*
 di Q4OS, riscritto per Wayland/labwc. La logica è quella originale: rileva il
-DPI del monitor primario da `wlr-randr`, slider da **0 a 20** con **10 = 1.0×**
-al centro, opzioni avanzate con righello in cm e anteprima, pulsanti
-**Defaults / Apply / Cancel**. Sotto 10 rimpicciolisce finestre e menu, sopra
-10 li ingrandisce.
+DPI del monitor primario da `wlr-randr`, **due slider identici** da **0 a 20**
+con **10 = 1.0×** al centro: il primo per le **finestre**, il secondo per il
+**menu**. Opzioni avanzate con righello in cm e anteprima, pulsanti
+**Defaults / Apply / Cancel**. Sotto 10 si rimpicciolisce, sopra 10 si
+ingrandisce. Il menu e i titoli delle finestre vengono riscritti in
+`~/.config/labwc/rc.xml` e `~/.config/labwc/themerc-override`, quindi il
+cambio vale anche per il menu del tasto destro.
 
 - **Apply** salva la scala in `~/.config/labwc/screen-scale.conf` e aggiorna il
   blocco gestito dentro `~/.config/labwc/environment` (`Xft.dpi`, `GDK_SCALE`,
@@ -1112,6 +1124,10 @@ Moduli attivi:
 | Batteria | Dettagli con `upower` (se presente) |
 | CPU / RAM | Utilizzo in tempo reale |
 | icona sessione | Click: menu sessione · destro: swaylock |
+
+La posizione della barra (alto o basso) si sceglie da **Preferenze della
+scrivania Labwc** ed è salvata in `~/.config/labwc/bar-position`: vale sia per
+Waybar sia per Noctalia.
 
 Il modulo workspace sperimentale (`wlr/workspaces`) non è incluso nel pacchetto
 Waybar di Debian. La barra usa quindi la **taskbar** con le finestre aperte; per
@@ -1621,19 +1637,19 @@ intervento registrato in una release. Le aree sono una stima per parole chiave
 
 | Indicatore | Valore |
 | --- | ---: |
-| Release documentate (dalla 1.0 alla 1.23.1) | **48** |
-| Voci/interventi totali nel CHANGELOG | **153** |
-| Bug corretti | **15** |
-| Nuove funzioni | **34** |
+| Release documentate (dalla 1.0 alla 1.24.0) | **49** |
+| Voci/interventi totali nel CHANGELOG | **156** |
+| Bug corretti | **16** |
+| Nuove funzioni | **35** |
 | Migliorie e ottimizzazioni | **10** |
 | Interventi su temi e interfaccia | **24** |
 | Interventi su installer e compatibilità | **42** |
-| Interventi su documentazione | **7** |
+| Interventi su documentazione | **8** |
 | Pulizia e manutenzione | **4** |
 | Altro / note tecniche | **17** |
 | Script nel repository | **48** |
-| File nel repository | **119** |
-| Righe di script (Bash e Python) | **14.725** |
+| File nel repository | **126** |
+| Righe di script (Bash e Python) | **14.852** |
 | Temi inclusi | **3** |
 
 ### Cosa è cambiato nel tempo

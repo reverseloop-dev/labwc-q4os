@@ -150,8 +150,10 @@ unsafe fn connect(instance: *mut GtkWidget, signal: &str, handler: usize) {
 struct State {
     window: *mut GtkWidget,
     slider: *mut GtkWidget,
+    menu_slider: *mut GtkWidget,
     header: *mut GtkWidget,
     value: *mut GtkWidget,
+    menu_value: *mut GtkWidget,
     advanced_box: *mut GtkWidget,
     ruler: *mut GtkWidget,
     sample: *mut GtkWidget,
@@ -195,6 +197,14 @@ fn env_path() -> PathBuf {
 
 fn scale_path() -> PathBuf {
     config_dir().join("labwc/screen-scale.conf")
+}
+
+fn rc_path() -> PathBuf {
+    config_dir().join("labwc/rc.xml")
+}
+
+fn themerc_path() -> PathBuf {
+    config_dir().join("labwc/themerc-override")
 }
 
 fn read_key(path: &Path, key: &str) -> Option<String> {
@@ -292,6 +302,21 @@ fn saved_dpi() -> f64 {
     BASELINE_DPI
 }
 
+fn stored_menu_value() -> f64 {
+    stored_value("menu_scale", 10.0)
+}
+
+fn stored_window_value() -> f64 {
+    stored_value("scale", 10.0)
+}
+
+fn stored_value(key: &str, default: f64) -> f64 {
+    read_key(&scale_path(), key)
+        .and_then(|v| v.parse::<f64>().ok())
+        .map(|factor| (factor * 10.0).round().clamp(0.0, 20.0))
+        .unwrap_or(default)
+}
+
 /// Valore dello slider (0-20, 10 = 1.0x) -> fattore di scala.
 fn value_to_factor(value: f64) -> f64 {
     (value.max(1.0) / 10.0).clamp(0.1, 2.0)
@@ -357,23 +382,280 @@ fn rewrite_environment(path: &Path, block: Option<&str>) -> io::Result<()> {
     write_atomic(path, &out)
 }
 
-fn apply_value(value: f64) -> io::Result<()> {
-    let dpi = value_to_dpi(value);
+fn read_int_key(path: &Path, key: &str) -> Option<i64> {
+    read_key(path, key)?.trim().parse().ok()
+}
+
+fn themerc_int(text: &str, key: &str) -> Option<i64> {
+    let mut value = None;
+    for raw in text.lines() {
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if let Some((k, v)) = line.split_once(':') {
+            if k.trim() == key {
+                // L'ultima occorrenza e' quella effettiva (override touch).
+                value = v.trim().parse().ok();
+            }
+        }
+    }
+    value
+}
+
+fn themerc_set(text: &str, key: &str, value: i64) -> String {
+    let mut out = String::new();
+    let mut found = false;
+    for raw in text.lines() {
+        let line = raw.trim_start();
+        if !line.starts_with('#') {
+            if let Some((k, _)) = line.split_once(':') {
+                if k.trim() == key {
+                    out.push_str(&format!("{key}: {value}\n"));
+                    found = true;
+                    continue;
+                }
+            }
+        }
+        out.push_str(raw);
+        out.push('\n');
+    }
+    if !found {
+        out.push_str(&format!("{key}: {value}\n"));
+    }
+    out
+}
+
+fn set_themerc_keys(path: &Path, pairs: &[(&str, i64)]) -> io::Result<()> {
+    let mut text = fs::read_to_string(path).unwrap_or_default();
+    for (key, value) in pairs {
+        text = themerc_set(&text, key, *value);
+    }
+    write_atomic(path, &text)
+}
+
+fn rc_font_size(text: &str, place: &str) -> Option<i64> {
+    let mut current: Option<&str> = None;
+    for line in text.lines() {
+        if line.contains("<font place=\"") {
+            current = line
+                .split("place=\"")
+                .nth(1)
+                .and_then(|rest| rest.split('"').next());
+        }
+        if current == Some(place) {
+            if let Some(value) = line
+                .split("<size>")
+                .nth(1)
+                .and_then(|rest| rest.split("</size>").next())
+            {
+                if let Ok(size) = value.trim().parse::<i64>() {
+                    return Some(size);
+                }
+            }
+        }
+        if line.contains("</font>") {
+            current = None;
+        }
+    }
+    None
+}
+
+fn set_rc_font_sizes(path: &Path, size: i64) -> io::Result<()> {
+    let text = match fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(()),
+        Err(err) => return Err(err),
+    };
+    let mut out = String::new();
+    let mut in_font = false;
+    for line in text.lines() {
+        let mut newline = line.to_string();
+        if line.contains("<font place=\"") {
+            in_font = true;
+        }
+        if in_font && line.contains("<size>") && line.contains("</size>") {
+            if let (Some(prefix), Some(suffix)) =
+                (line.split("<size>").next(), line.split("</size>").nth(1))
+            {
+                newline = format!("{prefix}<size>{size}</size>{suffix}");
+            }
+        }
+        if line.contains("</font>") {
+            in_font = false;
+        }
+        out.push_str(&newline);
+        out.push('\n');
+    }
+    write_atomic(path, &out)
+}
+
+struct UiBases {
+    font: i64,
+    pad_x: i64,
+    pad_y: i64,
+    width_min: i64,
+    width_max: i64,
+    title_pad_w: i64,
+    title_pad_h: i64,
+    button_w: i64,
+    button_h: i64,
+    button_gap: i64,
+}
+
+impl UiBases {
+    fn capture(rc_text: &str, themerc_text: &str) -> Self {
+        Self {
+            font: rc_font_size(rc_text, "MenuItem").unwrap_or(10),
+            pad_x: themerc_int(themerc_text, "menu.items.padding.x").unwrap_or(10),
+            pad_y: themerc_int(themerc_text, "menu.items.padding.y").unwrap_or(6),
+            width_min: themerc_int(themerc_text, "menu.width.min").unwrap_or(180),
+            width_max: themerc_int(themerc_text, "menu.width.max").unwrap_or(360),
+            title_pad_w: themerc_int(themerc_text, "window.titlebar.padding.width").unwrap_or(8),
+            title_pad_h: themerc_int(themerc_text, "window.titlebar.padding.height").unwrap_or(6),
+            button_w: themerc_int(themerc_text, "window.button.width").unwrap_or(26),
+            button_h: themerc_int(themerc_text, "window.button.height").unwrap_or(26),
+            button_gap: themerc_int(themerc_text, "window.button.spacing").unwrap_or(2),
+        }
+    }
+}
+
+fn load_bases() -> Option<UiBases> {
+    let path = scale_path();
+    Some(UiBases {
+        font: read_int_key(&path, "menu_font_base")?,
+        pad_x: read_int_key(&path, "menu_pad_x")?,
+        pad_y: read_int_key(&path, "menu_pad_y")?,
+        width_min: read_int_key(&path, "menu_wmin")?,
+        width_max: read_int_key(&path, "menu_wmax")?,
+        title_pad_w: read_int_key(&path, "title_pad_w")?,
+        title_pad_h: read_int_key(&path, "title_pad_h")?,
+        button_w: read_int_key(&path, "button_w")?,
+        button_h: read_int_key(&path, "button_h")?,
+        button_gap: read_int_key(&path, "button_gap")?,
+    })
+}
+
+fn write_scale_conf(
+    scale: f64,
+    menu_scale: f64,
+    dpi: f64,
+    bases: &UiBases,
+) -> io::Result<()> {
     write_atomic(
         &scale_path(),
         &format!(
             "# Generato da labwc-screen-scaler — non modificare a mano.\n\
-             scale={:.2}\ndpi={:.0}\n",
-            value_to_factor(value),
-            dpi
+             scale={scale:.2}\nmenu_scale={menu_scale:.2}\ndpi={dpi:.0}\n\
+             menu_font_base={}\nmenu_pad_x={}\nmenu_pad_y={}\n\
+             menu_wmin={}\nmenu_wmax={}\n\
+             title_pad_w={}\ntitle_pad_h={}\n\
+             button_w={}\nbutton_h={}\nbutton_gap={}\n",
+            bases.font,
+            bases.pad_x,
+            bases.pad_y,
+            bases.width_min,
+            bases.width_max,
+            bases.title_pad_w,
+            bases.title_pad_h,
+            bases.button_w,
+            bases.button_h,
+            bases.button_gap,
         ),
+    )
+}
+
+fn scaled(value: i64, factor: f64, minimum: i64) -> i64 {
+    ((value as f64) * factor).round().max(minimum as f64) as i64
+}
+
+fn scale_ui(factor: f64, bases: &UiBases) -> io::Result<()> {
+    let rc = rc_path();
+    set_rc_font_sizes(&rc, scaled(bases.font, factor, 6))?;
+    let mut width_min = scaled(bases.width_min, factor, 80);
+    let width_max = scaled(bases.width_max, factor, 120);
+    if width_max < width_min {
+        width_min = width_max;
+    }
+    set_themerc_keys(
+        &themerc_path(),
+        &[
+            ("menu.items.padding.x", scaled(bases.pad_x, factor, 2)),
+            ("menu.items.padding.y", scaled(bases.pad_y, factor, 1)),
+            ("menu.width.min", width_min),
+            ("menu.width.max", width_max),
+            ("window.titlebar.padding.width", scaled(bases.title_pad_w, factor, 2)),
+            ("window.titlebar.padding.height", scaled(bases.title_pad_h, factor, 1)),
+            ("window.button.width", scaled(bases.button_w, factor, 12)),
+            ("window.button.height", scaled(bases.button_h, factor, 12)),
+            ("window.button.spacing", scaled(bases.button_gap, factor, 0)),
+        ],
+    )
+}
+
+fn current_bases() -> UiBases {
+    let rc_text = fs::read_to_string(rc_path()).unwrap_or_default();
+    let themerc_text = fs::read_to_string(themerc_path()).unwrap_or_default();
+    UiBases::capture(&rc_text, &themerc_text)
+}
+
+fn reconfigure() {
+    let pid = env::var("LABWC_PID").ok().or_else(|| {
+        Command::new("pgrep")
+            .arg("-x")
+            .arg("labwc")
+            .output()
+            .ok()
+            .and_then(|out| {
+                String::from_utf8_lossy(&out.stdout)
+                    .lines()
+                    .next()
+                    .map(str::trim)
+                    .filter(|pid| !pid.is_empty())
+                    .map(str::to_string)
+            })
+    });
+    let mut cmd = Command::new("labwc");
+    cmd.arg("--reconfigure");
+    if let Some(pid) = pid {
+        cmd.env("LABWC_PID", pid);
+    }
+    let _ = cmd.spawn();
+}
+
+fn apply_value(win_value: f64, menu_value: f64) -> io::Result<()> {
+    let bases = load_bases().unwrap_or_else(current_bases);
+    let block = env_block(win_value);
+    rewrite_environment(&env_path(), block.as_deref())?;
+    scale_ui(value_to_factor(menu_value), &bases)?;
+    write_scale_conf(
+        value_to_factor(win_value),
+        value_to_factor(menu_value),
+        value_to_dpi(win_value),
+        &bases,
     )?;
-    let block = env_block(value);
-    rewrite_environment(&env_path(), block.as_deref())
+    reconfigure();
+    Ok(())
+}
+
+fn reapply_ui() -> io::Result<()> {
+    let path = scale_path();
+    let scale = read_key(&path, "scale")
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(1.0);
+    let menu_scale = read_key(&path, "menu_scale")
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(scale);
+    let dpi = read_key(&path, "dpi")
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(BASELINE_DPI);
+    let bases = load_bases().unwrap_or_else(current_bases);
+    scale_ui(menu_scale, &bases)?;
+    write_scale_conf(scale, menu_scale, dpi, &bases)
 }
 
 fn reset_scaling() -> io::Result<()> {
-    apply_value(10.0)
+    apply_value(10.0, 10.0)
 }
 
 fn logout() {
@@ -420,30 +702,36 @@ unsafe fn message_dialog(parent: *mut GtkWidget, title: &str, text: &str, confir
 // --------------------------------------------------------------- callbacks --
 
 unsafe fn refresh_labels() {
-    let (percent, advanced, probe) = with_state(|s| {
+    let (percent, menu_percent, advanced, probe) = with_state(|s| {
         (
             gtk_range_get_value(s.slider),
+            gtk_range_get_value(s.menu_slider),
             s.advanced,
             s.probe_dpi,
         )
     });
     let dpi = value_to_dpi(percent);
     let shown = format!("{percent:.0}");
+    let menu_shown = format!("{menu_percent:.0}");
     if advanced {
         let value = format!("{shown}  /  {dpi:.0}  /  {probe:.0}");
         with_state(|s| {
             gtk_label_set_text(
                 s.header,
-                cstr("Scaling factor  /  DPI value to apply  /  Primary screen guessed").as_ptr(),
+                cstr("Scaling factor — windows  /  DPI value to apply  /  Primary screen guessed")
+                    .as_ptr(),
             );
             gtk_label_set_text(s.value, cstr(&value).as_ptr());
+            gtk_label_set_text(s.menu_value, cstr(&menu_shown).as_ptr());
         });
     } else {
         with_state(|s| {
-            gtk_label_set_text(s.header, cstr("Scaling factor").as_ptr());
+            gtk_label_set_text(s.header, cstr("Scaling factor — windows").as_ptr());
             gtk_label_set_text(s.value, cstr(&shown).as_ptr());
+            gtk_label_set_text(s.menu_value, cstr(&menu_shown).as_ptr());
         });
     }
+    let _ = menu_shown;
 }
 
 extern "C" fn on_slider(_w: *mut GtkWidget, _d: *mut c_void) {
@@ -453,6 +741,12 @@ extern "C" fn on_slider(_w: *mut GtkWidget, _d: *mut c_void) {
             gtk_widget_queue_draw(s.ruler);
             gtk_widget_queue_draw(s.sample);
         });
+    }
+}
+
+extern "C" fn on_menu_slider(_w: *mut GtkWidget, _d: *mut c_void) {
+    unsafe {
+        refresh_labels();
     }
 }
 
@@ -473,8 +767,14 @@ extern "C" fn on_advanced(w: *mut GtkWidget, _d: *mut c_void) {
 
 extern "C" fn on_apply(_b: *mut GtkWidget, _d: *mut c_void) {
     unsafe {
-        let (percent, window) = with_state(|s| (gtk_range_get_value(s.slider), s.window));
-        let result = apply_value(percent);
+        let (percent, menu_percent, window) = with_state(|s| {
+            (
+                gtk_range_get_value(s.slider),
+                gtk_range_get_value(s.menu_slider),
+                s.window,
+            )
+        });
+        let result = apply_value(percent, menu_percent);
         let text = match &result {
             Ok(()) => "Screen scaling configuration has been saved. You need to login again for changes to take effect.".to_string(),
             Err(err) => format!("Could not save the configuration: {err}"),
@@ -590,7 +890,7 @@ extern "C" fn draw_sample(w: *mut GtkWidget, cr: *mut c_void, _d: *mut c_void) -
 unsafe fn build_gui(probe: f64) {
     let window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(window, cstr("Screen scaling").as_ptr());
-    gtk_window_set_default_size(window, 520, 300);
+    gtk_window_set_default_size(window, 520, 430);
     gtk_window_set_position(window, GTK_POS_CENTER);
     gtk_window_set_resizable(window, 1);
     gtk_window_set_icon_name(window, cstr("randr").as_ptr());
@@ -631,6 +931,33 @@ unsafe fn build_gui(probe: f64) {
     gtk_label_set_xalign(hint, 0.0);
     gtk_box_pack_start(outer, hint, 0, 0, 0);
 
+    let menu_header = gtk_label_new(cstr("Scaling factor — menu").as_ptr());
+    gtk_label_set_xalign(menu_header, 0.0);
+    gtk_box_pack_start(outer, menu_header, 0, 0, 0);
+
+    let menu_value = gtk_label_new(cstr("10").as_ptr());
+    gtk_label_set_xalign(menu_value, 0.0);
+    gtk_box_pack_start(outer, menu_value, 0, 0, 0);
+
+    let menu_initial = stored_menu_value();
+    let menu_slider = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 20.0, 1.0);
+    gtk_range_set_increments(menu_slider, 1.0, 5.0);
+    gtk_scale_set_digits(menu_slider, 0);
+    gtk_scale_set_value_pos(menu_slider, GTK_POS_BOTTOM);
+    gtk_range_set_value(menu_slider, menu_initial);
+    gtk_widget_set_tooltip_text(
+        menu_slider,
+        cstr("10 = 1.0x. Scales the right-click menu, its text and the window title bars.")
+            .as_ptr(),
+    );
+    gtk_box_pack_start(outer, menu_slider, 0, 0, 0);
+
+    let menu_hint = gtk_label_new(
+        cstr("10 = 1.0x · below 10 shrinks the menu · above 10 enlarges it").as_ptr(),
+    );
+    gtk_label_set_xalign(menu_hint, 0.0);
+    gtk_box_pack_start(outer, menu_hint, 0, 0, 0);
+
     let advanced = gtk_check_button_new_with_label(cstr("Show advanced options").as_ptr());
     gtk_box_pack_start(outer, advanced, 0, 0, 0);
 
@@ -667,8 +994,10 @@ unsafe fn build_gui(probe: f64) {
         *s.borrow_mut() = Some(State {
             window,
             slider,
+            menu_slider,
             header,
             value,
+            menu_value,
             advanced_box,
             ruler,
             sample,
@@ -679,6 +1008,7 @@ unsafe fn build_gui(probe: f64) {
 
     connect(window, "destroy", on_destroy as *const () as usize);
     connect(slider, "value-changed", on_slider as *const () as usize);
+    connect(menu_slider, "value-changed", on_menu_slider as *const () as usize);
     connect(advanced, "toggled", on_advanced as *const () as usize);
     connect(ruler, "draw", draw_ruler as *const () as usize);
     connect(sample, "draw", draw_sample as *const () as usize);
@@ -706,9 +1036,11 @@ fn status() {
     let probe = probe_dpi();
     let current = saved_dpi();
     let percent = dpi_to_value(current);
+    let menu = stored_menu_value();
     println!(
-        "probe_dpi={probe:.0} current_dpi={current:.0} scale={:.2} value={percent:.0}",
-        value_to_factor(percent)
+        "probe_dpi={probe:.0} current_dpi={current:.0} scale={:.2} value={percent:.0} menu_scale={:.2} menu_value={menu:.0}",
+        value_to_factor(percent),
+        value_to_factor(menu)
     );
 }
 
@@ -742,11 +1074,30 @@ fn self_test() -> i32 {
     assert!(!text.contains("Xft.dpi"), "blocco non rimosso");
     assert!(text.contains("QT_QPA_PLATFORM"), "contenuto perso");
 
+    let rc_file = dir.join("rc.xml");
+    fs::write(
+        &rc_file,
+        "<theme>\n<font place=\"MenuItem\">\n<name>Inter</name>\n<size>13</size>\n</font>\n</theme>\n",
+    )
+    .unwrap();
+    let rc_text = fs::read_to_string(&rc_file).unwrap();
+    assert_eq!(rc_font_size(&rc_text, "MenuItem"), Some(13));
+    set_rc_font_sizes(&rc_file, 10).unwrap();
+    let rc_text = fs::read_to_string(&rc_file).unwrap();
+    assert_eq!(rc_font_size(&rc_text, "MenuItem"), Some(10));
+
+    let th = dir.join("themerc");
+    fs::write(&th, "menu.items.padding.x: 16\n").unwrap();
+    let th_text = fs::read_to_string(&th).unwrap();
+    let th_text = themerc_set(&th_text, "menu.items.padding.x", 13);
+    assert_eq!(themerc_int(&th_text, "menu.items.padding.x"), Some(13));
+    let th_text = themerc_set(&th_text, "menu.width.min", 208);
+    assert_eq!(themerc_int(&th_text, "menu.width.min"), Some(208));
+
     let _ = fs::remove_dir_all(&dir);
     println!("SELFTEST_OK");
     0
 }
-
 fn usage() {
     println!(
         "labwc-screen-scaler {VERSION}\n\
@@ -755,7 +1106,9 @@ fn usage() {
            labwc-screen-scaler              apre la finestra\n\
            labwc-screen-scaler --probe      stampa i DPI rilevati\n\
            labwc-screen-scaler --status     stampa DPI e scala correnti\n\
-           labwc-screen-scaler --apply N    applica il valore N (10 = 1.0x, 0 = minimo, 20 = 2.0x)\n\
+           labwc-screen-scaler --apply N    applica la scala finestre N (10 = 1.0x, 0 = minimo, 20 = 2.0x)\n\
+           labwc-screen-scaler --apply-menu N  applica la scala menu N (10 = 1.0x)\n\
+           labwc-screen-scaler --reapply    riapplica menu e titoli (dopo un cambio tema)\n\
            labwc-screen-scaler --reset      torna ai valori predefiniti\n\
            labwc-screen-scaler --self-test  test interno senza display\n\
            labwc-screen-scaler --version\n"
@@ -783,6 +1136,13 @@ fn main() {
             0
         }
         Some("--self-test") => self_test(),
+        Some("--reapply") => match reapply_ui() {
+            Ok(()) => 0,
+            Err(err) => {
+                eprintln!("labwc-screen-scaler: {err}");
+                1
+            }
+        },
         Some("--reset") => match reset_scaling() {
             Ok(()) => 0,
             Err(err) => {
@@ -791,15 +1151,34 @@ fn main() {
             }
         },
         Some("--apply") => match args.get(2).and_then(|v| v.parse::<f64>().ok()) {
-            Some(percent) if (0.0..=20.0).contains(&percent) => match apply_value(percent) {
-                Ok(()) => 0,
-                Err(err) => {
-                    eprintln!("labwc-screen-scaler: {err}");
-                    1
+            Some(percent) if (0.0..=20.0).contains(&percent) => {
+                match apply_value(percent, stored_menu_value()) {
+                    Ok(()) => 0,
+                    Err(err) => {
+                        eprintln!("labwc-screen-scaler: {err}");
+                        1
+                    }
                 }
-            },
+            }
             _ => {
                 eprintln!("labwc-screen-scaler: --apply richiede un valore fra 0 e 20 (10 = 1.0x)");
+                2
+            }
+        },
+        Some("--apply-menu") => match args.get(2).and_then(|v| v.parse::<f64>().ok()) {
+            Some(percent) if (0.0..=20.0).contains(&percent) => {
+                match apply_value(stored_window_value(), percent) {
+                    Ok(()) => 0,
+                    Err(err) => {
+                        eprintln!("labwc-screen-scaler: {err}");
+                        1
+                    }
+                }
+            }
+            _ => {
+                eprintln!(
+                    "labwc-screen-scaler: --apply-menu richiede un valore fra 0 e 20 (10 = 1.0x)"
+                );
                 2
             }
         },

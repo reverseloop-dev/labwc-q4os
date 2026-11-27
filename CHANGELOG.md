@@ -2,6 +2,18 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.24.0]
+
+- **Scala dello schermo**: due slider separati, uno per le finestre e uno per
+  il menu (entrambi 0–20 con 10 = 1.0×). Il menu e i titoli delle finestre
+  vengono ridimensionati in `rc.xml` e `themerc-override`, quindi anche il
+  menu del tasto destro cambia; `--apply-menu` per la riga di comando.
+- **Posizione della barra**: nelle Preferenze si sceglie **Alto** o **Basso**
+  per Waybar e Noctalia. La scelta è immediata, salvata in
+  `~/.config/labwc/bar-position` e riapplicata a login e aggiornamenti.
+- **Sfondi**: tre proposte con il logo **reverseloop-dev** al centro,
+  semitrasparente e tono su tono (blu, rosso, verde), in `preview/logo/`.
+
 ## [1.23.1]
 
 - **Scala dello schermo**: slider **0–20** con **10 = 1.0×** al centro; sotto

@@ -2129,6 +2129,18 @@ if [ "$WANT_SHELL" = "noctalia" ]; then
     done
 fi
 install -m 0644 "$REPO_DIR/configs/waybar/config.jsonc" "$CONFIG/waybar/config.jsonc"
+# Posizione barra scelta dall'utente (default: alto). Il template viene
+# riscritto a ogni aggiornamento, quindi la preferenza va riapplicata qui.
+BAR_POSITION_FILE="$CONFIG/labwc/bar-position"
+if [ ! -f "$BAR_POSITION_FILE" ]; then
+    printf 'top\n' > "$BAR_POSITION_FILE"
+fi
+BAR_POSITION="$(tr -d '[:space:]' < "$BAR_POSITION_FILE" 2>/dev/null || true)"
+case "$BAR_POSITION" in top|bottom) ;; *) BAR_POSITION="top" ;; esac
+if [ "$BAR_POSITION" = "bottom" ]; then
+    sed -i 's/"position": *"top"/"position": "bottom"/' "$CONFIG/waybar/config.jsonc"
+fi
+chmod 0644 "$BAR_POSITION_FILE" 2>/dev/null || true
 install -m 0644 "$REPO_DIR/configs/wlogout/layout" "$CONFIG/wlogout/layout"
 install -m 0644 "$REPO_DIR/configs/gtk/settings.ini" "$CONFIG/gtk-3.0/settings.ini"
 install -m 0644 "$REPO_DIR/configs/gtk/settings.ini" "$CONFIG/gtk-4.0/settings.ini"

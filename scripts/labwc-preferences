@@ -12,6 +12,7 @@ Un'unica finestra per:
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -30,7 +31,9 @@ BIN = HOME / ".local/bin"
 ENV_FILE = CONFIG / "labwc/environment"
 LOGIN_CONF = CONFIG / "labwc/login.conf"
 BATTERY_CONF = CONFIG / "labwc/battery-indicator.conf"
+BAR_POSITION_CONF = CONFIG / "labwc/bar-position"
 BATTERY_POSITIONS = ("left", "center", "right")
+BAR_POSITIONS = ("top", "bottom")
 ROOT_LOGIN = Path("/usr/local/libexec/labwc-q4os/login-theme-apply")
 VALID_LOGIN = ("nordic-cobalt", "muted-crimson", "sage-emerald")
 
@@ -116,6 +119,64 @@ def write_battery_settings(
         encoding="utf-8",
     )
     os.replace(tmp, BATTERY_CONF)
+
+
+def bar_position() -> str:
+    try:
+        value = BAR_POSITION_CONF.read_text(encoding="utf-8").strip()
+    except OSError:
+        return "top"
+    return value if value in BAR_POSITIONS else "top"
+
+
+def set_waybar_position(position: str) -> None:
+    path = CONFIG / "waybar/config.jsonc"
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return
+    text = re.sub(
+        r'"position"\s*:\s*"(?:top|bottom)"',
+        f'"position": "{position}"',
+        text,
+        count=1,
+    )
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def apply_bar_position(position: str) -> None:
+    if position not in BAR_POSITIONS:
+        position = "top"
+    BAR_POSITION_CONF.parent.mkdir(parents=True, exist_ok=True)
+    BAR_POSITION_CONF.write_text(position + "\n", encoding="utf-8")
+    set_waybar_position(position)
+    shell = ""
+    try:
+        shell = (CONFIG / "labwc/shell").read_text(encoding="utf-8").strip()
+    except OSError:
+        pass
+    if shell == "noctalia" and shutil.which("noctalia"):
+        subprocess.run(
+            ["noctalia", "msg", "config-set", "bar.default.position", f'"{position}"'],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        return
+    if shutil.which("waybar"):
+        subprocess.run(["pkill", "-x", "waybar"], check=False)
+        subprocess.Popen(
+            [
+                "waybar",
+                "-c",
+                str(CONFIG / "waybar/config.jsonc"),
+                "-s",
+                str(CONFIG / "waybar/style.css"),
+            ],
+            start_new_session=True,
+        )
 
 
 class Preferences:
@@ -270,6 +331,23 @@ class Preferences:
 
         bat_box.pack_start(bat_row, False, False, 0)
         outer.pack_start(bat_box, False, False, 0)
+
+        # Posizione della barra (Waybar o Noctalia)
+        bar_box = self.card(
+            "BARRA",
+            "Posizione della barra della shell attiva (Waybar o Noctalia).",
+        )
+        bar_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        bar_label = Gtk.Label(label="Posizione", xalign=0)
+        self.bar_position = Gtk.ComboBoxText()
+        for value, label in (("top", "Alto"), ("bottom", "Basso")):
+            self.bar_position.append(value, label)
+        self.bar_position.set_active_id(bar_position())
+        self.bar_position.connect("changed", self.on_bar_position)
+        bar_row.pack_start(bar_label, False, False, 0)
+        bar_row.pack_start(self.bar_position, False, False, 0)
+        bar_box.pack_start(bar_row, False, False, 0)
+        outer.pack_start(bar_box, False, False, 0)
 
         # Strumenti
         tools = self.card("STRUMENTI", "Funzioni della scrivania e della sessione.")
@@ -531,6 +609,18 @@ class Preferences:
 
     def on_battery_indicator(self, _switch, _param) -> None:
         self.save_battery()
+
+    def on_bar_position(self, _widget=None) -> None:
+        self.save_bar_position()
+
+    def save_bar_position(self) -> None:
+        position = self.bar_position.get_active_id() or "top"
+        try:
+            apply_bar_position(position)
+        except OSError as exc:
+            self.status.set_text(f"Errore posizione barra: {exc}")
+            return
+        self.status.set_text("Posizione barra aggiornata.")
 
     def save_battery(self) -> None:
         position = self.battery_pos.get_active_id() or "left"

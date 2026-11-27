@@ -131,6 +131,19 @@ if [ "$use_noctalia" -eq 0 ] && [ -f "$wallpaper" ] && command -v swaybg >/dev/n
     printf 'sfondo: %s\n' "$wallpaper"
 fi
 
+# Posizione della barra scelta dall'utente (default alto).
+# Waybar la legge dal config; Noctalia via IPC dopo l'avvio.
+bar_pos="top"
+[ -r "$CONFIG/labwc/bar-position" ] && bar_pos="$(tr -d '[:space:]' < "$CONFIG/labwc/bar-position")"
+case "$bar_pos" in top|bottom) ;; *) bar_pos="top" ;; esac
+if [ -f "$CONFIG/waybar/config.jsonc" ]; then
+    if [ "$bar_pos" = "bottom" ]; then
+        sed -i 's/"position": *"top"/"position": "bottom"/' "$CONFIG/waybar/config.jsonc"
+    else
+        sed -i 's/"position": *"bottom"/"position": "top"/' "$CONFIG/waybar/config.jsonc"
+    fi
+fi
+
 # Noctalia disegna il proprio sfondo: allinea il tema e la palette wallpaper.
 # In background: il login non deve attendere che la shell sia pronta.
 if [ "$use_noctalia" -eq 1 ]; then
@@ -147,6 +160,8 @@ if [ "$use_noctalia" -eq 1 ]; then
             sleep 0.5
         done
         [ "$attempt" -lt 60 ] || printf 'shell: cartella sfondi Noctalia non impostata\n'
+        timeout 2 noctalia msg config-set bar.default.position "\"$bar_pos\"" \
+            >/dev/null 2>&1 || true
         if [ -f "$wallpaper" ]; then
             attempt=0
             while [ "$attempt" -lt 60 ]; do
