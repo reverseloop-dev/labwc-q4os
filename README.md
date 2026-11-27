@@ -245,13 +245,15 @@ labwc-login-theme --apply muted-crimson
 L'applicazione al login richiede la password di root una sola volta
 (`pkexec`); il cambio diventa effettivo al login successivo.
 
-Al centro di ogni schermata c'è il **logo reverseloop-dev** con lo stesso
-trattamento **tono su tono** degli sfondi: monocromatico, tinto con il colore
-del tema (blu `#3b82f6`, rosso `#c0565b`, verde `#4d9375`) e molto
-trasparente, così non disturba card e campi. Il PNG si genera in
-`/usr/share/labwc-q4os/login-themes/<tema>/logo.png` con
+Al centro dello sfondo, attorno alle card, il **logo reverseloop-dev** è
+ripetuto in **più copie di dimensioni e trasparenze diverse**, come un pattern
+tono su tono: monocromatico, tinto con il colore del tema (blu `#3b82f6`,
+rosso `#c0565b`, verde `#4d9375`), disposto su una griglia con collisioni
+evitate — nessun logo si sovrappone a un altro e nessuno finisce sotto card,
+form o orologio. Il PNG si genera in
+`/usr/share/labwc-q4os/login-themes/<tema>/logo-pattern.png` con
 `scripts/generate-login-logo.py` (Pillow, stessa maschera di luminanza degli
-sfondi).
+sfondi, seed fisso per tema: il risultato è sempre identico).
 
 ![App Schermata di login](preview/login-theme-gui.png)
 
@@ -612,6 +614,10 @@ cd labwc-q4os
 
 ### Opzioni
 
+<details>
+<summary>Mostra i dettagli tecnici</summary>
+
+
 | Opzione | Effetto |
 |---|---|
 | `--theme blue\|red\|green` | Tema iniziale: `nordic-cobalt`, `muted-crimson`, `sage-emerald` |
@@ -632,6 +638,8 @@ cd labwc-q4os
 | `--configure` | Chiede comunque tutti i parametri prima di aggiornare |
 | `--swappiness N` | Imposta `vm.swappiness` a `N` (0–200) |
 | `--no-swappiness` | Non modificare `vm.swappiness` |
+| `--restore` | Ripristina l'ultimo backup e termina senza installare |
+| `--no-restore` | Salta la domanda sul ripristino |
 | `--sddm` | Installa e attiva SDDM se TDM non supporta Wayland |
 | `--keep-tdm` | Non toccare il display manager |
 | `--skip-apt` | Salta l'installazione pacchetti (solo configurazione) |
@@ -647,7 +655,12 @@ non viene aperta. Per saltarla anche in modalità grafica:
 `LABWC_Q4OS_NO_GUI=1`. Dopo il riepilogo parte l'installazione con le scelte
 fatte; con `--yes` non viene chiesto nulla e si usano i default.
 
-La **prima domanda** è: *“Vuoi modificare i parametri prima di aggiornare?”*
+La **prima domanda** è il **ripristino**: *“Ripristinare la configurazione
+dall'ultimo backup?”* (default **No**). Rispondendo sì lo script rimette i file
+com'erano prima dell'ultimo aggiornamento e termina; `--restore` lo fa senza
+domanda, `--no-restore` la salta. Subito dopo, se c'è un'installazione
+precedente, arriva la domanda *“Vuoi modificare i parametri prima di
+aggiornare?”*:
 - **Sì** → vengono chieste le opzioni qui sotto;
 - **No** → aggiornamento rapido con le opzioni salvate in
   `/etc/labwc-q4os/install-options`: nessuna domanda, solo la password `sudo`.
@@ -698,6 +711,8 @@ export PATH="$HOME/.local/bin:$PATH"
 ```
 
 ---
+
+</details>
 
 ## Dopo l'installazione
 
@@ -1110,6 +1125,56 @@ Lo stato è salvato in:
 
 ---
 
+## Backup e ripristino
+
+Ogni aggiornamento mette da parte **un solo backup**: la fotografia della
+configurazione com'era *prima* di essere toccata. Il backup nuovo sostituisce
+quello vecchio, quindi la cartella non cresce a ogni aggiornamento e non
+riempie il disco.
+
+- **Dove**: `~/.local/state/labwc-q4os/backups/` (una sola cartella, la più recente).
+- **Quando**: all'inizio dell'installazione, prima che l'installer scriva
+  qualsiasi file.
+- **Cosa salva**: tutte le configurazioni che l'installer può modificare —
+  `labwc`, `waybar`, `fuzzel`, `mako`, `wlogout`, `gtk-3.0`, `gtk-4.0` in
+  `~/.config`, le scorciatoie `.desktop` del progetto e i file di sistema
+  (GRUB, tastiera, zramswap, sysctl, keyd, policy di Chromium e Firefox).
+
+**Ripristino, dall'ultimo backup.** È la **prima domanda** dell'installer e
+il default è **No**:
+
+```text
+Ripristinare la configurazione dall'ultimo backup? [s/N]   -> No
+```
+
+Rispondendo **sì** — oppure con `./install.sh --restore` — tutti i file
+registrati nel backup tornano al loro posto e lo script **termina senza
+installare nulla**. `--no-restore` salta la domanda; `--yes` non chiede nulla.
+Dopo il ripristino, esci e rientra nella sessione per applicare la
+configurazione.
+
+<details>
+<summary>Dettagli tecnici (manifest, formati vecchi, permessi)</summary>
+
+Il backup contiene un `manifest.tsv` con una riga per voce:
+`tipo<TAB>percorso_nel_backup<TAB>percorso_originale`. Il ripristino usa il
+manifest, quindi copre **tutti i file interpellati** e non solo `~/.config`:
+cartelle (sostituite in blocco) e singoli file di sistema (scritti con `sudo`).
+I backup creati dalle versioni precedenti, senza manifest, vengono riconosciuti
+dai nomi noti (`config/*`, `system/grub.default`, `system/keyboard`,
+`system/zramswap`, `system/99-labwc-performance.conf`,
+`system/keyd-default.conf`, `system/zz-labwc-q4os-chromium`,
+`system/labwc-q4os-extensions.json`,
+`system/firefox-esr-distribution-policies.json`).
+
+La nuova copia viene preparata e solo dopo la vecchia viene rimossa
+(`backup_ensure` → `prune_backups`), così un aggiornamento interrotto non
+lascia mai il sistema senza backup. Il ripristino **sovrascrive** lo stato
+attuale con quello del backup: le modifiche fatte dopo l'ultimo aggiornamento
+vanno perse.
+
+</details>
+
 ## Labwc Doctor
 
 Controlli automatici e riparazione:
@@ -1258,6 +1323,10 @@ Il link appare in Fuzzel e nella categoria **Internet** del menu desktop.
 
 ## Struttura del repository
 
+<details>
+<summary>Mostra i dettagli tecnici</summary>
+
+
 ```text
 labwc-q4os/
 ├── install.sh                     # entry point
@@ -1333,7 +1402,13 @@ labwc-q4os/
 
 ---
 
+</details>
+
 ## File installati
+
+<details>
+<summary>Mostra i dettagli tecnici</summary>
+
 
 Configurazione utente:
 
@@ -1393,7 +1468,13 @@ Sistema (con `sudo`):
 
 ---
 
+</details>
+
 ## Verifica e sviluppo
+
+<details>
+<summary>Mostra i dettagli tecnici</summary>
+
 
 Controlli statici e smoke test in una HOME temporanea (non toccano la tua
 configurazione):
@@ -1415,7 +1496,13 @@ Lo script verifica:
 
 ---
 
+</details>
+
 ## Troubleshooting
+
+<details>
+<summary>Mostra i dettagli tecnici</summary>
+
 
 **Prima di tutto: esegui la diagnostica**
 
@@ -1462,6 +1549,9 @@ jq . ~/.config/waybar/config.jsonc
 **Il menu non si aggiorna**
 ```bash
 labwc --reconfigure
+
+</details>
+
 # oppure
 labwc-reload
 ```
@@ -1517,6 +1607,10 @@ sudo systemctl disable --now zramswap.service
 
 ## Sicurezza e comportamento
 
+<details>
+<summary>Mostra i dettagli tecnici</summary>
+
+
 - Lo script **non** viene eseguito come root; usa `sudo` solo per `apt`,
   `/usr/share/wayland-sessions` e i file in `/etc`.
 - Non modifica il display manager, la sessione predefinita o i driver. Il menu
@@ -1553,6 +1647,9 @@ eseguito alla cieca da `main`.
 Verifica manuale consigliata, prima di eseguire il one-liner:
 
 ```bash
+
+</details>
+
 # scarica bootstrap e manifest, controlla l'hash del bootstrap
 # (confrontalo con quello pubblicato nella release / nel commit ufficiale)
 curl -fsSLO https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/bootstrap.sh
@@ -1665,25 +1762,25 @@ Esperimento futuro (solo per nerd) e a tempo perso: creare una sessione **ultra-
 
 Tutti i numeri vengono dal [`CHANGELOG.md`](CHANGELOG.md): ogni voce è un
 intervento registrato in una release. Le aree sono una stima per parole chiave
-(una voce può riguardare più aspetti, qui conta l'area principale).
+(una voce può riguardare più aspetti; qui conta la categoria con più parole
+chiave, quindi ogni voce è contata una sola volta).
 
 ### Scheda numeri
 
 | Indicatore | Valore |
 | --- | ---: |
-| Release documentate (dalla 1.0 alla 1.24.1) | **50** |
-| Voci/interventi totali nel CHANGELOG | **157** |
-| Bug corretti | **16** |
-| Nuove funzioni | **35** |
-| Migliorie e ottimizzazioni | **10** |
-| Interventi su temi e interfaccia | **25** |
-| Interventi su installer e compatibilità | **42** |
-| Interventi su documentazione | **8** |
-| Pulizia e manutenzione | **4** |
-| Altro / note tecniche | **17** |
-| Script nel repository | **48** |
-| File nel repository | **123** |
-| Righe di script (Bash e Python) | **14.910** |
+| Sezioni di release nel CHANGELOG (dalla 1.0 alla 1.27.0) | **53** |
+| Voci/interventi totali nel CHANGELOG | **168** |
+| Bug corretti | **4** |
+| Nuove funzioni | **21** |
+| Migliorie e ottimizzazioni | **4** |
+| Interventi su temi e interfaccia | **42** |
+| Interventi su installer e compatibilità | **71** |
+| Interventi su documentazione | **3** |
+| Altro / note tecniche e manutenzione | **23** |
+| Script nel repository | **54** |
+| File nel repository (esclusi `.specify/` e `.opencode/`) | **128** |
+| Righe di script (Bash e Python) | **16.216** |
 | Temi inclusi | **3** |
 
 ### Cosa è cambiato nel tempo
@@ -1697,6 +1794,11 @@ intervento registrato in una release. Le aree sono una stima per parole chiave
 - **1.20 → 1.22**: **Cage** per le app a schermo intero, FreeTube, Firefox ESR,
   touchscreen, ZRAM rifinita, chiusura di FreeTube resa affidabile e uscita
   definitiva da Cage con `exit`.
+- **1.23 → 1.27**: scala dello schermo in Rust, batteria in Cage con **Ctrl+B**,
+  **HUD** e **labwc-bluetooth**, menu senza duplicati con le app utente in
+  TOOL reverseloop, **logo tono su tono** nel login come pattern, **backup
+  unico con rollback**, workflow **Spec Kit** e README con sezioni tecniche a
+  tendina.
 
 ---
 

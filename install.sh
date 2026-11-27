@@ -40,7 +40,8 @@ APPDATA="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 SHARE="${XDG_DATA_HOME:-$HOME/.local/share}/labwc-q4os"
 STATE="${XDG_STATE_HOME:-$HOME/.local/state}/labwc-q4os"
 BIN="$HOME/.local/bin"
-BACKUP_DIR="$STATE/backups/$(date +%Y%m%d-%H%M%S)"
+BACKUP_ROOT="$STATE/backups"
+BACKUP_DIR="$BACKUP_ROOT/$(date +%Y%m%d-%H%M%S)"
 
 THEME=""
 ASSUME_YES=0
@@ -55,6 +56,7 @@ GUI_CHOICES=0
 WANT_QPDFVIEW=""
 WANT_FREETUBE=""
 QUICK_UPDATE=""
+RESTORE_REQUESTED=0
 INSTALL_OPTIONS="${LABWC_Q4OS_OPTIONS:-/etc/labwc-q4os/install-options}"
 PARAM_FLAGS=0
 SWAPPINESS_VALUE=""
@@ -99,6 +101,8 @@ Opzioni:
   --no-swappiness     Non modificare vm.swappiness
   --grub-1s           Abbassa a 1 secondo l'attesa del menu GRUB (opt-in)
   --no-grub-1s        Lascia invariato il timeout di GRUB
+  --restore           Ripristina la configurazione dall'ultimo backup ed esce
+  --no-restore        Salta la domanda sul ripristino
   --sddm              Installa e attiva SDDM se TDM non supporta Wayland
   --keep-tdm          Non toccare il display manager (TDM resta attivo)
   --skip-apt          Non installare pacchetti (solo configurazione)
@@ -131,6 +135,8 @@ while [ "$#" -gt 0 ]; do
         --no-swappiness) ENABLE_SWAPPINESS=0; shift ;;
         --grub-1s) ENABLE_GRUB_1S=1; shift ;;
         --no-grub-1s) ENABLE_GRUB_1S=0; shift ;;
+        --restore) RESTORE_REQUESTED=1; shift ;;
+        --no-restore) RESTORE_REQUESTED=0; NO_RESTORE_PROMPT=1; shift ;;
         --touch) ENABLE_TOUCH=1; shift ;;
         --no-touch) ENABLE_TOUCH=0; shift ;;
         --lookswitcher) WANT_LOOKSWITCHER=1; shift ;;
@@ -180,6 +186,174 @@ fi
 if [ -n "$THEME$ENABLE_ZRAM$ENABLE_SWAPPINESS$ENABLE_GRUB_1S$ENABLE_TOUCH$WANT_LOOKSWITCHER$WANT_SHELL$WANT_SDDM$XKB_LAYOUT$WANT_BROWSER$WANT_QPDFVIEW$WANT_FREETUBE$SWAPPINESS_VALUE" ]; then
     PARAM_FLAGS=1
 fi
+
+# -----------------------------------------------------------------------------
+# Backup e ripristino
+#   * un solo backup: la cartella piu' recente in $STATE/backups; le vecchie
+#     vengono rimosse alla prima copia, cosi' gli aggiornamenti non gonfiano
+#     il disco;
+#   * manifest.tsv elenca ogni voce (tipo, percorso nel backup, percorso
+#     originale): servono tutti i file toccati, non solo ~/.config;
+#   * --restore (o la prima domanda, default No) rimette a posto l'ultimo
+#     backup e termina senza installare nulla.
+# -----------------------------------------------------------------------------
+backup_manifest() { printf '%s\n' "$BACKUP_DIR/manifest.tsv"; }
+
+latest_backup() {
+    [ -d "$BACKUP_ROOT" ] || return 1
+    find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null |
+        sort | tail -n1
+}
+
+prune_backups() {
+    local entry name
+    [ -d "$BACKUP_ROOT" ] || return 0
+    for entry in "$BACKUP_ROOT"/*; do
+        [ -d "$entry" ] || continue
+        name="$(basename "$entry")"
+        [ "$name" = "$(basename "$BACKUP_DIR")" ] && continue
+        rm -rf "$entry" 2>/dev/null || sudo rm -rf "$entry" 2>/dev/null || true
+    done
+}
+
+backup_ensure() {
+    [ -d "$BACKUP_DIR" ] && [ -f "$(backup_manifest)" ] && return 0
+    mkdir -p "$BACKUP_DIR"
+    prune_backups
+    printf '# tipo\tpercorso_backup\tpercorso_originale\n' >"$(backup_manifest)"
+}
+
+backup_record() {
+    printf '%s\t%s\t%s\n' "$1" "$2" "$3" >>"$(backup_manifest)"
+}
+
+# Copia una voce dell'utente (file o cartella) e la registra nel manifest.
+backup_tree() {
+    local path="$1" rel="$2" kind="file"
+    [ -e "$path" ] || return 0
+    backup_ensure
+    mkdir -p "$BACKUP_DIR/$(dirname "$rel")"
+    [ -d "$path" ] && kind="dir"
+    if cp -a "$path" "$BACKUP_DIR/$rel"; then
+        backup_record "$kind" "$rel" "$path"
+        info "Backup: $path -> $BACKUP_DIR/$rel"
+    else
+        warn "Backup non riuscito: $path"
+    fi
+}
+
+# Copia un file di sistema (serve sudo per leggerlo, la copia resta dell'utente).
+backup_file() {
+    local src="$1" rel="$2"
+    [ -e "$src" ] || return 0
+    backup_ensure
+    mkdir -p "$BACKUP_DIR/$(dirname "$rel")"
+    if sudo cat "$src" 2>/dev/null | tee "$BACKUP_DIR/$rel" >/dev/null &&
+        [ -e "$BACKUP_DIR/$rel" ]; then
+        backup_record file "$rel" "$src"
+        info "Backup: $src -> $BACKUP_DIR/$rel"
+    else
+        rm -f "$BACKUP_DIR/$rel" 2>/dev/null || true
+        warn "Backup non riuscito: $src"
+    fi
+}
+
+restore_copy() {
+    local kind="$1" src="$2" target="$3"
+    [ -e "$src" ] || return 0
+    case "$target" in
+        /etc/*|/usr/*|/var/lib/sddm/*)
+            if [ "$kind" = "dir" ]; then
+                sudo rm -rf "$target" && sudo cp -a "$src" "$target"
+            else
+                sudo install -D -m 0644 "$src" "$target"
+            fi
+            ;;
+        *)
+            if [ "$kind" = "dir" ]; then
+                rm -rf "$target" && cp -a "$src" "$target"
+            else
+                install -D -m 0644 "$src" "$target"
+            fi
+            ;;
+    esac
+}
+
+# Backup delle versioni precedenti (senza manifest): mappa i nomi noti.
+legacy_backup_target() {
+    case "$1" in
+        config/*) printf '%s/%s\n' "$CONFIG" "${1#config/}" ;;
+        system/grub.default) printf '/etc/default/grub\n' ;;
+        system/keyboard) printf '/etc/default/keyboard\n' ;;
+        system/zramswap) printf '/etc/default/zramswap\n' ;;
+        system/99-labwc-performance.conf) printf '/etc/sysctl.d/99-labwc-performance.conf\n' ;;
+        system/keyd-default.conf) printf '/etc/keyd/default.conf\n' ;;
+        system/zz-labwc-q4os-chromium) printf '/etc/chromium.d/zz-labwc-q4os-chromium\n' ;;
+        system/labwc-q4os-extensions.json) printf '/etc/chromium/policies/managed/labwc-q4os-extensions.json\n' ;;
+        system/firefox-esr-distribution-policies.json) printf '/etc/firefox-esr/policies/policies.json\n' ;;
+        *) return 1 ;;
+    esac
+}
+
+restore_latest_backup() {
+    local name dir manifest kind rel target restored=0 entry sub
+    name="$(latest_backup || true)"
+    if [ -z "${name:-}" ] || [ ! -d "$BACKUP_ROOT/$name" ]; then
+        warn "Nessun backup disponibile in $BACKUP_ROOT."
+        return 1
+    fi
+    dir="$BACKUP_ROOT/$name"
+    manifest="$dir/manifest.tsv"
+    info "Ripristino dal backup: $dir"
+    if [ -r "$manifest" ]; then
+        while IFS=$'\t' read -r kind rel target; do
+            case "$kind" in dir|file) ;; *) continue ;; esac
+            [ -n "${rel:-}" ] && [ -n "${target:-}" ] || continue
+            if restore_copy "$kind" "$dir/$rel" "$target"; then
+                restored=$((restored + 1))
+            else
+                warn "Ripristino non riuscito: $target"
+            fi
+        done <"$manifest"
+    else
+        for entry in "$dir"/*; do
+            [ -e "$entry" ] || continue
+            case "$(basename "$entry")" in
+                config)
+                    for sub in "$entry"/*; do
+                        [ -e "$sub" ] || continue
+                        if [ "$(basename "$sub")" = "applications" ]; then
+                            for rel in "$sub"/*; do
+                                [ -e "$rel" ] || continue
+                                if restore_copy file "$rel" "$APPDATA/$(basename "$rel")"; then
+                                    restored=$((restored + 1))
+                                fi
+                            done
+                        elif restore_copy dir "$sub" "$CONFIG/$(basename "$sub")"; then
+                            restored=$((restored + 1))
+                        fi
+                    done
+                    ;;
+                system)
+                    for rel in "$entry"/*; do
+                        [ -f "$rel" ] || continue
+                        target="$(legacy_backup_target "system/$(basename "$rel")")" || continue
+                        if restore_copy file "$rel" "$target"; then
+                            restored=$((restored + 1))
+                        fi
+                    done
+                    ;;
+            esac
+        done
+    fi
+    if [ "$restored" -eq 0 ]; then
+        warn "Nessun file ripristinato da $dir."
+        return 1
+    fi
+    ok "Ripristinate $restored voci dall'ultimo backup."
+    info "Esci e rientra nella sessione per applicare la configurazione ripristinata."
+    return 0
+}
 
 option_value() {
     [ -r "$INSTALL_OPTIONS" ] || return 1
@@ -236,6 +410,24 @@ load_saved_options() {
     esac
     return 0
 }
+
+# Ripristino: prima domanda dello script, default No. Solo se esiste un backup
+# e non si e' chiesto --restore/--no-restore o --yes.
+if [ "$RESTORE_REQUESTED" -eq 0 ] && [ "$NO_RESTORE_PROMPT" -eq 0 ] &&
+    [ "$ASSUME_YES" -eq 0 ] && [ "$PARAM_FLAGS" -eq 0 ] && [ -r /dev/tty ] &&
+    [ -n "$(latest_backup || true)" ]; then
+    note "C'è un backup della configurazione precedente in $BACKUP_ROOT."
+    note "Ripristinarlo annulla le modifiche dell'ultimo aggiornamento."
+    if ask_yes_no "Ripristinare la configurazione dall'ultimo backup?" no; then
+        RESTORE_REQUESTED=1
+    fi
+fi
+if [ "$RESTORE_REQUESTED" -eq 1 ]; then
+    if restore_latest_backup; then
+        exit 0
+    fi
+    die "Ripristino non riuscito: nessun file modificato."
+fi
 
 # Prima domanda dell'aggiornamento: modificare i parametri o usare quelli
 # salvati (nessuna domanda, solo password sudo). Su prima installazione non
@@ -1049,11 +1241,7 @@ install_browser_extensions() {
         return 0
     fi
 
-    mkdir -p "$BACKUP_DIR/system"
-    if [ -r "$policy_file" ]; then
-        # shellcheck disable=SC2024
-        sudo cat "$policy_file" > "$BACKUP_DIR/system/labwc-q4os-extensions.json" 2>/dev/null || true
-    fi
+    backup_file "$policy_file" "system/labwc-q4os-extensions.json"
     sudo install -d -m 0755 "$policy_dir"
     # Policy Chromium: force_installed scarica le estensioni dal Chrome Web Store
     # al primo avvio. ddkjiahejlhfcafbddmgiahcphecmpfh = uBlock Origin Lite,
@@ -1097,11 +1285,7 @@ install_chromium_runtime() {
     sudo install -m 0644 "$REPO_DIR/configs/chromium/youtube-360/content.js" "$ext_dir/content.js"
     sudo install -m 0644 "$REPO_DIR/configs/chromium/youtube-360/page.js" "$ext_dir/page.js"
 
-    mkdir -p "$BACKUP_DIR/system"
-    if [ -r "$flags_file" ]; then
-        # shellcheck disable=SC2024  # backup in $HOME, redirect non serve sudo
-        sudo cat "$flags_file" >"$BACKUP_DIR/system/zz-labwc-q4os-chromium" 2>/dev/null || true
-    fi
+    backup_file "$flags_file" "system/zz-labwc-q4os-chromium"
     sudo install -d -m 0755 /etc/chromium.d
     # Wayland + decorazioni server quando disponibili. L'estensione locale
     # imposta YouTube a 360p: meno CPU, meno RAM e decodifica più facile.
@@ -1153,9 +1337,7 @@ install_audio_keys() {
 
     sudo install -d -m 0755 /etc/keyd
     if [ -r "$keyd_conf" ] && ! grep -q 'labwc-q4os' "$keyd_conf"; then
-        mkdir -p "$BACKUP_DIR/system"
-        # shellcheck disable=SC2024  # backup in $HOME, redirect non serve sudo
-        sudo cat "$keyd_conf" >"$BACKUP_DIR/system/keyd-default.conf" 2>/dev/null || true
+        backup_file "$keyd_conf" "system/keyd-default.conf"
         warn "keyd: config personale salvata; non la sovrascrivo."
     elif [ ! -r "$keyd_conf" ]; then
         sudo tee "$keyd_conf" >/dev/null <<'EOF'
@@ -1425,11 +1607,7 @@ install_firefox_extensions() {
         return 0
     fi
 
-    mkdir -p "$BACKUP_DIR/system"
-    if [ -r "$policy_file" ]; then
-        # shellcheck disable=SC2024  # backup in $HOME, redirect non serve sudo
-        sudo cat "$policy_file" >"$BACKUP_DIR/system/firefox-esr-distribution-policies.json" 2>/dev/null || true
-    fi
+    backup_file "$policy_file" "system/firefox-esr-distribution-policies.json"
     sudo install -d -m 0755 "$policy_dir"
     # /etc ha priorita' sulla policy del pacchetto: parti da quella del
     # pacchetto per non perdere le protezioni predefinite di Firefox ESR.
@@ -1827,18 +2005,9 @@ python3 -c 'import PIL' >/dev/null 2>&1 || die "python3-pil mancante: impossibil
 ok "Stack Wayland installato."
 
 # -----------------------------------------------------------------------------
-# Backup configurazioni esistenti
+# Backup configurazioni esistenti (un solo backup, vedi backup_ensure)
 # -----------------------------------------------------------------------------
-mkdir -p "$BACKUP_DIR"
-backup_tree() {
-    local path="$1" rel="$2"
-    if [ -e "$path" ]; then
-        mkdir -p "$BACKUP_DIR/$(dirname "$rel")"
-        cp -a "$path" "$BACKUP_DIR/$rel"
-        info "Backup: $path -> $BACKUP_DIR/$rel"
-    fi
-}
-
+backup_ensure
 backup_tree "$CONFIG/labwc" "config/labwc"
 backup_tree "$CONFIG/waybar" "config/waybar"
 backup_tree "$CONFIG/fuzzel" "config/fuzzel"
@@ -1871,8 +2040,8 @@ configure_grub_timeout() {
         ok "GRUB: timeout gia' a 1 secondo."
         return 0
     fi
-    mkdir -p "$BACKUP_DIR/system"
-    if ! sudo cp -a /etc/default/grub "$BACKUP_DIR/system/grub.default" 2>/dev/null; then
+    backup_file /etc/default/grub "system/grub.default"
+    if [ ! -e "$BACKUP_DIR/system/grub.default" ]; then
         warn "GRUB: backup di /etc/default/grub non riuscito, timeout invariato."
         return 1
     fi
@@ -1938,11 +2107,7 @@ configure_keyboard() {
     rm -f "$tmp"
 
     # Layout di login/console/X11: utile per TDM, SDDM e console.
-    mkdir -p "$BACKUP_DIR/system"
-    if [ -r /etc/default/keyboard ]; then
-        # shellcheck disable=SC2024
-        sudo cat /etc/default/keyboard > "$BACKUP_DIR/system/keyboard" 2>/dev/null || true
-    fi
+    backup_file /etc/default/keyboard "system/keyboard"
     if command -v localectl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
         sudo localectl set-keyboard-layout "$XKB_PRIMARY" >/dev/null 2>&1 || true
     fi
@@ -2679,11 +2844,7 @@ fi
 # -----------------------------------------------------------------------------
 if command -v zramctl >/dev/null 2>&1; then
     log "Configurazione zram (zstd, 50%, priorita' 100)..."
-    mkdir -p "$BACKUP_DIR/system"
-    if [ -r /etc/default/zramswap ]; then
-        # shellcheck disable=SC2024
-        sudo cat /etc/default/zramswap > "$BACKUP_DIR/system/zramswap" 2>/dev/null || true
-    fi
+    backup_file /etc/default/zramswap "system/zramswap"
     sudo tee /etc/default/zramswap >/dev/null <<'EOF'
 # Generato da labwc-q4os — https://github.com/reverseloop-dev/labwc-q4os
 ALGO=zstd
@@ -2723,11 +2884,7 @@ fi
 
 if [ "$ENABLE_SWAPPINESS" -eq 1 ]; then
     log "Configurazione parametri memoria (swappiness=$SWAPPINESS_VALUE)..."
-    mkdir -p "$BACKUP_DIR/system"
-    if [ -r /etc/sysctl.d/99-labwc-performance.conf ]; then
-        # shellcheck disable=SC2024
-        sudo cat /etc/sysctl.d/99-labwc-performance.conf > "$BACKUP_DIR/system/99-labwc-performance.conf" 2>/dev/null || true
-    fi
+    backup_file /etc/sysctl.d/99-labwc-performance.conf "system/99-labwc-performance.conf"
     {
         printf '# Generato da labwc-q4os — https://github.com/reverseloop-dev/labwc-q4os\n'
         printf '# zram: %s\n' "$([ "$ENABLE_ZRAM" -eq 1 ] && echo si || echo no)"

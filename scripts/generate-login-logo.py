@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
 """
-generate-login-logo.py - logo reverseloop-dev "tono su tono" per SDDM.
+generate-login-logo.py - pattern del logo reverseloop-dev per SDDM.
 
-Per ogni tema in --themes-dir legge theme.conf e genera logo.png:
-monocromatico, tinto con logo_tint (o accent) e semitrasparente, come il logo
-al centro degli sfondi del desktop. Il file viene usato da Main.qml.
+Per ogni tema in --themes-dir legge theme.conf e genera "logo-pattern.png":
+lo stesso logo ripetuto in varie dimensioni e trasparenze, tinto con
+logo_tint (o accent), distribuito sullo sfondo senza sovrapposizioni e senza
+coprire le zone dove stanno card, form e orologio. Tutto deterministico
+(seed fisso per tema): due esecuzioni producono lo stesso pattern.
 
 Uso:
   generate-login-logo.py --themes-dir configs/sddm/themes
   generate-login-logo.py --themes-dir /usr/share/labwc-q4os/login-themes \
-      --logo configs/logo/rl-dev.png --alpha 0.13 --width 640
+      --logo configs/logo/rl-dev.png --width 1920 --height 1080
 """
 
 from __future__ import annotations
 
 import argparse
 import os
+import random
 import sys
 
 try:
@@ -28,6 +31,17 @@ try:
     RESAMPLE = Image.Resampling.LANCZOS
 except AttributeError:  # Pillow < 9.1
     RESAMPLE = Image.LANCZOS
+
+THEME_SEEDS = {"nordic-cobalt": 1301, "muted-crimson": 2203, "sage-emerald": 3301}
+
+# Zone da lasciare libere (frazioni di larghezza/altezza): card centrale,
+# form a destra dello Split Studio, dock in basso del Bottom Dock.
+FORBIDDEN = {
+    "default": [(0.32, 0.18, 0.68, 0.86)],
+    "muted-crimson": [(0.42, 0.20, 0.86, 0.80)],
+    "sage-emerald": [(0.28, 0.00, 0.72, 0.22), (0.08, 0.62, 0.92, 0.98)],
+}
+
 
 
 def find_logo(explicit: str | None) -> str | None:
@@ -88,41 +102,112 @@ def monochrome_mask(src: Image.Image) -> Image.Image:
     return mask
 
 
-def make_logo(mask: Image.Image, tint: str, alpha: float, width: int) -> Image.Image:
-    target_w = max(120, width)
-    target_h = max(1, int(mask.height * target_w / mask.width))
-    resized = mask.resize((target_w, target_h), RESAMPLE)
+def tinted_logo(
+    mask: Image.Image, tint: str, width: int, alpha: float
+) -> Image.Image:
+    height = max(1, int(mask.height * width / mask.width))
+    resized = mask.resize((width, height), RESAMPLE)
     rgb = hex_rgb(tint)
-    logo = Image.new("RGBA", (target_w, target_h), (*rgb, 0))
+    logo = Image.new("RGBA", (width, height), (*rgb, 0))
     logo.putalpha(resized.point(lambda v: int(v * alpha)))
     return logo
 
 
+def overlaps(
+    a: tuple[int, int, int, int], b: tuple[int, int, int, int], pad: int
+) -> bool:
+    return not (
+        a[2] + pad <= b[0]
+        or b[2] + pad <= a[0]
+        or a[3] + pad <= b[1]
+        or b[3] + pad <= a[1]
+    )
+
+
+def forbidden_rects(
+    theme: str, width: int, height: int
+) -> list[tuple[int, int, int, int]]:
+    boxes = FORBIDDEN.get(theme, FORBIDDEN["default"])
+    return [
+        (int(x0 * width), int(y0 * height), int(x1 * width), int(y1 * height))
+        for x0, y0, x1, y1 in boxes
+    ]
+
+
+def build_pattern(
+    mask: Image.Image, tint: str, theme: str, width: int, height: int
+) -> Image.Image:
+    rng = random.Random(THEME_SEEDS.get(theme, 4242))
+    canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    placed: list[tuple[int, int, int, int]] = []
+    blocked = forbidden_rects(theme, width, height)
+    margin = int(width * 0.04)
+    pad = int(width * 0.03)
+
+    # Griglia 3x3: un logo per cella, dimensioni e trasparenze diverse.
+    # Le celle che toccano le zone vietate restano vuote, quindi il logo
+    # non finisce mai sotto card, form o orologio e non si sovrappone.
+    rows, cols = 3, 4
+    cell_w = (width - 2 * margin) / cols
+    cell_h = (height - 2 * margin) / rows
+    accent_cell = rng.randrange(rows * cols)
+    order = list(range(rows * cols))
+    rng.shuffle(order)
+
+    for index in order:
+        row, col = divmod(index, cols)
+        cell_left = margin + col * cell_w
+        cell_top = margin + row * cell_h
+        for _attempt in range(200):
+            if index == accent_cell:
+                fraction = rng.uniform(0.14, 0.18)
+            else:
+                fraction = rng.uniform(0.055, 0.115)
+            logo_w = int(width * fraction)
+            logo_h = max(1, int(mask.height * logo_w / mask.width))
+            if logo_w > cell_w - pad or logo_h > cell_h - pad:
+                continue
+            x = int(cell_left + rng.uniform(0, max(0.0, cell_w - logo_w)))
+            y = int(cell_top + rng.uniform(0, max(0.0, cell_h - logo_h)))
+            box = (x, y, x + logo_w, y + logo_h)
+            if any(overlaps(box, other, pad) for other in placed):
+                continue
+            if any(overlaps(box, zone, pad) for zone in blocked):
+                continue
+            alpha = 0.05 + rng.random() * 0.06
+            logo = tinted_logo(mask, tint, logo_w, alpha)
+            canvas.alpha_composite(logo, (x, y))
+            placed.append(box)
+            break
+    if os.environ.get("LABWC_Q4OS_LOGIN_DEBUG") == "1":
+        print(f"pattern {theme}: {len(placed)} loghi -> {placed}", file=sys.stderr)
+    return canvas
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Logo tono su tono per i temi login")
+    parser = argparse.ArgumentParser(description="Pattern logo tono su tono per SDDM")
     parser.add_argument("--themes-dir", required=True, help="cartella con i temi SDDM")
     parser.add_argument("--logo", default=None, help="immagine sorgente del logo")
-    parser.add_argument("--alpha", type=float, default=0.13, help="opacita' massima (0-1)")
-    parser.add_argument("--width", type=int, default=640, help="larghezza in pixel")
+    parser.add_argument("--width", type=int, default=1920, help="larghezza canvas")
+    parser.add_argument("--height", type=int, default=1080, help="altezza canvas")
     args = parser.parse_args()
 
     source = find_logo(args.logo)
     if not source:
-        print("Logo reverseloop-dev non trovato: logo login non generato.", file=sys.stderr)
+        print("Logo reverseloop-dev non trovato: pattern login non generato.", file=sys.stderr)
         return 1
     try:
         src = Image.open(source)
         src.load()
     except OSError as error:
-        print(f"Logo non leggibile ({error}): logo login non generato.", file=sys.stderr)
+        print(f"Logo non leggibile ({error}): pattern login non generato.", file=sys.stderr)
         return 1
 
     mask = monochrome_mask(src)
     if not mask.getbbox():
-        print("Logo vuoto: logo login non generato.", file=sys.stderr)
+        print("Logo vuoto: pattern login non generato.", file=sys.stderr)
         return 1
 
-    alpha = max(0.0, min(1.0, args.alpha))
     generated = 0
     for name in sorted(os.listdir(args.themes_dir)):
         theme_dir = os.path.join(args.themes_dir, name)
@@ -131,11 +216,14 @@ def main() -> int:
             continue
         conf = read_conf(conf_path)
         tint = conf.get("logo_tint") or conf.get("accent") or conf.get("accent_soft") or "ffffff"
-        logo = make_logo(mask, tint, alpha, args.width)
-        out = os.path.join(theme_dir, "logo.png")
-        logo.save(out, "PNG", optimize=True)
+        pattern = build_pattern(mask, tint, name, args.width, args.height)
+        out = os.path.join(theme_dir, "logo-pattern.png")
+        pattern.save(out, "PNG", optimize=True)
+        stale = os.path.join(theme_dir, "logo.png")
+        if os.path.isfile(stale):
+            os.unlink(stale)
         generated += 1
-        print(f"logo login: {out} (tinta #{tint.lstrip('#')})")
+        print(f"pattern login: {out} (tinta #{tint.lstrip('#')}, {args.width}x{args.height})")
 
     if generated == 0:
         print("Nessun tema con theme.conf trovato.", file=sys.stderr)

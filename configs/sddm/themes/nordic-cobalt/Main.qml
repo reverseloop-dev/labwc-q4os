@@ -56,12 +56,14 @@ Rectangle {
 
     // Logo reverseloop-dev "tono su tono": logo.png generato da
     // generate-login-logo.py (tinta del tema, alpha bassa).
+    // Pattern del logo reverseloop-dev "tono su tono": logo-pattern.png
+    // generato da generate-login-logo.py (piu' copie, dimensioni e
+    // trasparenze diverse, mai sovrapposte).
     Image {
         id: brandLogo
-        source: "logo.png"
-        anchors.centerIn: parent
-        width: Math.min(root.width * 0.34, root.height * 0.62)
-        fillMode: Image.PreserveAspectFit
+        source: "logo-pattern.png"
+        anchors.fill: parent
+        fillMode: Image.PreserveAspectCrop
         smooth: true
         asynchronous: true
     }

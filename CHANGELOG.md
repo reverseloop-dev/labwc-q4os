@@ -2,6 +2,28 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.27.0]
+
+- **Login con pattern del logo**: il logo **reverseloop-dev** non è più una
+  sola copia al centro ma un **pattern tono su tono** — più copie di
+  dimensioni e trasparenze diverse, tinte con il colore del tema, disposte su
+  una griglia con collisioni evitate: nessun logo si sovrappone, nessuno copre
+  card, form o orologio. Seed fisso per tema, quindi il disegno è sempre
+  identico. `scripts/generate-login-logo.py` scrive
+  `logo-pattern.png` in ogni tema; `Main.qml` lo usa come sfondo.
+- **Backup unico e rollback**: l'installer conserva **solo l'ultimo backup**
+  (la copia precedente viene rimossa quando ne nasce una nuova, così gli
+  aggiornamenti non riempiono il disco) e registra in `manifest.tsv` ogni voce
+  salvata, file di sistema compresi. Nuova **prima domanda** dell'installer,
+  default **No**: *Ripristinare la configurazione dall'ultimo backup?* — con
+  `--restore` per il ripristino diretto (termina senza installare) e
+  `--no-restore` per saltarla. I backup vecchi senza manifest restano
+  ripristinabili tramite la mappa dei nomi noti.
+- **README più leggibile**: struttura del repository, file installati, opzioni,
+  troubleshooting, verifica e sicurezza sono ora in sezioni a tendina
+  (`<details>`); restano in chiaro caratteristiche, anteprime, Cage, login e i
+  comandi `curl` di installazione.
+
 ## [1.26.0]
 
 - **Login tono su tono**: il logo **reverseloop-dev** compare al centro anche
