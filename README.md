@@ -55,7 +55,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.27.2**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.27.3**
 
 ---
 
@@ -410,13 +410,14 @@ sessione termina l’albero di processi e labwc riparte. Non serve più
 `labwc-return` per questo caso. Salva i documenti aperti prima di uscire.
 
 **Batteria in Cage (Ctrl+.).** Le app avviate in Cage — dal menu, dai
-collegamenti *(cage)* o a mano con `labwc-cage` — passano da `labwc-cage-app`:
-per Chromium e FreeTube il HUD viene disegnato **dentro l'app** tramite il
-DevTools su `127.0.0.1` (`labwc-cage-hud`). Premi **Ctrl+.** (Ctrl e il punto): in basso a
-sinistra compare un riquadro con batteria e percentuale (verde, ambra sotto il
-35%, rossa sotto il 15%; "in carica" se collegato; "AC" senza batteria).
-Ctrl+. di nuovo lo nasconde. In Cage non esiste layer-shell e c'è un solo
-client, quindi Firefox non ha il HUD (usa Chromium o FreeTube).
+collegamenti *(cage)* o a mano con `labwc-cage` — passano da `labwc-cage-app`.
+In Cage non esiste layer-shell e c'è un solo client, quindi il HUD viene
+disegnato **dentro l'app** (`labwc-cage-hud`): Chromium, Chrome, Brave, Edge,
+Vivaldi, Opera e FreeTube usano il **DevTools locale** su `127.0.0.1`;
+**Firefox** usa il suo **WebDriver BiDi** (`--remote-debugging-port`).
+Premi **Ctrl+.** (Ctrl e il punto): in basso a sinistra compare un riquadro
+con batteria e percentuale (verde, ambra sotto il 35%, rossa sotto il 15%;
+"in carica" se collegato; "AC" senza batteria). Ctrl+. di nuovo lo nasconde.
 
 **Mouse in Cage.** Cage su DRM (accesso diretto alla scheda video) legge
 direttamente mouse e tastiera: serve il backend `libinput` accanto a `drm` (`WLR_BACKENDS=drm,libinput`) e l’utente nel
@@ -1767,18 +1768,18 @@ chiave, quindi ogni voce è contata una sola volta).
 
 | Indicatore | Valore |
 | --- | ---: |
-| Sezioni di release nel CHANGELOG (dalla 1.0 alla 1.27.2) | **55** |
-| Voci/interventi totali nel CHANGELOG | **173** |
+| Sezioni di release nel CHANGELOG (dalla 1.0 alla 1.27.3) | **56** |
+| Voci/interventi totali nel CHANGELOG | **176** |
 | Bug corretti | **8** |
-| Nuove funzioni | **23** |
+| Nuove funzioni | **22** |
 | Migliorie e ottimizzazioni | **4** |
 | Interventi su temi e interfaccia | **43** |
-| Interventi su installer e compatibilità | **69** |
+| Interventi su installer e compatibilità | **79** |
 | Interventi su documentazione | **3** |
-| Altro / note tecniche e manutenzione | **23** |
+| Altro / note tecniche e manutenzione | **17** |
 | Script nel repository | **54** |
 | File nel repository (esclusi `.specify/` e `.opencode/`) | **128** |
-| Righe di script (Bash e Python) | **16.327** |
+| Righe di script (Bash e Python) | **16.476** |
 | Temi inclusi | **3** |
 
 ### Cosa è cambiato nel tempo

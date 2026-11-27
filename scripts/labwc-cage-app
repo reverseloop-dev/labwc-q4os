@@ -52,16 +52,19 @@ for arg in "${child_command[@]:1}"; do
     esac
 done
 
-if [ "$is_chromium" -eq 1 ]; then
-    if [ "$has_debug_port" -eq 0 ]; then
-        port="$(python3 - <<'PY' 2>/dev/null
+free_port() {
+    python3 - <<'PY' 2>/dev/null
 import socket
 sock = socket.socket()
 sock.bind(("127.0.0.1", 0))
 print(sock.getsockname()[1])
 sock.close()
 PY
-)"
+}
+
+if [ "$is_chromium" -eq 1 ]; then
+    if [ "$has_debug_port" -eq 0 ]; then
+        port="$(free_port)"
         if [ -n "${port:-}" ]; then
             child_command+=(
                 "--remote-debugging-port=$port"
@@ -75,8 +78,14 @@ elif [ "$app" = "freetube" ]; then
     port_file="${XDG_CONFIG_HOME:-$HOME/.config}/FreeTube/DevToolsActivePort"
     start_hud --port-file "$port_file"
 elif [ "$app" = "firefox" ] || [ "$app" = "firefox-esr" ]; then
-    # Firefox non espone DevTools solo su localhost: il HUD non e' disponibile.
-    printf 'HUD batteria: non disponibile in Firefox dentro Cage (usa Chromium o FreeTube).\n' >&2
+    # Firefox espone WebDriver BiDi su localhost: stesso HUD via --bidi.
+    if [ "$has_debug_port" -eq 0 ]; then
+        port="$(free_port)"
+        if [ -n "${port:-}" ]; then
+            child_command+=("--remote-debugging-port=$port")
+            start_hud --bidi "$port"
+        fi
+    fi
 else
     printf 'HUD batteria: app non supportata dal HUD (%s).\n' "$app" >&2
 fi

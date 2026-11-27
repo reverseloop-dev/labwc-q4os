@@ -395,6 +395,30 @@ else
     bad "HUD batteria: scorciatoia Ctrl+B ancora presente"
 fi
 
+# Regressione: HUD iniettato in Chromium (DevTools) e Firefox (WebDriver BiDi)
+# qualunque sia il punto di avvio. Gli stub simulano i due browser.
+check "HUD in Cage: Chromium e Firefox"
+CAGE_STUB="$(mktemp -d)"
+mkdir -p "$CAGE_STUB/bin"
+for stub in chromium firefox-esr; do
+    printf '#!/bin/sh\nprintf "ARGS: %%s\\n" "$*"\n' > "$CAGE_STUB/bin/$stub"
+    chmod +x "$CAGE_STUB/bin/$stub"
+done
+chromium_out="$(PATH="$CAGE_STUB/bin:$PATH" LABWC_CAGE_HUD=/nonexistent \
+    scripts/labwc-cage-app chromium --kiosk https://example.org 2>/dev/null)"
+firefox_out="$(PATH="$CAGE_STUB/bin:$PATH" LABWC_CAGE_HUD=/nonexistent \
+    scripts/labwc-cage-app firefox-esr about:blank 2>/dev/null)"
+if [[ "$chromium_out" == *--remote-debugging-port=* &&
+    "$chromium_out" == *--remote-allow-origins=* &&
+    "$firefox_out" == *--remote-debugging-port=* ]] &&
+    grep -q -- '--bidi' scripts/labwc-cage-app &&
+    grep -q -- '"session.new"' scripts/labwc-cage-hud; then
+    pass "HUD in Cage: Chromium e Firefox"
+else
+    bad "HUD in Cage: iniezione Chromium/Firefox non configurata"
+fi
+rm -rf "$CAGE_STUB"
+
 # --- 3. JSON -----------------------------------------------------------------
 check "JSON (Waybar, wlogout)"
 if jq empty configs/waybar/config.jsonc; then pass "waybar/config.jsonc"; else bad "waybar/config.jsonc"; fi

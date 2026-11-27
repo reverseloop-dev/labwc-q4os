@@ -3,9 +3,10 @@
 labwc-cage-hud - HUD batteria per le app in Cage, acceso da Ctrl+.
 
 In Cage un solo client occupa lo schermo e non esiste layer-shell: il riquadro
-viene quindi disegnato *dentro* l'app, usando il DevTools di Chromium/Electron
-su localhost. labwc-cage-app avvia questo processo e passa la porta (o il file
-DevToolsActivePort, come per FreeTube).
+viene quindi disegnato *dentro* l'app. Chromium/Electron espongono il DevTools
+su localhost (--port, oppure --port-file per FreeTube); Firefox espone WebDriver
+BiDi su localhost (--bidi). labwc-cage-app avvia questo processo e passa la
+modalita' giusta.
 
 Il riquadro e' nascosto all'avvio: Ctrl+. lo mostra in basso a sinistra con
 percentuale e stato di carica; Ctrl+. di nuovo lo nasconde. Ctrl+. e' libero
@@ -181,9 +182,16 @@ def battery_state() -> dict[str, object]:
 
 
 class Hud:
-    def __init__(self, port: int | None, port_file: str | None, watch_pid: int | None):
+    def __init__(
+        self,
+        port: int | None,
+        port_file: str | None,
+        watch_pid: int | None,
+        bidi_port: int | None = None,
+    ):
         self.port = port
         self.port_file = port_file
+        self.bidi_port = bidi_port
         self.watch_pid = watch_pid
         self.stop = asyncio.Event()
 
@@ -260,6 +268,16 @@ async def worker(hud: Hud, ws_url: str) -> None:
                     + ")"
                 )
                 try:
+                    present = await call("Runtime.evaluate", {
+                        "expression": "typeof window.__lbqcHudSet === 'function'",
+                        "returnByValue": True,
+                    })
+                    value = (present.get("result") or {}).get("result", {}).get("value")
+                    if value is not True:
+                        installed = False
+                except Exception:
+                    installed = False
+                try:
                     await call("Runtime.evaluate", {
                         "expression": expression, "returnByValue": True,
                     })
@@ -273,7 +291,103 @@ async def worker(hud: Hud, ws_url: str) -> None:
         raise
 
 
+async def _bidi_hud_loop(hud: Hud, call) -> None:
+    while not hud.stop.is_set() and hud.parent_alive():
+        try:
+            tree = await call("browsingContext.getTree", {})
+        except Exception as error:
+            log(f"BiDi: getTree fallito: {error}")
+            raise
+        contexts = [
+            item["context"]
+            for item in (tree.get("contexts") or [])
+            if item.get("context")
+        ]
+        data = battery_state()
+        payload = json.dumps(data)
+        for context in contexts:
+            target = {"context": context}
+            try:
+                present = await call("script.evaluate", {
+                    "expression": "typeof window.__lbqcHudSet === 'function'",
+                    "target": target,
+                    "awaitPromise": False,
+                    "resultOwnership": "none",
+                })
+                value = ((present.get("result") or {}).get("value"))
+                if value is not True:
+                    await call("script.evaluate", {
+                        "expression": HUD_JS,
+                        "target": target,
+                        "awaitPromise": False,
+                        "resultOwnership": "none",
+                    })
+                    if os.environ.get("LABWC_CAGE_HUD_DEBUG") == "1":
+                        log(f"BiDi: HUD iniettato nel contesto {context}")
+                await call("script.evaluate", {
+                    "expression":
+                        f"window.__lbqcHudSet && window.__lbqcHudSet({payload})",
+                    "target": target,
+                    "awaitPromise": False,
+                    "resultOwnership": "none",
+                })
+            except Exception as error:
+                if os.environ.get("LABWC_CAGE_HUD_DEBUG") == "1":
+                    log(f"BiDi: contesto {context}: {error}")
+        with contextlib.suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(hud.stop.wait(), timeout=5)
+
+
+async def bidi_worker(hud: Hud, port: int) -> None:
+    """HUD batteria in Firefox via WebDriver BiDi (--remote-debugging-port)."""
+    import websockets
+
+    async with websockets.connect(
+        f"ws://127.0.0.1:{port}/session",
+        max_size=None, ping_interval=None, open_timeout=10, close_timeout=1,
+    ) as ws:
+        counter = 0
+
+        async def call(method: str, params: dict | None = None):
+            nonlocal counter
+            counter += 1
+            await ws.send(json.dumps({
+                "id": counter, "method": method, "params": params or {},
+            }))
+            while True:
+                message = json.loads(await asyncio.wait_for(ws.recv(), timeout=15))
+                if message.get("id") == counter:
+                    if message.get("type") != "success":
+                        raise RuntimeError(message.get("message") or "BiDi error")
+                    return message.get("result") or {}
+
+        await call("session.new", {"capabilities": {}})
+        if os.environ.get("LABWC_CAGE_HUD_DEBUG") == "1":
+            log("BiDi: sessione Firefox aperta")
+        try:
+            await _bidi_hud_loop(hud, call)
+        finally:
+            # Firefox tiene la sessione BiDi occupata: chiuderla esplicitamente,
+            # altrimenti un riavvio del HUD non puo' aprirne una nuova.
+            with contextlib.suppress(Exception):
+                await asyncio.wait_for(call("session.end", {}), timeout=5)
+
+
+async def bidi_loop(hud: Hud) -> int:
+    while not hud.stop.is_set() and hud.parent_alive():
+        try:
+            await bidi_worker(hud, hud.bidi_port)
+        except Exception as error:
+            if os.environ.get("LABWC_CAGE_HUD_DEBUG") == "1":
+                log(f"BiDi: riconnessione ({error})")
+        with contextlib.suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(hud.stop.wait(), timeout=1.0)
+    return 0
+
+
 async def main_loop(hud: Hud) -> int:
+    if hud.bidi_port is not None:
+        return await bidi_loop(hud)
     empty_since = None
     had_page = False
     while not hud.stop.is_set():
@@ -308,6 +422,8 @@ def main() -> int:
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--port", type=int, help="porta DevTools su 127.0.0.1")
     group.add_argument("--port-file", help="file DevToolsActivePort dell'app")
+    group.add_argument("--bidi", type=int, metavar="PORTA",
+                       help="porta WebDriver BiDi di Firefox (--remote-debugging-port)")
     parser.add_argument("--pid", type=int, default=None, help="pid dell'app da seguire")
     args = parser.parse_args()
 
@@ -317,7 +433,7 @@ def main() -> int:
         log("python3-websockets non installato")
         return 1
 
-    hud = Hud(args.port, args.port_file, args.pid)
+    hud = Hud(args.port, args.port_file, args.pid, args.bidi)
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)

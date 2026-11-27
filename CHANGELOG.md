@@ -2,6 +2,21 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.27.3]
+
+- **HUD batteria anche in Firefox**: `labwc-cage-app` avvia Firefox (e
+  Firefox ESR) con `--remote-debugging-port` su `127.0.0.1` e
+  `labwc-cage-hud` si collega con **WebDriver BiDi** (`session.new` +
+  `script.evaluate`): `Ctrl+.` mostra e nasconde il riquadro come in FreeTube.
+  La sessione BiDi viene chiusa con `session.end` all'uscita, così un riavvio
+  del HUD può aprirne una nuova.
+- **Chromium pronto anche se non installato**: il wrapper aggiunge la porta
+  DevTools a Chromium, Chrome, Brave, Edge, Vivaldi, Thorium e Opera appena
+  compaiono; se il browser non c'è nessun processo parte e nulla cambia.
+- **Test di regressione** in `validate.sh`: iniezione HUD verificata con stub
+  di Chromium e Firefox (flag `--remote-debugging-port`, `--bidi`,
+  `session.new`).
+
 ## [1.27.2]
 
 - **Scorciatoia HUD batteria in Cage: `Ctrl+.`** (Ctrl e il punto) al posto di
