@@ -55,7 +55,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.24.1**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.27.1**
 
 ---
 
@@ -1769,9 +1769,9 @@ chiave, quindi ogni voce è contata una sola volta).
 
 | Indicatore | Valore |
 | --- | ---: |
-| Sezioni di release nel CHANGELOG (dalla 1.0 alla 1.27.0) | **53** |
-| Voci/interventi totali nel CHANGELOG | **168** |
-| Bug corretti | **4** |
+| Sezioni di release nel CHANGELOG (dalla 1.0 alla 1.27.1) | **54** |
+| Voci/interventi totali nel CHANGELOG | **169** |
+| Bug corretti | **5** |
 | Nuove funzioni | **21** |
 | Migliorie e ottimizzazioni | **4** |
 | Interventi su temi e interfaccia | **42** |
@@ -1780,7 +1780,7 @@ chiave, quindi ogni voce è contata una sola volta).
 | Altro / note tecniche e manutenzione | **23** |
 | Script nel repository | **54** |
 | File nel repository (esclusi `.specify/` e `.opencode/`) | **128** |
-| Righe di script (Bash e Python) | **16.216** |
+| Righe di script (Bash e Python) | **16.217** |
 | Temi inclusi | **3** |
 
 ### Cosa è cambiato nel tempo

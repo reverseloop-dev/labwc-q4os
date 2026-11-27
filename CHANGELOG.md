@@ -2,6 +2,12 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.27.1]
+
+- **Correzione**: `NO_RESTORE_PROMPT` è ora inizializzata a `0`. Con
+  `set -u` lo script si fermava alla riga della domanda di ripristino se
+  `--no-restore` non veniva passato (variabile non assegnata).
+
 ## [1.27.0]
 
 - **Login con pattern del logo**: il logo **reverseloop-dev** non è più una

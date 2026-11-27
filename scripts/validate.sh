@@ -473,6 +473,16 @@ else
     printf '[  skip ] shellcheck non installato\n'
 fi
 
+# Regressione: le variabili del ripristino devono essere inizializzate prima
+# della domanda (install.sh gira con set -u).
+check "install.sh: variabili ripristino inizializzate"
+if grep -q '^RESTORE_REQUESTED=0$' install.sh &&
+    grep -q '^NO_RESTORE_PROMPT=0$' install.sh; then
+    pass "install.sh: variabili ripristino inizializzate"
+else
+    bad "install.sh: variabile RESTORE_REQUESTED/NO_RESTORE_PROMPT non inizializzata"
+fi
+
 if [ "$fail" -ne 0 ]; then
     printf '\nValidazione FALLITA.\n' >&2
     exit 1
