@@ -2589,6 +2589,7 @@ Icon=$icon
 Terminal=false
 Categories=Network;WebBrowser;
 Keywords=browser;web;$browser;
+X-Labwc-Q4OS=true
 EOF
     cat >"$APPDATA/$browser-cage.desktop" <<EOF
 [Desktop Entry]
@@ -2600,6 +2601,7 @@ Icon=$icon
 Terminal=false
 Categories=Network;WebBrowser;
 Keywords=browser;web;$browser;cage;
+X-Labwc-Q4OS=true
 EOF
 }
 create_browser_shortcuts chromium Chromium chromium
@@ -2615,6 +2617,7 @@ Icon=video-x-generic
 Terminal=false
 Categories=AudioVideo;Video;
 Keywords=youtube;video;freetube;cage;
+X-Labwc-Q4OS=true
 EOF
     cat >"$APPDATA/freetube-cage.desktop" <<EOF
 [Desktop Entry]
@@ -2626,6 +2629,7 @@ Icon=video-x-generic
 Terminal=false
 Categories=AudioVideo;Video;
 Keywords=youtube;video;freetube;cage;
+X-Labwc-Q4OS=true
 EOF
 fi
 rm -f "$APPDATA/gtk-pipe-viewer.desktop" "$APPDATA/labwc-youtube.desktop"

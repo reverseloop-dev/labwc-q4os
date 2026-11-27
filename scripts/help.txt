@@ -412,8 +412,8 @@ MENU DI AVVIO (GRUB):
     diventa 1 secondo (backup di /etc/default/grub, poi update-grub)
   • flag: --grub-1s / --no-grub-1s
 
-CAGE (kiosk) E BATTERIA:  • le app in Cage passano da labwc-cage-app; Ctrl+B mostra/nasconde in basso
-    a sinistra un riquadro con batteria e percentuale, Ctrl+B lo nasconde
+CAGE (kiosk) E BATTERIA:  • le app in Cage passano da labwc-cage-app; Ctrl+. (Ctrl e punto) mostra/nasconde in basso
+    a sinistra un riquadro con batteria e percentuale; Ctrl+. di nuovo lo nasconde
   • HUD iniettato via DevTools locale: funziona con Chromium/Chrome/Brave/Edge/
     Vivaldi/Opera e FreeTube; Firefox non espone il DevTools richiesto
   • Cage mostra un solo client e non ha layer-shell: il HUD sta dentro l'app

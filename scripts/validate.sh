@@ -312,6 +312,89 @@ else
 fi
 rm -rf "$MENU_TMP"
 
+# Regressione: scorciatoie browser create dall'installer. Firefox normale e
+# Firefox (cage) devono restare in Internet; le app dell'utente vanno in TOOL.
+SHORTCUT_TMP="$(mktemp -d)"
+mkdir -p "$SHORTCUT_TMP/.local/share/applications" "$SHORTCUT_TMP/.local/bin" \
+    "$SHORTCUT_TMP/.config/labwc"
+printf '#!/bin/sh\nexit 0\n' > "$SHORTCUT_TMP/.local/bin/labwc-cage"
+chmod +x "$SHORTCUT_TMP/.local/bin/labwc-cage"
+cat > "$SHORTCUT_TMP/.local/share/applications/firefox.desktop" <<EOF_DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Firefox ESR
+Exec=/bin/true
+Categories=Network;WebBrowser;
+EOF_DESKTOP
+cat > "$SHORTCUT_TMP/.local/share/applications/firefox-cage.desktop" <<EOF_DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Firefox ESR (cage)
+Exec=$SHORTCUT_TMP/.local/bin/labwc-cage --ask -- /bin/true
+Categories=Network;WebBrowser;
+EOF_DESKTOP
+cat > "$SHORTCUT_TMP/.local/share/applications/firefox-esr.desktop" <<EOF_DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Firefox ESR
+NoDisplay=true
+EOF_DESKTOP
+cat > "$SHORTCUT_TMP/.local/share/applications/mia-app.desktop" <<EOF_DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Mia App
+Exec=/bin/echo test
+Categories=Utility;
+EOF_DESKTOP
+if HOME="$SHORTCUT_TMP" XDG_CONFIG_HOME="$SHORTCUT_TMP/.config" \
+    XDG_DATA_HOME="$SHORTCUT_TMP/.local/share" \
+    python3 scripts/render-menu.py --render >/dev/null 2>&1 &&
+    python3 - "$SHORTCUT_TMP/.config/labwc/menu.xml" <<'PY_MENU_CHECK'
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+found: dict[str, list[str]] = {}
+
+
+def walk(node, path):
+    for child in node:
+        if child.tag == "menu":
+            walk(child, path + [child.get("label") or child.get("id") or ""])
+        elif child.tag == "item":
+            found.setdefault(child.get("label", ""), []).append("/".join(path))
+
+
+walk(root, [])
+problems = []
+for label in ("Firefox ESR", "Firefox ESR (cage)"):
+    where = found.get(label, [])
+    if not any(p.endswith("Internet") for p in where):
+        problems.append(f"{label} non in Internet: {where}")
+if not any("TOOL reverseloop" in p for p in found.get("Mia App", [])):
+    problems.append(f"Mia App non in TOOL reverseloop: {found.get('Mia App', [])}")
+if problems:
+    print("\n".join(problems), file=sys.stderr)
+    sys.exit(1)
+PY_MENU_CHECK
+then
+    pass "menu: Firefox e Firefox (cage) in Internet, app utente in TOOL"
+else
+    bad "menu: scorciatoie browser/app utente nel posto sbagliato"
+fi
+rm -rf "$SHORTCUT_TMP"
+
+# Regressione: scorciatoia HUD batteria Ctrl+. (non Ctrl+B, che in Firefox
+# apre i segnalibri).
+check "HUD batteria: scorciatoia Ctrl+."
+if grep -q 'event.key !== "."' scripts/labwc-cage-hud &&
+    ! grep -q 'event.key !== "b"' scripts/labwc-cage-hud &&
+    ! grep -q 'event.key !== "B"' scripts/labwc-cage-hud; then
+    pass "HUD batteria: scorciatoia Ctrl+."
+else
+    bad "HUD batteria: scorciatoia Ctrl+B ancora presente"
+fi
+
 # --- 3. JSON -----------------------------------------------------------------
 check "JSON (Waybar, wlogout)"
 if jq empty configs/waybar/config.jsonc; then pass "waybar/config.jsonc"; else bad "waybar/config.jsonc"; fi

@@ -55,7 +55,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.27.1**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.27.2**
 
 ---
 
@@ -409,13 +409,13 @@ Cage e tutte le app rimaste, esattamente come la X di FreeTube: il wrapper di
 sessione termina l’albero di processi e labwc riparte. Non serve più
 `labwc-return` per questo caso. Salva i documenti aperti prima di uscire.
 
-**Batteria in Cage (Ctrl+B).** Le app avviate in Cage — dal menu, dai
+**Batteria in Cage (Ctrl+.).** Le app avviate in Cage — dal menu, dai
 collegamenti *(cage)* o a mano con `labwc-cage` — passano da `labwc-cage-app`:
 per Chromium e FreeTube il HUD viene disegnato **dentro l'app** tramite il
-DevTools su `127.0.0.1` (`labwc-cage-hud`). Premi **Ctrl+B**: in basso a
+DevTools su `127.0.0.1` (`labwc-cage-hud`). Premi **Ctrl+.** (Ctrl e il punto): in basso a
 sinistra compare un riquadro con batteria e percentuale (verde, ambra sotto il
 35%, rossa sotto il 15%; "in carica" se collegato; "AC" senza batteria).
-Ctrl+B di nuovo lo nasconde. In Cage non esiste layer-shell e c'è un solo
+Ctrl+. di nuovo lo nasconde. In Cage non esiste layer-shell e c'è un solo
 client, quindi Firefox non ha il HUD (usa Chromium o FreeTube).
 
 **Mouse in Cage.** Cage su DRM (accesso diretto alla scheda video) legge
@@ -1767,18 +1767,18 @@ chiave, quindi ogni voce è contata una sola volta).
 
 | Indicatore | Valore |
 | --- | ---: |
-| Sezioni di release nel CHANGELOG (dalla 1.0 alla 1.27.1) | **54** |
-| Voci/interventi totali nel CHANGELOG | **170** |
-| Bug corretti | **7** |
-| Nuove funzioni | **21** |
+| Sezioni di release nel CHANGELOG (dalla 1.0 alla 1.27.2) | **55** |
+| Voci/interventi totali nel CHANGELOG | **173** |
+| Bug corretti | **8** |
+| Nuove funzioni | **23** |
 | Migliorie e ottimizzazioni | **4** |
-| Interventi su temi e interfaccia | **41** |
-| Interventi su installer e compatibilità | **71** |
+| Interventi su temi e interfaccia | **43** |
+| Interventi su installer e compatibilità | **69** |
 | Interventi su documentazione | **3** |
 | Altro / note tecniche e manutenzione | **23** |
 | Script nel repository | **54** |
 | File nel repository (esclusi `.specify/` e `.opencode/`) | **128** |
-| Righe di script (Bash e Python) | **16.227** |
+| Righe di script (Bash e Python) | **16.327** |
 | Temi inclusi | **3** |
 
 ### Cosa è cambiato nel tempo
@@ -1792,7 +1792,7 @@ chiave, quindi ogni voce è contata una sola volta).
 - **1.20 → 1.22**: **Cage** per le app a schermo intero, FreeTube, Firefox ESR,
   touchscreen, ZRAM rifinita, chiusura di FreeTube resa affidabile e uscita
   definitiva da Cage con `exit`.
-- **1.23 → 1.27**: scala dello schermo in Rust, batteria in Cage con **Ctrl+B**,
+- **1.23 → 1.27**: scala dello schermo in Rust, batteria in Cage con **Ctrl+.**,
   **HUD** e **labwc-bluetooth**, menu senza duplicati con le app utente in
   TOOL reverseloop, **logo tono su tono** nel login come pattern, **backup
   unico con rollback**, workflow **Spec Kit** e README con sezioni tecniche a

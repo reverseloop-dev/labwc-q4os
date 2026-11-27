@@ -38,7 +38,7 @@ cat <<'EOF'
   FreeTube. Salva i documenti aperti prima di uscire.
 
   Tasti volume: vengono gestiti da keyd anche dentro Cage.
-  Batteria: Ctrl+B mostra/nasconde percentuale in basso a sinistra
+  Batteria: Ctrl+. (Ctrl e punto) mostra/nasconde la percentuale in basso a sinistra
   (Chromium e FreeTube; Firefox non espone il DevTools richiesto).
 
 EOF

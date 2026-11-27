@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-labwc-cage-hud - HUD batteria per le app in Cage, acceso da Ctrl+B.
+labwc-cage-hud - HUD batteria per le app in Cage, acceso da Ctrl+.
 
 In Cage un solo client occupa lo schermo e non esiste layer-shell: il riquadro
 viene quindi disegnato *dentro* l'app, usando il DevTools di Chromium/Electron
 su localhost. labwc-cage-app avvia questo processo e passa la porta (o il file
 DevToolsActivePort, come per FreeTube).
 
-Il riquadro e' nascosto all'avvio: Ctrl+B lo mostra in basso a sinistra con
-percentuale e stato di carica; Ctrl+B di nuovo lo nasconde.
+Il riquadro e' nascosto all'avvio: Ctrl+. lo mostra in basso a sinistra con
+percentuale e stato di carica; Ctrl+. di nuovo lo nasconde. Ctrl+. e' libero
+in Firefox, Chromium e FreeTube (Ctrl+B apre i segnalibri in Firefox).
 
 Uso:
   labwc-cage-hud --port 9222 [--pid PID]
@@ -110,8 +111,10 @@ HUD_JS = r"""
   };
 
   window.addEventListener("keydown", function (event) {
-    if (!event.ctrlKey || event.altKey || event.metaKey) { return; }
-    if (event.key !== "b" && event.key !== "B") { return; }
+    // Ctrl+. (punto): libero in Firefox, Chromium e FreeTube; Ctrl+B apriva i
+    // segnalibri in Firefox, quindi non si usa piu'.
+    if (!event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) { return; }
+    if (event.key !== "." && event.code !== "Period" && event.code !== "NumpadDecimal") { return; }
     var host = build();
     var box = host.shadowRoot.getElementById("lbqc-hud");
     event.preventDefault();
@@ -301,7 +304,7 @@ async def main_loop(hud: Hud) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="HUD batteria per Cage (Ctrl+B)")
+    parser = argparse.ArgumentParser(description="HUD batteria per Cage (Ctrl+.)")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--port", type=int, help="porta DevTools su 127.0.0.1")
     group.add_argument("--port-file", help="file DevToolsActivePort dell'app")

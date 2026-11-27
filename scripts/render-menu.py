@@ -419,6 +419,16 @@ def load_apps(placements: dict[str, str] | None = None) -> list[App]:
                 candidate = placements[desktop_id]
                 if candidate in CATEGORY_ORDER:
                     category = candidate
+            # Voci create dall'installer (browser, FreeTube, helper): non sono
+            # "app dell'utente" anche se vivono in ~/.local/share/applications.
+            # Riconosciute dal marcatore X-Labwc-Q4OS, dal prefisso/suffisso del
+            # progetto o dalla coppia con la voce (cage) accanto.
+            project_owned = (
+                is_project_desktop(desktop_id)
+                or is_true(data.get("X-Labwc-Q4OS", ""))
+                or (path.parent == USER_APPS_DIR
+                    and (path.parent / f"{desktop_id}-cage.desktop").exists())
+            )
             application = App(
                 desktop_id=desktop_id,
                 name=name,
@@ -428,7 +438,7 @@ def load_apps(placements: dict[str, str] | None = None) -> list[App]:
                 icon=data.get("Icon", ""),
                 is_user=(
                     path.parent == USER_APPS_DIR
-                    and not is_project_desktop(desktop_id)
+                    and not project_owned
                     and not first_command(exec_line).startswith(
                         str(HELPER_DIR) + "/"
                     )

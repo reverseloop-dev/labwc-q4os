@@ -2,6 +2,22 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.27.2]
+
+- **Scorciatoia HUD batteria in Cage: `Ctrl+.`** (Ctrl e il punto) al posto di
+  `Ctrl+B`, che in Firefox apre i segnalibri. `Ctrl+.` non è usato da Firefox,
+  Chromium né FreeTube; il riquadro si mostra e si nasconde sempre con la
+  stessa combinazione.
+- **Firefox normale di nuovo nel menu**: le scorciatoie create dall'installer
+  (`firefox.desktop`, `chromium.desktop`, FreeTube) non vengono più scambiate
+  per app dell'utente. Le voci generate portano ora `X-Labwc-Q4OS=true` e il
+  generatore le riconosce anche nelle installazioni precedenti grazie alla
+  coppia con la voce *(cage)*: **Firefox** e **Firefox (cage)** restano
+  entrambe nella categoria Internet.
+- **Test di regressione** in `validate.sh`: menu con Firefox, Firefox (cage) e
+  un'app utente (posizioni verificate) e controllo che la scorciatoia HUD non
+  torni a `Ctrl+B`.
+
 ## [1.27.1]
 
 - **Correzione**: `NO_RESTORE_PROMPT` è ora inizializzata a `0`. Con
