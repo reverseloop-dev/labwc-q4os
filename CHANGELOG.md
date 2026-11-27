@@ -28,6 +28,13 @@ Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
   `install-options` letto e scritto dallo stesso percorso; shellcheck pulito
   (SC2024/SC2034/SC2155, wizard Python escluso).
 
+- **Workflow di sviluppo**: progetto inizializzato con **GitHub Spec Kit**
+  (`specify init --integration opencode`): comandi `/speckit.constitution`,
+  `/speckit.specify`, `/speckit.plan`, `/speckit.tasks`, `/speckit.implement`,
+  `/speckit.converge`, `/speckit.clarify`, `/speckit.analyze`,
+  `/speckit.checklist` in `.opencode/commands/`, artefatti in `.specify/` e
+  server MCP `spec-kit` (`specify mcp`) in `opencode.json`.
+
 ## [1.24.1]
 
 - **Sfondi**: il logo **reverseloop-dev** è ora al centro dei tre wallpaper,
