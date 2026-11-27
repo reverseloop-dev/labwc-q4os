@@ -1589,8 +1589,8 @@ riducendo i consumi e semplificando l’uso in movimento.
 
 ## Test e ringraziamenti
 
-I test sono stati fatti sia su una **macchina virtuale** sia su un **PC reale**. 
-Per avere un quadro completo e provare anche il **touchscreen**  ho acquistato un **Lenovo Chromebook E300** 
+I test sono stati fatti sia su una **macchina virtuale** con 1 core e 2 GB di ram sia su un **PC reale**  
+Per avere un quadro completo e provare anche il **touchscreen**  ho acquistato un **Lenovo Chromebook E300** con 3 GB di RAM 
 rigorosamente usato e dal valore di 15 euro. Acquisterò anche un netbook — possibilmente un Acer o un Toshiba serie N da 1 GB — per testare e valutare meglio l'impatto delle mie ottimizzazioni con così poca RAM.
 Il **firmware** (il programma di base che avvia il computer) del Chromebook è
 stato modificato grazie a **MrChromebox**: https://docs.mrchromebox.tech/
