@@ -1939,7 +1939,7 @@ configure_touchscreen() {
 # Installazione file condivisi
 # -----------------------------------------------------------------------------
 log "Installazione temi, template e script in $SHARE..."
-mkdir -p "$SHARE/themes" "$SHARE/templates" "$SHARE/wallpapers" "$SHARE/scripts" "$SHARE/icons" "$BIN"
+mkdir -p "$SHARE/themes" "$SHARE/templates" "$SHARE/wallpapers" "$SHARE/scripts" "$SHARE/icons" "$SHARE/logo" "$BIN"
 cp -a "$REPO_DIR/configs/themes/." "$SHARE/themes/"
 install -m 0644 "$REPO_DIR/configs/waybar/style.css.in" "$SHARE/templates/waybar-style.css"
 install -m 0644 "$REPO_DIR/configs/fuzzel/fuzzel.ini.in" "$SHARE/templates/fuzzel.ini"
@@ -1952,6 +1952,7 @@ install -m 0644 "$REPO_DIR/configs/waybar/config.jsonc" "$SHARE/templates/waybar
 install -m 0644 "$REPO_DIR/configs/wlogout/layout" "$SHARE/templates/wlogout-layout"
 install -m 0644 "$REPO_DIR/configs/gtk/settings.ini" "$SHARE/templates/gtk-settings.ini"
 install -m 0755 "$REPO_DIR/scripts/generate-wallpapers.py" "$SHARE/scripts/generate-wallpapers.py"
+install -m 0644 "$REPO_DIR/configs/logo/rl-dev.png" "$SHARE/logo/rl-dev.png"
 install -m 0755 "$REPO_DIR/scripts/generate-icons.py" "$SHARE/scripts/generate-icons.py"
 install -m 0755 "$REPO_DIR/scripts/render-menu.py" "$SHARE/scripts/render-menu.py"
 install -m 0755 "$REPO_DIR/scripts/labwc-theme-apply" "$SHARE/scripts/labwc-theme-apply"

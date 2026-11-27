@@ -43,6 +43,7 @@ THEMES = {
         "accent": "#60a5fa",
         "accent_soft": "#93c5fd",
         "line": "#38bdf8",
+        "logo_tint": "#3b82f6",
         "signature": "#dbeafe",
     },
     "muted-crimson": {
@@ -53,6 +54,7 @@ THEMES = {
         "accent": "#d98a8e",
         "accent_soft": "#e8b4b7",
         "line": "#c0565b",
+        "logo_tint": "#c0565b",
         "signature": "#f4e4e4",
     },
     "sage-emerald": {
@@ -63,6 +65,7 @@ THEMES = {
         "accent": "#6fbf9a",
         "accent_soft": "#a3d9bf",
         "line": "#4d9375",
+        "logo_tint": "#4d9375",
         "signature": "#e3f1ea",
     },
 }
@@ -307,6 +310,59 @@ def add_signature(canvas: Image.Image, width: int, height: int, theme: dict) -> 
     canvas.alpha_composite(overlay)
 
 
+def logo_path() -> str | None:
+    """Trova il logo reverseloop-dev (repo o installazione)."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        os.environ.get("LABWC_Q4OS_LOGO", ""),
+        os.path.join(os.path.dirname(here), "logo", "rl-dev.png"),
+        os.path.join(os.path.dirname(here), "configs", "logo", "rl-dev.png"),
+        os.path.join(here, "rl-dev.png"),
+    ]
+    for path in candidates:
+        if path and os.path.isfile(path):
+            return path
+    return None
+
+
+def add_center_logo(
+    canvas: Image.Image, width: int, height: int, theme: dict
+) -> None:
+    """Logo reverseloop-dev al centro, monocromatico e tono su tono."""
+    path = logo_path()
+    if not path:
+        return
+    try:
+        src = Image.open(path).convert("RGBA")
+    except OSError:
+        return
+    sw, sh = src.size
+    px = src.load()
+    assert px is not None
+    mask = Image.new("L", (sw, sh), 0)
+    mp = mask.load()
+    assert mp is not None
+    for y in range(sh):
+        for x in range(sw):
+            r, g, b, _a = px[x, y]
+            lum = (r * 299 + g * 587 + b * 114) // 1000
+            mp[x, y] = max(0, min(255, int((250 - lum) * 255 / 230)))
+    bbox = mask.getbbox()
+    if not bbox:
+        return
+    mask = mask.crop(bbox)
+    target_w = max(120, int(width * 0.32))
+    target_h = max(1, int(mask.height * target_w / mask.width))
+    mask = mask.resize((target_w, target_h), RESAMPLE)
+    rgb = hex_rgb(theme["logo_tint"])
+    logo = Image.new("RGBA", (target_w, target_h), (*rgb, 0))
+    # semitrasparenza: il logo resta leggibile ma non ruba la scena
+    logo.putalpha(mask.point(lambda v: int(v * 0.13)))
+    canvas.alpha_composite(
+        logo, ((width - target_w) // 2, (height - target_h) // 2)
+    )
+
+
 def render(theme_name: str, width: int, height: int, output: str) -> str:
     theme = THEMES[theme_name]
     rng = random.Random(theme["seed"])
@@ -323,6 +379,7 @@ def render(theme_name: str, width: int, height: int, output: str) -> str:
     add_geometry(canvas, width, height, theme, rng)
     add_grain(canvas, rng)
     add_vignette(canvas, width, height)
+    add_center_logo(canvas, width, height, theme)
     add_signature(canvas, width, height, theme)
 
     os.makedirs(output, exist_ok=True)

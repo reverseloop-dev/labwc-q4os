@@ -55,7 +55,7 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.24.0**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.24.1**
 
 ---
 
@@ -186,9 +186,8 @@ avviato con le opzioni Wayland e le decorazioni richieste.
 - **Posizione della barra**: nelle Preferenze si sceglie **Alto** o **Basso**
   per Waybar e Noctalia; la scelta è immediata e resta dopo login e
   aggiornamenti (`~/.config/labwc/bar-position`).
-- **Logo al centro degli sfondi**: tre proposte tono su tono in
-  `preview/logo/` (blu, rosso, verde), con il logo **reverseloop-dev**
-  semitrasparente al centro; da scegliere una per tutti e tre i temi.
+- **Sfondi**: logo **reverseloop-dev** al centro, semitrasparente e tono su
+  tono, integrato nel generatore e nei tre sfondi definitivi.
 - **Aggiornamenti**: la versione online è letta dall'API GitHub, non dal file
   raw della branch che resta in cache CDN; le nuove release si vedono subito.
 - **Indicatore batteria**: switch **Icona** accanto a **Percentuale** per
@@ -755,13 +754,14 @@ Le immagini finiscono in `~/.local/share/labwc-q4os/wallpapers/`.
 
 ### Logo al centro degli sfondi
 
-Tre proposte con il logo **reverseloop-dev** al centro, semitrasparente e
-**tono su tono** rispetto allo sfondo. I file sono in `preview/logo/`:
-scegliere una versione da usare per tutti e tre i temi.
+I tre sfondi integrano il logo **reverseloop-dev** al centro, semitrasparente
+e **tono su tono** con il colore dello sfondo. Il logo è nel generatore
+(`scripts/generate-wallpapers.py`) e viene ritinto per ogni tema; i file sono
+in `configs/wallpapers/`.
 
 | Nordic Cobalt | Muted Crimson | Sage Emerald |
 |---|---|---|
-| ![Logo centro Nordic Cobalt](preview/logo/candidate-nordic-cobalt.png) | ![Logo centro Muted Crimson](preview/logo/candidate-muted-crimson.png) | ![Logo centro Sage Emerald](preview/logo/candidate-sage-emerald.png) |
+| ![Logo centro Nordic Cobalt](preview/logo/nordic-cobalt.png) | ![Logo centro Muted Crimson](preview/logo/muted-crimson.png) | ![Logo centro Sage Emerald](preview/logo/sage-emerald.png) |
 
 ### Icone coordinate al tema
 
@@ -1637,19 +1637,19 @@ intervento registrato in una release. Le aree sono una stima per parole chiave
 
 | Indicatore | Valore |
 | --- | ---: |
-| Release documentate (dalla 1.0 alla 1.24.0) | **49** |
-| Voci/interventi totali nel CHANGELOG | **156** |
+| Release documentate (dalla 1.0 alla 1.24.1) | **50** |
+| Voci/interventi totali nel CHANGELOG | **157** |
 | Bug corretti | **16** |
 | Nuove funzioni | **35** |
 | Migliorie e ottimizzazioni | **10** |
-| Interventi su temi e interfaccia | **24** |
+| Interventi su temi e interfaccia | **25** |
 | Interventi su installer e compatibilità | **42** |
 | Interventi su documentazione | **8** |
 | Pulizia e manutenzione | **4** |
 | Altro / note tecniche | **17** |
 | Script nel repository | **48** |
-| File nel repository | **126** |
-| Righe di script (Bash e Python) | **14.852** |
+| File nel repository | **123** |
+| Righe di script (Bash e Python) | **14.910** |
 | Temi inclusi | **3** |
 
 ### Cosa è cambiato nel tempo

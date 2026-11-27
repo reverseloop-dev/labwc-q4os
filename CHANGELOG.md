@@ -2,6 +2,14 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.24.1]
+
+- **Sfondi**: il logo **reverseloop-dev** è ora al centro dei tre wallpaper,
+  monocromatico, semitrasparente e tono su tono con lo sfondo. Il generatore
+  `generate-wallpapers.py` carica il logo da `configs/logo/rl-dev.png` (o
+  `$SHARE/logo/rl-dev.png`) e lo ritinteggia per ogni tema; rigenerati sfondi
+  e anteprime.
+
 ## [1.24.0]
 
 - **Scala dello schermo**: due slider separati, uno per le finestre e uno per
