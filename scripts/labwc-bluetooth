@@ -23,6 +23,8 @@ import sys
 from pathlib import Path
 
 ADAPTERS_DIR = Path("/sys/class/bluetooth")
+# pkexec non eredita /usr/sbin nel PATH della sessione labwc: percorso esplicito.
+RFKILL = shutil.which("rfkill") or "/usr/sbin/rfkill"
 
 
 def notify(title: str, body: str) -> None:
@@ -113,7 +115,8 @@ def root_runner() -> list[str]:
 def run_root(*args: str) -> bool:
     command = root_runner() + list(args)
     try:
-        return subprocess.run(command, check=False, timeout=30).returncode == 0
+        # 120 s: pkexec deve poter mostrare e attendere il dialogo di password.
+        return subprocess.run(command, check=False, timeout=120).returncode == 0
     except (OSError, subprocess.SubprocessError):
         return False
 
@@ -134,13 +137,13 @@ def set_power(on: bool) -> int:
         notify("Bluetooth", "Nessun adattatore Bluetooth rilevato.")
         return 0
     if on:
-        if not run_root("rfkill", "unblock", "bluetooth"):
+        if not run_root(RFKILL, "unblock", "bluetooth"):
             notify("Bluetooth", "Sblocco non riuscito (Serve la password di amministratore).")
             return 1
         bluetoothctl("power", "on")
     else:
         bluetoothctl("power", "off")
-        if not run_root("rfkill", "block", "bluetooth"):
+        if not run_root(RFKILL, "block", "bluetooth"):
             notify("Bluetooth", "Spegnimento non riuscito (serve la password di amministratore).")
             return 1
     notify("Bluetooth", f"Bluetooth {status()}. La scelta resta anche al riavvio.")

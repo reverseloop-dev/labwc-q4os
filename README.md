@@ -143,8 +143,8 @@ un ambiente sobrio.**
   chiamate duplicate (stesso programma, preferite, voci fisse) vengono
   eliminate: ogni app compare una sola volta.
 - **Bluetooth** spento di default; se lo accendi da *TOOL reverseloop >
-  Bluetooth* (o con `bluetoothctl`) resta acceso anche dopo il riavvio, e se
-  lo spegni resta spento.
+  Sistema e diagnostica > Bluetooth* (o con `bluetoothctl`) resta acceso anche
+  dopo il riavvio, e se lo spegni resta spento.
 - **GRUB** (solo se rispondi sì alla domanda, default no): attesa del menu di
   avvio ridotta a **1 secondo**, con backup di `/etc/default/grub`.
 - **Aggiornamenti interattivi**: controllo versione, popup di avviso con

@@ -352,7 +352,7 @@ run_install_wizard() {
 }
 
 apply_wizard_output() {
-    local line key value
+    local key value
     while IFS='=' read -r key value; do
         case "$key" in
             BROWSER) case "$value" in chromium|firefox|both|none) WANT_BROWSER="$value" ;; esac ;;
@@ -1099,6 +1099,7 @@ install_chromium_runtime() {
 
     mkdir -p "$BACKUP_DIR/system"
     if [ -r "$flags_file" ]; then
+        # shellcheck disable=SC2024  # backup in $HOME, redirect non serve sudo
         sudo cat "$flags_file" >"$BACKUP_DIR/system/zz-labwc-q4os-chromium" 2>/dev/null || true
     fi
     sudo install -d -m 0755 /etc/chromium.d
@@ -1153,6 +1154,7 @@ install_audio_keys() {
     sudo install -d -m 0755 /etc/keyd
     if [ -r "$keyd_conf" ] && ! grep -q 'labwc-q4os' "$keyd_conf"; then
         mkdir -p "$BACKUP_DIR/system"
+        # shellcheck disable=SC2024  # backup in $HOME, redirect non serve sudo
         sudo cat "$keyd_conf" >"$BACKUP_DIR/system/keyd-default.conf" 2>/dev/null || true
         warn "keyd: config personale salvata; non la sovrascrivo."
     elif [ ! -r "$keyd_conf" ]; then
@@ -1425,6 +1427,7 @@ install_firefox_extensions() {
 
     mkdir -p "$BACKUP_DIR/system"
     if [ -r "$policy_file" ]; then
+        # shellcheck disable=SC2024  # backup in $HOME, redirect non serve sudo
         sudo cat "$policy_file" >"$BACKUP_DIR/system/firefox-esr-distribution-policies.json" 2>/dev/null || true
     fi
     sudo install -d -m 0755 "$policy_dir"
@@ -1869,8 +1872,10 @@ configure_grub_timeout() {
         return 0
     fi
     mkdir -p "$BACKUP_DIR/system"
-    sudo cp -a /etc/default/grub "$BACKUP_DIR/system/grub.default" 2>/dev/null ||
-        warn "GRUB: backup di /etc/default/grub non riuscito."
+    if ! sudo cp -a /etc/default/grub "$BACKUP_DIR/system/grub.default" 2>/dev/null; then
+        warn "GRUB: backup di /etc/default/grub non riuscito, timeout invariato."
+        return 1
+    fi
     if sudo sed -i -E 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=1/' /etc/default/grub; then
         grep -Eq '^GRUB_TIMEOUT=' /etc/default/grub ||
             printf 'GRUB_TIMEOUT=1\n' | sudo tee -a /etc/default/grub >/dev/null
@@ -1901,9 +1906,12 @@ configure_bluetooth_policy() {
         warn "Bluetooth: rfkill non disponibile, stato invariato."
         return 0
     fi
-    sudo systemctl unmask bluetooth.service systemd-rfkill.service >/dev/null 2>&1 || true
-    sudo systemctl enable systemd-rfkill.service >/dev/null 2>&1 ||
-        warn "Bluetooth: impossibile abilitare systemd-rfkill (stato non persistente)."
+    sudo systemctl unmask bluetooth.service systemd-rfkill.service systemd-rfkill.socket >/dev/null 2>&1 || true
+    # Su Debian systemd-rfkill.service e' statica: la persistenza passa dal
+    # socket, gia' attivo di default. Nessun avviso se il socket funziona.
+    sudo systemctl enable systemd-rfkill.socket >/dev/null 2>&1 ||
+        systemctl is-active --quiet systemd-rfkill.socket ||
+        warn "Bluetooth: systemd-rfkill.socket non attivo (stato non persistente)."
     if sudo sh -c 'ls /var/lib/systemd/rfkill/*bluetooth* >/dev/null 2>&1'; then
         ok "Bluetooth: stato utente gia' salvato, resta com'e' anche al riavvio."
         return 0
@@ -2731,7 +2739,8 @@ keep_tdm=0
 if { [ "$DM_NAME" = "tdm" ] || [ "$DM_NAME" = "tdm-trinity" ]; } && [ "$WANT_SDDM" -eq 0 ]; then
     keep_tdm=1
 fi
-sudo tee /etc/labwc-q4os/install-options >/dev/null <<EOF
+sudo install -d -m 0755 "$(dirname "$INSTALL_OPTIONS")"
+sudo tee "$INSTALL_OPTIONS" >/dev/null <<EOF
 SHELL=$WANT_SHELL
 TOUCH=$ENABLE_TOUCH
 LOOKSWITCHER=$WANT_LOOKSWITCHER
@@ -2746,7 +2755,7 @@ FREETUBE=$WANT_FREETUBE
 KEYBOARD=$XKB_LAYOUT
 KEEP_TDM=$keep_tdm
 EOF
-sudo chmod 0644 /etc/labwc-q4os/install-options
+sudo chmod 0644 "$INSTALL_OPTIONS"
 
 log "Esecuzione della diagnostica finale..."
 if ! LABWC_Q4OS_SHARE="$SHARE" bash "$REPO_DIR/scripts/labwc-doctor" --quiet; then

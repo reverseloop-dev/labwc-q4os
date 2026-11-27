@@ -19,6 +19,14 @@ Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 - **GRUB**: domanda opt-in (default No) per portare a 1 secondo l'attesa del
   menu di avvio, con backup di `/etc/default/grub`; flag `--grub-1s` /
   `--no-grub-1s`, scelta salvata in `/etc/labwc-q4os/install-options`.
+- **Correzioni dalla revisione**: le app con `Terminal=true` restano nel menu
+  (la firma usa l'`Exec` originale, non il wrapper `terminator`); `freetube`
+  non è più classificata come app utente; le voci del progetto elencate in
+  TOOL non vengono ripetute, mentre `App in Fuzzel` resta raggiungibile;
+  backup di GRUB obbligatorio prima della modifica; `systemd-rfkill.socket`
+  invece del servizio statico; `rfkill` con percorso assoluto per `pkexec`;
+  `install-options` letto e scritto dallo stesso percorso; shellcheck pulito
+  (SC2024/SC2034/SC2155, wizard Python escluso).
 
 ## [1.24.1]
 

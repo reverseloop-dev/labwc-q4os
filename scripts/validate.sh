@@ -457,7 +457,7 @@ if command -v shellcheck >/dev/null 2>&1; then
         scripts/labwc-screenshot scripts/labwc-doctor scripts/labwc-update-check \
         scripts/labwc-update-copy scripts/labwc-update-popup scripts/labwc-update-run \
         scripts/labwc-update-toggle \
-        scripts/labwc-minimized scripts/labwc-install-wizard scripts/labwc-cage scripts/labwc-freetube scripts/labwc-freetube-cage scripts/labwc-cage-help scripts/labwc-return \
+        scripts/labwc-minimized scripts/labwc-cage scripts/labwc-freetube scripts/labwc-freetube-cage scripts/labwc-cage-help scripts/labwc-return \
         scripts/labwc-login-theme-apply scripts/labwc-session-launch \
         scripts/labwc-desktop scripts/labwc-desktop-state \
         scripts/labwc-desktop-status scripts/labwc-desktop-menu \

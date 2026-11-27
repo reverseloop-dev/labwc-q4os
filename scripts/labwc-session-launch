@@ -150,7 +150,8 @@ printf 'exec labwc\n' >>"$LOG"
     watch_socket="$(find "$XDG_RUNTIME_DIR" -maxdepth 1 \
         -name 'wayland-*' -type s -print -quit 2>/dev/null || true)"
     if [ -n "$watch_socket" ]; then
-        export WAYLAND_DISPLAY="$(basename "$watch_socket")"
+        WAYLAND_DISPLAY="$(basename "$watch_socket")"
+        export WAYLAND_DISPLAY
     fi
     if ! pgrep -x "$expected" >/dev/null 2>&1 &&
         ! pgrep -f 'labwc-session-start' >/dev/null 2>&1; then

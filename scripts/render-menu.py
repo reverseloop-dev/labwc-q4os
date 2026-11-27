@@ -94,6 +94,21 @@ USER_APPS_DIR = Path(
 PROJECT_DESKTOP_PREFIXES = ("labwc-",)
 PROJECT_DESKTOP_SUFFIXES = ("-cage",)
 
+# Voci .desktop del progetto che duplicano una voce gia' presente in
+# TOOL reverseloop: non vanno elencate anche nelle categorie.
+PROJECT_TOOL_DUPLICATES = {
+    "labwc-help",
+    "labwc-menu-editor",
+    "labwc-theme-switcher",
+    "labwc-preferences",
+    "labwc-screen-scaler",
+    "labwc-app-manager",
+    "labwc-update-gui",
+    "labwc-zram",
+    "labwc-doctor",
+    "labwc-sysinfo",
+}
+
 # Sottocategorie per il menu Impostazioni: evita un elenco lunghissimo
 # (labwc non ha lo scroll nei menu).
 SETTINGS_GROUPS = [
@@ -172,6 +187,7 @@ class App:
     category: str
     icon: str = ""
     is_user: bool = False
+    fingerprint: str = ""
 
     @property
     def sort_key(self) -> str:
@@ -304,23 +320,6 @@ def is_project_desktop(desktop_id: str) -> bool:
     )
 
 
-def references_helper(exec_line: str, name: str) -> bool:
-    """True se il comando lancia davvero un eseguibile omonimo della voce."""
-    try:
-        tokens = shlex.split(exec_line)
-    except ValueError:
-        tokens = exec_line.split()
-    for token in tokens:
-        if os.path.basename(token) != name:
-            continue
-        if "/" in token:
-            if os.path.isfile(token) and os.access(token, os.X_OK):
-                return True
-        elif shutil.which(token):
-            return True
-    return False
-
-
 def executable_exists(exec_line: str) -> bool:
     token = first_command(exec_line)
     if not token:
@@ -401,12 +400,9 @@ def load_apps(placements: dict[str, str] | None = None) -> list[App]:
                 continue
             if not executable_exists(exec_line):
                 continue
-            # Le voci generate dal progetto (Exec=~/.local/bin/labwc-*) sono
-            # gia' elencate a mano in TOOL reverseloop: non vanno ripetute
-            # nelle categorie.
-            if desktop_id.startswith("labwc-") and references_helper(
-                exec_line, desktop_id
-            ):
+            # Le voci .desktop del progetto gia' elencate a mano in
+            # TOOL reverseloop non vanno ripetute nelle categorie.
+            if desktop_id in PROJECT_TOOL_DUPLICATES:
                 continue
 
             if path.parent != USER_APPS_DIR:
@@ -433,12 +429,17 @@ def load_apps(placements: dict[str, str] | None = None) -> list[App]:
                 is_user=(
                     path.parent == USER_APPS_DIR
                     and not is_project_desktop(desktop_id)
+                    and not first_command(exec_line).startswith(
+                        str(HELPER_DIR) + "/"
+                    )
                 ),
             )
             # Deduplica: stesso programma eseguito e nome uguale o contenuto
             # nell'altro (es. "Firefox" / "Firefox ESR" che lanciano lo stesso
-            # binario). Voci con nomi diversi restano separate.
-            fingerprint = command_fingerprint(command) or command
+            # binario). Voci con nomi diversi restano separate. La firma usa
+            # l'Exec originale: per le app Terminal=true il comando nel menu e'
+            # avvolto in terminator e non identifica il programma.
+            fingerprint = command_fingerprint(exec_line) or exec_line
             sort_name = menu_sort_key(name)
             previous_names = seen_fingerprints.setdefault(fingerprint, [])
             if any(
@@ -447,6 +448,7 @@ def load_apps(placements: dict[str, str] | None = None) -> list[App]:
             ):
                 continue
             previous_names.append(sort_name)
+            application.fingerprint = fingerprint
             apps.append(application)
 
     # Un override utente di un'app di sistema (stesso nome) resta nel menu
@@ -564,6 +566,7 @@ PINNED_ROOT_COMMANDS = ("terminator", "pcmanfm", "fuzzel")
 def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     favorites = sorted(favorites, key=lambda row: menu_sort_key(row[1]))
     favorite_ids = {fav[0] for fav in favorites}
+    favorite_names = {menu_sort_key(label) for _id, label, _cmd in favorites}
     favorite_keys = {
         (menu_sort_key(label), command_fingerprint(command) or command)
         for _id, label, command in favorites
@@ -573,10 +576,14 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     groups: dict[str, list[App]] = {}
     user_groups: dict[str, list[App]] = {}
     for app in apps:
-        fingerprint = command_fingerprint(app.command) or app.command
+        fingerprint = app.fingerprint or command_fingerprint(app.command) or app.command
         # Una voce per app: le preferite compaiono solo nel loro sottomenu e le
         # voci fisse (Terminale, File manager, launcher) non si ripetono.
-        if app.desktop_id in favorite_ids or (app.sort_key, fingerprint) in favorite_keys:
+        if (
+            app.desktop_id in favorite_ids
+            or app.sort_key in favorite_names
+            or (app.sort_key, fingerprint) in favorite_keys
+        ):
             continue
         if not app.is_user and fingerprint in pinned:
             continue
