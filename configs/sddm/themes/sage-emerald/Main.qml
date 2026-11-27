@@ -52,6 +52,17 @@ Rectangle {
         }
     }
 
+    // Logo reverseloop-dev "tono su tono" (logo.png dal tema corrente).
+    Image {
+        id: brandLogo
+        source: "logo.png"
+        anchors.centerIn: parent
+        width: Math.min(root.width * 0.34, root.height * 0.62)
+        fillMode: Image.PreserveAspectFit
+        smooth: true
+        asynchronous: true
+    }
+
     Canvas {
         anchors.fill: parent
         onPaint: {

@@ -28,8 +28,8 @@ done < <(find . -path ./.git -prune -o -type f \( -name '*.sh' -o -path './scrip
 # --- 2. sintassi Python ------------------------------------------------------
 check "sintassi Python"
 PYCACHE_DIR="$(mktemp -d)"
-if PYTHONPYCACHEPREFIX="$PYCACHE_DIR" python3 -m py_compile scripts/generate-wallpapers.py scripts/render-menu.py scripts/labwc-zram scripts/labwc-bluetooth scripts/labwc-app-manager scripts/labwc-update-gui scripts/labwc-login-theme scripts/labwc-fuzzel-apps scripts/labwc-preferences scripts/labwc-install-wizard scripts/freetube-close-overlay scripts/labwc-battery-indicator scripts/generate-icons.py; then
-    pass "Python: sfondi, menu, zram, bluetooth, app manager, update GUI, login, fuzzel, preferences, overlay FreeTube, batteria, icone"
+if PYTHONPYCACHEPREFIX="$PYCACHE_DIR" python3 -m py_compile scripts/generate-wallpapers.py scripts/generate-login-logo.py scripts/render-menu.py scripts/labwc-zram scripts/labwc-bluetooth scripts/labwc-cage-hud scripts/labwc-app-manager scripts/labwc-update-gui scripts/labwc-login-theme scripts/labwc-fuzzel-apps scripts/labwc-preferences scripts/labwc-install-wizard scripts/freetube-close-overlay scripts/labwc-battery-indicator scripts/generate-icons.py; then
+    pass "Python: sfondi, logo login, menu, zram, bluetooth, HUD batteria, app manager, update GUI, login, fuzzel, preferences, overlay FreeTube, batteria, icone"
 else
     bad "py_compile"
 fi
@@ -457,7 +457,8 @@ if command -v shellcheck >/dev/null 2>&1; then
         scripts/labwc-screenshot scripts/labwc-doctor scripts/labwc-update-check \
         scripts/labwc-update-copy scripts/labwc-update-popup scripts/labwc-update-run \
         scripts/labwc-update-toggle \
-        scripts/labwc-minimized scripts/labwc-cage scripts/labwc-freetube scripts/labwc-freetube-cage scripts/labwc-cage-help scripts/labwc-return \
+        scripts/labwc-minimized scripts/labwc-cage scripts/labwc-cage-app \
+        scripts/labwc-freetube scripts/labwc-freetube-cage scripts/labwc-cage-help scripts/labwc-return \
         scripts/labwc-login-theme-apply scripts/labwc-session-launch \
         scripts/labwc-desktop scripts/labwc-desktop-state \
         scripts/labwc-desktop-status scripts/labwc-desktop-menu \

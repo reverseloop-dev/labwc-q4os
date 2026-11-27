@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  labwc-cage-app - avvia l'app dentro Cage con il HUD batteria (Ctrl+B).
+#
+#  Cage mostra un solo client e non ha layer-shell: il HUD viene iniettato
+#  nella pagina tramite il DevTools di Chromium/Electron su 127.0.0.1.
+#  Per le app Chromium la porta di debug viene aggiunta qui; per FreeTube il
+#  file DevToolsActivePort e' gia' creato da labwc-freetube-cage.
+#
+#  Uso: labwc-cage-app COMANDO [ARGOMENTI...]
+# =============================================================================
+set -u
+
+child_command=("$@")
+if [ "${#child_command[@]}" -eq 0 ]; then
+    echo "labwc-cage-app: nessun comando" >&2
+    exit 1
+fi
+
+app="$(basename -- "${child_command[0]}")"
+hud="${LABWC_CAGE_HUD:-$HOME/.local/bin/labwc-cage-hud}"
+hud_pid=""
+
+stop_hud() {
+    if [ -n "$hud_pid" ]; then
+        kill -TERM "$hud_pid" 2>/dev/null || true
+        wait "$hud_pid" 2>/dev/null || true
+        hud_pid=""
+    fi
+}
+trap stop_hud EXIT TERM INT HUP
+
+start_hud() {
+    [ -f "$hud" ] || return 0
+    command -v python3 >/dev/null 2>&1 || return 0
+    python3 "$hud" "$@" >/dev/null 2>&1 &
+    hud_pid=$!
+}
+
+is_chromium=0
+case "$app" in
+    chromium|chromium-browser|google-chrome|google-chrome-stable|brave-browser|brave|\
+    microsoft-edge|microsoft-edge-stable|vivaldi|vivaldi-stable|opera|thorium)
+        is_chromium=1
+        ;;
+esac
+
+has_debug_port=0
+for arg in "${child_command[@]:1}"; do
+    case "$arg" in
+        --remote-debugging-port=*) has_debug_port=1 ;;
+    esac
+done
+
+if [ "$is_chromium" -eq 1 ]; then
+    if [ "$has_debug_port" -eq 0 ]; then
+        port="$(python3 - <<'PY' 2>/dev/null
+import socket
+sock = socket.socket()
+sock.bind(("127.0.0.1", 0))
+print(sock.getsockname()[1])
+sock.close()
+PY
+)"
+        if [ -n "${port:-}" ]; then
+            child_command+=(
+                "--remote-debugging-port=$port"
+                "--remote-debugging-address=127.0.0.1"
+                "--remote-allow-origins=*"
+            )
+            start_hud --port "$port"
+        fi
+    fi
+elif [ "$app" = "freetube" ]; then
+    port_file="${XDG_CONFIG_HOME:-$HOME/.config}/FreeTube/DevToolsActivePort"
+    start_hud --port-file "$port_file"
+elif [ "$app" = "firefox" ] || [ "$app" = "firefox-esr" ]; then
+    # Firefox non espone DevTools solo su localhost: il HUD non e' disponibile.
+    printf 'HUD batteria: non disponibile in Firefox dentro Cage (usa Chromium o FreeTube).\n' >&2
+else
+    printf 'HUD batteria: app non supportata dal HUD (%s).\n' "$app" >&2
+fi
+
+exec "${child_command[@]}"

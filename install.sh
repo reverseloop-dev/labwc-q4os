@@ -2052,6 +2052,7 @@ install -m 0644 "$REPO_DIR/configs/gtk/settings.ini" "$SHARE/templates/gtk-setti
 install -m 0755 "$REPO_DIR/scripts/generate-wallpapers.py" "$SHARE/scripts/generate-wallpapers.py"
 install -m 0644 "$REPO_DIR/configs/logo/rl-dev.png" "$SHARE/logo/rl-dev.png"
 install -m 0755 "$REPO_DIR/scripts/generate-icons.py" "$SHARE/scripts/generate-icons.py"
+install -m 0755 "$REPO_DIR/scripts/generate-login-logo.py" "$SHARE/scripts/generate-login-logo.py"
 install -m 0755 "$REPO_DIR/scripts/render-menu.py" "$SHARE/scripts/render-menu.py"
 install -m 0755 "$REPO_DIR/scripts/labwc-theme-apply" "$SHARE/scripts/labwc-theme-apply"
 install -m 0755 "$REPO_DIR/scripts/labwc-sysinfo" "$SHARE/scripts/labwc-sysinfo"
@@ -2100,6 +2101,8 @@ for helper in \
     labwc-minimized \
     labwc-install-wizard \
     labwc-cage \
+    labwc-cage-app \
+    labwc-cage-hud \
     labwc-freetube \
     labwc-freetube-cage \
     freetube-close-overlay \
@@ -2524,6 +2527,14 @@ install_sddm_theme() {
         sudo chown -R root:root "/usr/share/labwc-q4os/login-themes/$variant"
         sudo chmod -R a+rX "/usr/share/labwc-q4os/login-themes/$variant"
     done
+    # Logo "tono su tono" per ogni tema login: stesso trattamento degli sfondi.
+    if sudo python3 "$REPO_DIR/scripts/generate-login-logo.py" \
+        --themes-dir /usr/share/labwc-q4os/login-themes \
+        --logo "$REPO_DIR/configs/logo/rl-dev.png" --width 640 >/dev/null 2>&1; then
+        ok "Logo tono su tono generato per i tre temi login."
+    else
+        warn "Logo login non generato (python3-pil o logo mancanti)."
+    fi
     if sudo /usr/local/libexec/labwc-q4os/login-theme-apply "$selected"; then
         ok "Tema login applicato: $selected ($dest)"
     else
@@ -2785,7 +2796,7 @@ for variant in nordic-cobalt muted-crimson sage-emerald; do
     [ -f "/usr/share/labwc-q4os/login-themes/$variant/Main.qml" ] ||
         die "tema login mancante: $variant"
 done
-for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-bluetooth labwc-doctor labwc-app-manager labwc-update-check labwc-update-copy labwc-update-popup labwc-update-run labwc-update-gui labwc-preferences labwc-battery-indicator labwc-desktop labwc-desktop-state labwc-desktop-status labwc-desktop-menu labwc-power-menu labwc-sysinfo labwc-touchscreen labwc-touch-tap labwc-login-theme labwc-fuzzel-apps labwc-minimized labwc-install-wizard labwc-cage labwc-freetube labwc-freetube-cage freetube-close-overlay labwc-cage-help; do
+for helper in labwc-theme-switcher labwc-menu-editor labwc-help labwc-reload labwc-screenshot labwc-zram labwc-bluetooth labwc-cage-app labwc-cage-hud labwc-doctor labwc-app-manager labwc-update-check labwc-update-copy labwc-update-popup labwc-update-run labwc-update-gui labwc-preferences labwc-battery-indicator labwc-desktop labwc-desktop-state labwc-desktop-status labwc-desktop-menu labwc-power-menu labwc-sysinfo labwc-touchscreen labwc-touch-tap labwc-login-theme labwc-fuzzel-apps labwc-minimized labwc-install-wizard labwc-cage labwc-freetube labwc-freetube-cage freetube-close-overlay labwc-cage-help; do
     [ -x "$BIN/$helper" ] || die "helper non eseguibile: $helper"
 done
 ok "Tutto in ordine."

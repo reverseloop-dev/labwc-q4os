@@ -412,6 +412,18 @@ MENU DI AVVIO (GRUB):
     diventa 1 secondo (backup di /etc/default/grub, poi update-grub)
   • flag: --grub-1s / --no-grub-1s
 
+CAGE (kiosk) E BATTERIA:
+  • le app in Cage passano da labwc-cage-app; Ctrl+B mostra/nasconde in basso
+    a sinistra un riquadro con batteria e percentuale, Ctrl+B lo nasconde
+  • HUD iniettato via DevTools locale: funziona con Chromium/Chrome/Brave/Edge/
+    Vivaldi/Opera e FreeTube; Firefox non espone il DevTools richiesto
+  • Cage mostra un solo client e non ha layer-shell: il HUD sta dentro l'app
+
+LOGIN (SDDM):
+  • logo reverseloop-dev tono su tono al centro dei tre temi, tinto con il
+    colore del tema e molto trasparente
+  • generate-login-logo.py crea logo.png in ogni tema login (Pillow)
+
 LOOKSWITCHER PER TRINITY (solo Trinity):
   • se Trinity e' installato, l'installer chiede se aggiungere LookSwitcher,
     il selettore di temi del desktop Q4OS Trinity

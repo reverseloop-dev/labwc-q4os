@@ -123,6 +123,15 @@ if [ "${1:-}" = "--" ]; then
 fi
 [ "$#" -gt 0 ] || { notify "Nessun comando da avviare"; exit 1; }
 
+# HUD batteria (Ctrl+B) iniettato nell'app: labwc-cage-app aggiunge la porta
+# DevTools per Chromium e avvia labwc-cage-hud. Se l'helper non c'e' (sessione
+# vecchia) si avvia il comando com'era.
+cage_app="$HOME/.local/bin/labwc-cage-app"
+target=("$@")
+if [ -x "$cage_app" ]; then
+    target=("$cage_app" "$@")
+fi
+
 # Un solo Cage alla volta: evita compositori annidati se il comando viene
 # lanciato per errore dalla console dentro Cage o da un doppio click.
 if cage_is_active; then
@@ -144,7 +153,7 @@ if [ ! -f "$state/cage-supported" ]; then
     notify "Riavvia la sessione per Cage reale" "Per ora apro Cage annidato."
     log="$(mktemp)"
     LABWC_CAGE_QUIET=1 WLR_BACKENDS=wayland WLR_RENDERER=pixman \
-        WLR_NO_HARDWARE_CURSORS=1 cage -- "$@" >"$log" 2>&1 &
+        WLR_NO_HARDWARE_CURSORS=1 cage -- "${target[@]}" >"$log" 2>&1 &
     cage_pid=$!
     printf '%s\n' "$cage_pid" >"$pid_file" 2>/dev/null || true
     for _ in $(seq 1 40); do
@@ -169,7 +178,7 @@ if [ ! -f "$state/cage-supported" ]; then
     exit "$status"
 fi
 
-printf '%q ' "$@" >"$request"
+printf '%q ' "${target[@]}" >"$request"
 printf '\n' >>"$request"
 sync
 
@@ -177,7 +186,7 @@ if ! pgrep -x labwc >/dev/null 2>&1; then
     # Siamo già in una console senza labwc: Cage può partire direttamente.
     # Legacy pageflip: su i915 evita i freeze atomic commit EBUSY.
     export WLR_DRM_NO_ATOMIC=1 WLR_DRM_NO_MODIFIERS=1
-    exec cage -- "$@"
+    exec cage -- "${target[@]}"
 fi
 
 # Il wrapper di sessione è il padre di labwc: sopravvive alla chiusura,

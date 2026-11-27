@@ -1,0 +1,331 @@
+#!/usr/bin/env python3
+"""
+labwc-cage-hud - HUD batteria per le app in Cage, acceso da Ctrl+B.
+
+In Cage un solo client occupa lo schermo e non esiste layer-shell: il riquadro
+viene quindi disegnato *dentro* l'app, usando il DevTools di Chromium/Electron
+su localhost. labwc-cage-app avvia questo processo e passa la porta (o il file
+DevToolsActivePort, come per FreeTube).
+
+Il riquadro e' nascosto all'avvio: Ctrl+B lo mostra in basso a sinistra con
+percentuale e stato di carica; Ctrl+B di nuovo lo nasconde.
+
+Uso:
+  labwc-cage-hud --port 9222 [--pid PID]
+  labwc-cage-hud --port-file /path/DevToolsActivePort
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import contextlib
+import json
+import os
+import signal
+import sys
+import time
+import urllib.request
+
+HUD_JS = r"""
+(function () {
+  if (window.__lbqcHudInstalled) { return "already"; }
+  window.__lbqcHudInstalled = true;
+
+  function build() {
+    var host = document.getElementById("lbqc-hud-host");
+    if (!host) {
+      host = document.createElement("div");
+      host.id = "lbqc-hud-host";
+      host.setAttribute("data-lbqc", "hud");
+      document.documentElement.appendChild(host);
+    }
+    var root = host.shadowRoot;
+    if (!root) { root = host.attachShadow({ mode: "open" }); }
+    if (!root.getElementById("lbqc-hud")) {
+      var style = document.createElement("style");
+      style.textContent = `
+        :host { all: initial; }
+        #lbqc-hud {
+          position: fixed; left: 18px; bottom: 18px; z-index: 2147483647;
+          display: none; align-items: center; gap: 10px;
+          padding: 9px 14px; border-radius: 999px;
+          background: rgba(15, 23, 42, 0.82);
+          border: 1px solid rgba(148, 163, 184, 0.45);
+          color: #e2e8f0; font: 600 15px/1.1 system-ui, sans-serif;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+          pointer-events: none; user-select: none;
+        }
+        #lbqc-hud.lbqc-visible { display: flex; }
+        #lbqc-batt {
+          position: relative; width: 34px; height: 16px; border-radius: 4px;
+          border: 2px solid currentColor; box-sizing: border-box;
+        }
+        #lbqc-batt::after {
+          content: ""; position: absolute; right: -5px; top: 4px;
+          width: 3px; height: 6px; border-radius: 0 2px 2px 0;
+          background: currentColor;
+        }
+        #lbqc-fill {
+          position: absolute; left: 1px; top: 1px; bottom: 1px;
+          width: 60%; border-radius: 1px; background: #4ade80;
+          transition: width 0.4s ease, background-color 0.4s ease;
+        }
+        #lbqc-fill.lbqc-low { background: #f87171; }
+        #lbqc-fill.lbqc-mid { background: #fbbf24; }
+        #lbqc-state { color: #94a3b8; font-size: 12px; font-weight: 500; }
+      `;
+      var box = document.createElement("div");
+      box.id = "lbqc-hud";
+      box.setAttribute("role", "status");
+      box.innerHTML = '<div id="lbqc-batt"><div id="lbqc-fill"></div></div>' +
+        '<span id="lbqc-pct">--%</span><span id="lbqc-state"></span>';
+      root.appendChild(style);
+      root.appendChild(box);
+    }
+    return host;
+  }
+
+  window.__lbqcHudSet = function (data) {
+    var host = build();
+    var root = host.shadowRoot;
+    var pct = Number(data && data.pct);
+    var txt = root.getElementById("lbqc-pct");
+    var fill = root.getElementById("lbqc-fill");
+    var state = root.getElementById("lbqc-state");
+    if (!isFinite(pct) || pct < 0) {
+      txt.textContent = "AC";
+      fill.style.width = "100%";
+      fill.className = "";
+      state.textContent = data && data.source ? String(data.source) : "";
+      return "ac";
+    }
+    pct = Math.max(0, Math.min(100, Math.round(pct)));
+    txt.textContent = pct + "%";
+    fill.style.width = Math.max(4, pct) + "%";
+    fill.className = pct <= 15 ? "lbqc-low" : (pct <= 35 ? "lbqc-mid" : "");
+    var charging = data && data.charging;
+    state.textContent = charging ? "in carica" : "";
+    return pct;
+  };
+
+  window.addEventListener("keydown", function (event) {
+    if (!event.ctrlKey || event.altKey || event.metaKey) { return; }
+    if (event.key !== "b" && event.key !== "B") { return; }
+    var host = build();
+    var box = host.shadowRoot.getElementById("lbqc-hud");
+    event.preventDefault();
+    event.stopPropagation();
+    box.classList.toggle("lbqc-visible");
+    if (box.classList.contains("lbqc-visible") && window.__lbqcHudRefresh) {
+      window.__lbqcHudRefresh();
+    }
+  }, true);
+
+  return "installed";
+})();
+"""
+
+
+def log(message: str) -> None:
+    print(f"labwc-cage-hud: {message}", file=sys.stderr, flush=True)
+
+
+def http_json(port: int, path: str, timeout: float = 2.0):
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    with opener.open(f"http://127.0.0.1:{port}{path}", timeout=timeout) as response:
+        return json.load(response)
+
+
+def page_targets(port: int) -> list[str]:
+    try:
+        targets = http_json(port, "/json/list")
+    except Exception:
+        return []
+    pages = []
+    for target in targets:
+        if target.get("type") != "page":
+            continue
+        ws_url = target.get("webSocketDebuggerUrl") or ""
+        if not ws_url or ws_url.startswith("devtools://"):
+            continue
+        pages.append(ws_url)
+    return pages
+
+
+def battery_state() -> dict[str, object]:
+    root = "/sys/class/power_supply"
+    try:
+        entries = sorted(os.listdir(root))
+    except OSError:
+        entries = []
+    for name in entries:
+        if not name.startswith("BAT"):
+            continue
+        base = os.path.join(root, name)
+        try:
+            with open(os.path.join(base, "capacity"), encoding="utf-8") as handle:
+                pct = int(handle.read().strip())
+        except (OSError, ValueError):
+            continue
+        status = ""
+        with contextlib.suppress(OSError):
+            with open(os.path.join(base, "status"), encoding="utf-8") as handle:
+                status = handle.read().strip()
+        return {"pct": pct, "charging": status in ("Charging", "Full")}
+    # Nessuna batteria (desktop/VM): alimentazione esterna.
+    return {"pct": -1, "charging": True, "source": "rete"}
+
+
+class Hud:
+    def __init__(self, port: int | None, port_file: str | None, watch_pid: int | None):
+        self.port = port
+        self.port_file = port_file
+        self.watch_pid = watch_pid
+        self.stop = asyncio.Event()
+
+    def parent_alive(self) -> bool:
+        if self.watch_pid is not None:
+            pid = self.watch_pid
+        else:
+            pid = os.getppid()
+        if pid <= 1:
+            return False
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            return False
+        return True
+
+    def resolve_port(self) -> int | None:
+        if self.port is not None:
+            return self.port
+        if not self.port_file:
+            return None
+        try:
+            with open(self.port_file, encoding="utf-8") as handle:
+                lines = handle.read().splitlines()
+        except OSError:
+            return None
+        if not lines:
+            return None
+        try:
+            port = int(lines[0].strip())
+        except ValueError:
+            return None
+        return port if 1 <= port <= 65535 else None
+
+
+async def worker(hud: Hud, ws_url: str) -> None:
+    import websockets
+
+    try:
+        async with websockets.connect(
+            ws_url, max_size=None, ping_interval=None,
+            open_timeout=5, close_timeout=1,
+        ) as ws:
+            counter = 0
+
+            async def call(method: str, params: dict | None = None):
+                nonlocal counter
+                counter += 1
+                payload = {"id": counter, "method": method, "params": params or {}}
+                await ws.send(json.dumps(payload))
+                while True:
+                    reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=10))
+                    if reply.get("id") == counter:
+                        return reply
+
+            await call("Runtime.enable")
+            await call("Page.enable")
+            with contextlib.suppress(Exception):
+                await call(
+                    "Page.addScriptToEvaluateOnNewDocument", {"source": HUD_JS}
+                )
+            installed = False
+            while not hud.stop.is_set() and hud.parent_alive():
+                if not installed:
+                    reply = await call("Runtime.evaluate", {
+                        "expression": HUD_JS, "returnByValue": True,
+                    })
+                    value = (reply.get("result") or {}).get("result", {}).get("value")
+                    installed = value in ("installed", "already") or bool(value)
+                data = battery_state()
+                expression = (
+                    "window.__lbqcHudSet && window.__lbqcHudSet("
+                    + json.dumps(data)
+                    + ")"
+                )
+                try:
+                    await call("Runtime.evaluate", {
+                        "expression": expression, "returnByValue": True,
+                    })
+                except Exception:
+                    installed = False
+                # Attesa interrompibile: SIGTERM non deve aspettare 10 s.
+                with contextlib.suppress(asyncio.TimeoutError):
+                    await asyncio.wait_for(hud.stop.wait(), timeout=10)
+    except Exception as error:
+        log(f"connessione persa: {error}")
+        raise
+
+
+async def main_loop(hud: Hud) -> int:
+    empty_since = None
+    had_page = False
+    while not hud.stop.is_set():
+        if not hud.parent_alive():
+            return 0
+        port = hud.resolve_port()
+        pages = page_targets(port) if port else []
+        if not pages:
+            if had_page:
+                if empty_since is None:
+                    empty_since = time.monotonic()
+                elif time.monotonic() - empty_since > 20:
+                    return 0
+            with contextlib.suppress(asyncio.TimeoutError):
+                await asyncio.wait_for(hud.stop.wait(), timeout=0.6)
+            continue
+        empty_since = None
+        had_page = True
+        for ws_url in pages:
+            if hud.stop.is_set():
+                break
+            try:
+                await worker(hud, ws_url)
+            except Exception:
+                with contextlib.suppress(asyncio.TimeoutError):
+                    await asyncio.wait_for(hud.stop.wait(), timeout=1.0)
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="HUD batteria per Cage (Ctrl+B)")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--port", type=int, help="porta DevTools su 127.0.0.1")
+    group.add_argument("--port-file", help="file DevToolsActivePort dell'app")
+    parser.add_argument("--pid", type=int, default=None, help="pid dell'app da seguire")
+    args = parser.parse_args()
+
+    try:
+        import websockets  # noqa: F401
+    except ImportError:
+        log("python3-websockets non installato")
+        return 1
+
+    hud = Hud(args.port, args.port_file, args.pid)
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        with contextlib.suppress(NotImplementedError):
+            loop.add_signal_handler(signum, hud.stop.set)
+    try:
+        return loop.run_until_complete(main_loop(hud))
+    finally:
+        loop.close()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

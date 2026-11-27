@@ -26,6 +26,7 @@ log_line() {
 data="${XDG_CONFIG_HOME:-$HOME/.config}/FreeTube"
 port_file="$data/DevToolsActivePort"
 overlay="${LABWC_FREETUBE_OVERLAY:-$HOME/.local/bin/freetube-close-overlay}"
+hud="${LABWC_CAGE_HUD:-$HOME/.local/bin/labwc-cage-hud}"
 mkdir -p "$data" 2>/dev/null || true
 rm -f "$port_file"
 
@@ -47,6 +48,7 @@ log_line "FreeTube avviato (pid $pid, pgid ${pgid:-nessuno})"
 
 app_reaped=0
 overlay_pid=""
+hud_pid=""
 
 pid_alive() {
     local target="${1:-}" status
@@ -92,6 +94,12 @@ terminate_tree() {
 
 cleanup() {
     trap - EXIT TERM INT HUP
+    if [ -n "$hud_pid" ]; then
+        kill -TERM "$hud_pid" 2>/dev/null || true
+        kill -KILL "$hud_pid" 2>/dev/null || true
+        wait "$hud_pid" 2>/dev/null || true
+        hud_pid=""
+    fi
     if [ -n "$overlay_pid" ]; then
         kill -TERM "$overlay_pid" 2>/dev/null || true
         kill -KILL "$overlay_pid" 2>/dev/null || true
@@ -128,6 +136,12 @@ start_overlay() {
 status=0
 close_requested=0
 start_overlay
+# HUD batteria (Ctrl+B) sulla pagina di FreeTube: stesso DevTools dell'overlay.
+if [ -f "$hud" ] && command -v python3 >/dev/null 2>&1; then
+    python3 "$hud" --port-file "$port_file" --pid "$pid" >>"$log" 2>&1 &
+    hud_pid=$!
+    log_line "HUD batteria avviato (pid $hud_pid)"
+fi
 
 while :; do
     if ! pid_alive "$pid"; then

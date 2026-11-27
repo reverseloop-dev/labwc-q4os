@@ -2,6 +2,24 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.26.0]
+
+- **Login tono su tono**: il logo **reverseloop-dev** compare al centro anche
+  nelle tre schermate di login, monocromatico, tinto con il colore del tema
+  (blu `#3b82f6`, rosso `#c0565b`, verde `#4d9375`) e molto trasparente, come
+  negli sfondi. Nuovo `scripts/generate-login-logo.py` (Pillow): legge
+  `logo_tint` da `theme.conf` e scrive `logo.png` in ogni tema; `Main.qml` dei
+  tre temi e del tema legacy mostra il PNG.
+- **Batteria in Cage (Ctrl+B)**: nuove `labwc-cage-app` e `labwc-cage-hud`.
+  Ogni app avviata in Cage — dal menu, dai collegamenti *(cage)* o a mano —
+  passa dal wrapper: per Chromium/Chrome/Brave/Edge/Vivaldi/Opera viene
+  aggiunta una porta DevTools su `127.0.0.1`, per FreeTube si usa il file
+  `DevToolsActivePort` già presente. `Ctrl+B` mostra in basso a sinistra un
+  riquadro con batteria e percentuale (verde, ambra ≤35%, rossa ≤15%, "in
+  carica" o "AC" senza batteria) e lo nasconde al secondo Ctrl+B. Il HUD si
+  inietta nell'app perché Cage mostra un solo client e non ha layer-shell;
+  Firefox resta senza HUD (limite tecnico documentato).
+
 ## [1.25.0]
 
 - **Menu del tasto destro senza duplicati**: la deduplica ora usa il programma

@@ -245,6 +245,14 @@ labwc-login-theme --apply muted-crimson
 L'applicazione al login richiede la password di root una sola volta
 (`pkexec`); il cambio diventa effettivo al login successivo.
 
+Al centro di ogni schermata c'è il **logo reverseloop-dev** con lo stesso
+trattamento **tono su tono** degli sfondi: monocromatico, tinto con il colore
+del tema (blu `#3b82f6`, rosso `#c0565b`, verde `#4d9375`) e molto
+trasparente, così non disturba card e campi. Il PNG si genera in
+`/usr/share/labwc-q4os/login-themes/<tema>/logo.png` con
+`scripts/generate-login-logo.py` (Pillow, stessa maschera di luminanza degli
+sfondi).
+
 ![App Schermata di login](preview/login-theme-gui.png)
 
 La tastiera del login è **IT** per impostazione predefinita: l'installer usa
@@ -398,6 +406,15 @@ Nella console di **AVVIA CAGE**, digitare `exit` chiude **definitivamente**
 Cage e tutte le app rimaste, esattamente come la X di FreeTube: il wrapper di
 sessione termina l’albero di processi e labwc riparte. Non serve più
 `labwc-return` per questo caso. Salva i documenti aperti prima di uscire.
+
+**Batteria in Cage (Ctrl+B).** Le app avviate in Cage — dal menu, dai
+collegamenti *(cage)* o a mano con `labwc-cage` — passano da `labwc-cage-app`:
+per Chromium e FreeTube il HUD viene disegnato **dentro l'app** tramite il
+DevTools su `127.0.0.1` (`labwc-cage-hud`). Premi **Ctrl+B**: in basso a
+sinistra compare un riquadro con batteria e percentuale (verde, ambra sotto il
+35%, rossa sotto il 15%; "in carica" se collegato; "AC" senza batteria).
+Ctrl+B di nuovo lo nasconde. In Cage non esiste layer-shell e c'è un solo
+client, quindi Firefox non ha il HUD (usa Chromium o FreeTube).
 
 **Mouse in Cage.** Cage su DRM (accesso diretto alla scheda video) legge
 direttamente mouse e tastiera: serve il backend `libinput` accanto a `drm` (`WLR_BACKENDS=drm,libinput`) e l’utente nel
