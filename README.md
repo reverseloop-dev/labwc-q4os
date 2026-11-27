@@ -55,9 +55,31 @@ grafica, sessioni esistenti o possibilità di scelta.
 [![Wayland](https://img.shields.io/badge/Wayland-labwc-3b82f6?style=flat-square)](https://labwc.github.io)
 [![License](https://img.shields.io/badge/license-MIT-4d9375?style=flat-square)](LICENSE)
 
-> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.22.18**
+> **reverseloop-dev** · https://github.com/reverseloop-dev/labwc-q4os · **v1.23.1**
 
 ---
+
+<table>
+<tr>
+<td width="50%"><img src="preview/btop-labwc.png" alt="btop++ a tutto schermo su labwc con Noctalia"><br><em><b>btop++</b> a tutto schermo in <b>labwc</b> con <b>Noctalia</b>, solo CPU e memoria: <b>≈801 MiB</b> usati, CPU 2%. La shell consuma più di Waybar.</em></td>
+<td width="50%"><img src="preview/btop-cage.png" alt="btop++ a tutto schermo su cage-kiosk"><br><em><b>btop++</b> a tutto schermo in <b>cage-kiosk</b>, solo CPU e memoria: <b>≈649 MiB</b> usati, CPU 0%. Nessuna shell né barra.</em></td>
+</tr>
+<tr>
+<td width="50%"><img src="preview/firefox-labwc.png" alt="Firefox su labwc con about:processes"><br><em><b>Firefox</b> in <b>labwc + Noctalia</b>: i consumi letti da <code>about:processes</code>.</em></td>
+<td width="50%"><img src="preview/firefox-cage.png" alt="Firefox su cage-kiosk con about:processes"><br><em><b>Firefox</b> in <b>cage-kiosk</b>: gli stessi consumi da <code>about:processes</code>.</em></td>
+</tr>
+</table>
+<p><em>Per tenere sott'occhio la carica anche quando la barra non si guarda, il progetto include una piccola app <b>indicatore batteria</b> sempre in basso: contorno neon, riempimento e percentuale. Segue la colorazione del tema; la posizione è selezionabile tra <b>sinistra, centro e destra</b>.</em></p>
+
+
+
+<table>
+<tr>
+<td align="center"><img src="preview/battery-red-left.png" alt="Indicatore batteria rosso a sinistra"><br><em>Rosso, sinistra</em></td>
+<td align="center"><img src="preview/battery-blue-center.png" alt="Indicatore batteria blu al centro"><br><em>Blu, centro</em></td>
+<td align="center"><img src="preview/battery-green-right.png" alt="Indicatore batteria verde a destra"><br><em>Verde, destra</em></td>
+</tr>
+</table>
 
 ## Trinity o Labwc: scegli tu
 
@@ -157,68 +179,28 @@ avviato con le opzioni Wayland e le decorazioni richieste.
 
 ## Correzioni recenti
 
+- **Scala dello schermo**: nuovo tool **Rust** per labwc, port del *Screen
+  scaling* di Q4OS. Slider 0–20 con **10 = 1.0×** (96 DPI): sotto 10
+  rimpicciolisce, sopra 10 ingrandisce; `Defaults`/`Apply`/`Cancel`, DPI
+  rilevato con `wlr-randr`; scrive `~/.config/labwc/screen-scale.conf` e il
+  blocco di variabili in `~/.config/labwc/environment`. Voce in **TOOL
+  reverseloop → Schermo e monitor**.
+- **Indicatore batteria**: nelle Preferenze c'è lo switch **Icona** accanto a
+  **Percentuale**, per mostrare o nascondere l'indicatore completo (icona +
+  percentuale) tramite `show_indicator` in `battery-indicator.conf`.
+- **Scroll verticale in tutte le app reverseloop**: se la finestra non entra
+  nello schermo compare la barra di scorrimento sul lato destro; le dimensioni
+  iniziali vengono limitate all'area di lavoro del monitor.
+- **README**: screenshot di **btop++** e **Firefox** in labwc (con Noctalia) e
+  in cage-kiosk, ognuno con didascalia; sezione **Correzioni recenti** ridotta
+  alle ultime 7 voci con link allo storico completo.
 - **Scelta del browser**: Chromium o Firefox ESR (o nessuno), con descrizione;
   se l'altro browser è già installato l'installer chiede se disinstallarlo.
-  Firefox ESR arriva dal repository Debian e riceve le stesse tre
-  estensioni dal catalogo Mozilla.
 - **btop** installato dallo script, con la sua voce nel menu applicazioni.
-- **Ricarica automatica dopo il login rimossa**, insieme al popup: il
-  watchdog avvia solo la shell se manca.
-- **enhanced-h264ify** aggiunto alle estensioni Chromium: blocca AV1/VP9 e
-  lascia H.264, più leggero su CPU e GPU vecchie. Testato dal vivo su Debian
-  13: YouTube ha servito `avc1.4D401E` con AV1 e VP9 bloccati.
-- **qpdfview** proposto come lettore PDF leggero, installato solo se manca.
-- **LookSwitcher per Trinity** (opzionale, solo sessione Trinity): selettore
-  temi Q4OS; labwc resta sui suoi tre temi.
-- **Login Plasma/Breeze gestito**: drop-in `zz-labwc-q4os.conf` e wrapper di
-  sessione che garantiscono tema, sessione e configurazione labwc.
-- **Desktop ripristinato**: `labwc` usa `-C` per la cartella config, quindi
-  tornano menu col tasto destro e doppio clic sinistro su aiuto/scorciatoie.
-- Scelta della shell: **Waybar + Fuzzel** (default, leggerissima) o
-  **Noctalia v5** (shell integrata, repo APT ufficiale di terze parti), con
-  fallback automatico e `--shell waybar|noctalia`.
-- Tre schermate di login SDDM con layout e stile distinti: **Aurora Card**
-  (blu), **Split Studio** (rosso), **Bottom Dock** (verde).
-- Nuova app **Schermata di login** e switch **Login uguale allo sfondo** nelle
-  Preferenze: il login segue colori e layout del tema desktop.
-- Nuova app **App in Fuzzel**: aggiunge e rimuove le voci utente del launcher
-  con selezione icona; le app di sistema restano protette.
-- Tutte le app del progetto seguono il tema attivo con il colore di riferimento.
-- Tastiera **IT** predefinita al login (SDDM/X11 e sessione labwc).
-- Chromium installato se assente, con **uBlock Origin Lite**, **Privacy Badger**
-  ed **enhanced-h264ify** forzate via policy
-  `/etc/chromium/policies/managed/labwc-q4os-extensions.json`.
-- **enhanced-h264ify** blocca AV1 e VP9: YouTube usa H.264 (`avc1`), più
-  leggero sulle CPU/GPU vecchie. I 60fps restano attivi; si bloccano
-  dall'icona dell'estensione solo se il PC fatica ancora.
-- **qpdfview** proposto come lettore PDF leggero, installato solo se manca.
-- Rilevamento touchscreen, con tastiera su schermo **wvkbd** e gesti **lisgd**
-  (swipe dal basso), scaling Qt 1.25, font e pulsanti più grandi.
-- Popup nuova versione: si chiude dopo **15 secondi**, con **Chiudi**,
-  **Copia stringa shell** e **Apri app per aggiornare**.
-- Aggiornamento nel terminale (password root e domande dell'installer),
-  popup con chiusura dopo 15 s; fallback in-app solo senza terminale.
-- Pulsante sessione di Waybar: ora apre `labwc-power-menu` e le azioni
-  riavvio/spegnimento/sospensione/blocco funzionano davvero.
-- Editor menu: aggiunta/rimozione più robuste, supporto `remove-id`,
-  rimozione diretta dalla sezione **★ App preferite** e protezione dai loop
-  su selezioni non valide.
-- Nuovo **App nel menu Labwc** con menu contestuale tasto destro per
-  preferiti e categorie.
-- Doppio clic sinistro sul desktop: guida + informazioni di sistema.
-- Pannello ZRAM: corrette unità RAM, label di stato e grafico storico, aggiunta
-  dipendenza Cairo.
-- Tema labwc: usato `themerc-override` (la vecchia posizione non veniva letta).
-- Waybar: rimossi moduli workspace non disponibili nel pacchetto Debian;
-  corretti colori `rgba` non validi.
-- Aggiunto SDDM opzionale per TDM, con ritorno a TDM documentato.
-- Pannello aggiornamenti separato da ZRAM, intervallo configurabile e
-  attivazione protetta dalla password di root.
-- Popup di aggiornamento persistente: **Aggiorna** apre Terminator col comando
-  pronto, **Chiudi** non installa nulla.
-- Terminale predefinito passato a **Terminator**.
-- Aggiunte Preferenze della scrivania, desktop 1–4 e i tre pulsanti finestra.
-- Il menu esclude le voci TDE/Trinity estranee a labwc.
+- **Ricarica automatica dopo il login rimossa**, insieme al popup: il watchdog
+  avvia solo la shell se manca.
+
+Tutte le modifiche, release per release: **[CHANGELOG.md](CHANGELOG.md)**.
 
 ---
 
@@ -859,10 +841,24 @@ con la rotellina sul desktop.
 
 ### Scala dello schermo
 
-labwc usa Wayland: lo **Screen scaling originale di Q4OS** è un tool TDE/X11 e
-non controlla la sessione labwc, quindi non viene aggiunto al menu (sarebbe una
-voce che non funziona). Per l'HiDPI si agiscono le variabili della sessione e le
-impostazioni delle singole app.
+**TOOL reverseloop → Schermo e monitor → Scala dimensioni dello schermo**
+(comando `labwc-screen-scaler`) apre il port in **Rust** del *Screen scaling*
+di Q4OS, riscritto per Wayland/labwc. La logica è quella originale: rileva il
+DPI del monitor primario da `wlr-randr`, slider da **0 a 20** con **10 = 1.0×**
+al centro, opzioni avanzate con righello in cm e anteprima, pulsanti
+**Defaults / Apply / Cancel**. Sotto 10 rimpicciolisce finestre e menu, sopra
+10 li ingrandisce.
+
+- **Apply** salva la scala in `~/.config/labwc/screen-scale.conf` e aggiorna il
+  blocco gestito dentro `~/.config/labwc/environment` (`Xft.dpi`, `GDK_SCALE`,
+  `GDK_DPI_SCALE`, `QT_SCALE_FACTOR`, `XCURSOR_SIZE`). Le modifiche valgono al
+  login successivo, come nel tool TDE originale.
+- **Defaults** chiede conferma e riporta tutto ai valori di sistema.
+- Da terminale: `labwc-screen-scaler --status`, `--probe`, `--apply 8`
+  (valore 8 = 0.8×), `--reset`, `--self-test`.
+
+Il tool è compilato dall'installer con `rustc` (nessuna dipendenza oltre a GTK3,
+già presente): il sorgente è `tools/labwc-screen-scaler.rs`.
 
 Le finestre usano decorazioni lato server di labwc con i tre pulsanti classici
 **riduci a icona, ingrandisci, chiudi**; `GTK_CSD=0` evita che le app GTK
@@ -1142,7 +1138,9 @@ Si configura da **Preferenze della scrivania Labwc**, con il cambio applicato
 subito:
 
 - posizione: Sinistra / Centro / Destra;
-- **Mostra percentuale**: on/off (resta il disegno della batteria).
+- **Percentuale**: on/off (resta il disegno della batteria);
+- **Icona**: on/off per mostrare o nascondere l'intero indicatore (icona e
+  percentuale insieme), con `show_indicator` nel file di configurazione.
 
 File: `~/.config/labwc/battery-indicator.conf`.
 
@@ -1589,9 +1587,10 @@ riducendo i consumi e semplificando l’uso in movimento.
 
 ## Test e ringraziamenti
 
-I test sono stati fatti sia su una **macchina virtuale** con 1 core e 2 GB di ram sia su un **PC reale**  
-Per avere un quadro completo e provare anche il **touchscreen**  ho acquistato un **Lenovo Chromebook E300** con 3 GB di RAM 
-rigorosamente usato e dal valore di 15 euro. Acquisterò anche un netbook — possibilmente un Acer o un Toshiba serie N da 1 GB — per testare e valutare meglio l'impatto delle mie ottimizzazioni con così poca RAM.
+I test sono stati fatti sia su una **macchina virtuale** sia su un **PC reale**. 
+Per avere un quadro completo e provare anche il **touchscreen**  ho acquistato un **Lenovo Chromebook E300** 
+rigorosamente usato e dal valore di 15 euro.
+
 Il **firmware** (il programma di base che avvia il computer) del Chromebook è
 stato modificato grazie a **MrChromebox**: https://docs.mrchromebox.tech/
 
@@ -1622,19 +1621,19 @@ intervento registrato in una release. Le aree sono una stima per parole chiave
 
 | Indicatore | Valore |
 | --- | ---: |
-| Release documentate (dalla 1.0 alla 1.22.18) | **46** |
-| Voci/interventi totali nel CHANGELOG | **145** |
-| Bug corretti | **14** |
-| Nuove funzioni | **32** |
-| Migliorie e ottimizzazioni | **8** |
+| Release documentate (dalla 1.0 alla 1.23.1) | **48** |
+| Voci/interventi totali nel CHANGELOG | **153** |
+| Bug corretti | **15** |
+| Nuove funzioni | **34** |
+| Migliorie e ottimizzazioni | **10** |
 | Interventi su temi e interfaccia | **24** |
-| Interventi su installer e compatibilità | **41** |
-| Interventi su documentazione | **5** |
+| Interventi su installer e compatibilità | **42** |
+| Interventi su documentazione | **7** |
 | Pulizia e manutenzione | **4** |
 | Altro / note tecniche | **17** |
 | Script nel repository | **48** |
-| File nel repository | **111** |
-| Righe di script (Bash e Python) | **11.780** |
+| File nel repository | **119** |
+| Righe di script (Bash e Python) | **14.725** |
 | Temi inclusi | **3** |
 
 ### Cosa è cambiato nel tempo

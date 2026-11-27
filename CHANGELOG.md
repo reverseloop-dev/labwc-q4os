@@ -2,6 +2,44 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.23.1]
+
+- **Scala dello schermo**: slider **0–20** con **10 = 1.0×** al centro; sotto
+  10 rimpicciolisce finestre e menu, sopra 10 li ingrandisce. `--apply 8`
+  applica 0.8×.
+- **Aggiornamenti**: la versione online viene letta dall'API GitHub invece del
+  file raw della branch, che resta in cache CDN e nasconde le release appena
+  pubblicate. Una nuova VERSION viene ora riconosciuta subito.
+- README: **btop++** con sole sezioni CPU e memoria e confronto labwc/Noctalia
+  (~801 MiB) contro cage-kiosk esclusivo (~649 MiB); indicatore batteria in una
+  riga con tre posizioni e colori (rosso, blu, verde); tabella numeri aggiornata.
+
+## [1.23.0]
+
+- **Scala dello schermo in Rust**: nuovo `labwc-screen-scaler`, port del
+  *Screen scaling* di Q4OS per labwc/Wayland. Stessa logica: DPI del monitor
+  primario da `wlr-randr`, slider **0–20 con 10 = 1.0×** al centro (sotto 10
+  rimpicciolisce, sopra 10 ingrandisce), opzioni avanzate con righello e
+  anteprima, **Defaults/Apply/Cancel**. Applica in
+  `~/.config/labwc/screen-scale.conf` e nel blocco gestito di
+  `~/.config/labwc/environment`; `Defaults` chiede conferma e azzera.
+  Voce in **TOOL reverseloop → Schermo e monitor** e `.desktop` dedicato.
+- Installer: compila il tool con `rustc` (aggiunto solo se manca) e lo installa
+  in `~/.local/bin/labwc-screen-scaler`; `screen-scale.conf` non viene più
+  cancellato.
+- **Indicatore batteria**: switch **Icona** accanto a **Percentuale** nelle
+  Preferenze; `show_indicator=0` nasconde l'indicatore completo (icona e
+  percentuale) e il cambio è immediato.
+- **Scroll verticale** in tutte le app reverseloop (Preferenze, Aggiornamenti,
+  ZRAM, App in Fuzzel, Schermata di login, Scala dello schermo): barra sul lato
+  destro quando il contenuto non entra, dimensioni iniziali limitate all'area
+  di lavoro del monitor.
+- README: screenshot di **btop++** e **Firefox** in labwc con Noctalia e in
+  cage-kiosk, ognuno con didascalia, più 6 mini-screenshot dell'indicatore
+  batteria (rosso/blu, sinistra/centro/destra); **Correzioni recenti** ridotta
+  alle ultime 7 voci con link a questo CHANGELOG; rimossa la sezione
+  *Interventi per area*.
+
 ## [1.22.18]
 
 - Menu desktop più corto: **TOOL reverseloop** ha poche voci in chiaro e

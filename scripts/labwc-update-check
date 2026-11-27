@@ -25,7 +25,7 @@ LEGACY_FLAG="$CONFIG/labwc/update-check.enabled"
 INTERVAL_FILE="$CONFIG/labwc/update-check.interval"
 STATUS_FILE="$STATE/update-status.json"
 ROOT_HELPER="/usr/local/libexec/labwc-q4os/update-toggle"
-VERSION_URL="${LABWC_UPDATE_URL:-https://raw.githubusercontent.com/reverseloop-dev/labwc-q4os/main/VERSION}"
+VERSION_URL="${LABWC_UPDATE_URL:-https://api.github.com/repos/reverseloop-dev/labwc-q4os/contents/VERSION}"
 REPO_URL="https://github.com/reverseloop-dev/labwc-q4os"
 DEFAULT_INTERVAL=21600
 
@@ -84,7 +84,10 @@ local_version() {
 
 online_version() {
     command -v curl >/dev/null 2>&1 || return 1
-    curl -fsSL --max-time 10 "$VERSION_URL" 2>/dev/null | head -n1 | tr -d '[:space:]'
+    # API GitHub: risposta non bloccata a lungo dalla cache CDN della branch.
+    # L'header raw restituisce il contenuto del file, non il JSON.
+    curl -fsSL --max-time 10 -H "Accept: application/vnd.github.raw" \
+        "$VERSION_URL" 2>/dev/null | head -n1 | tr -d '[:space:]'
 }
 
 version_newer() {

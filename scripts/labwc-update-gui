@@ -240,7 +240,16 @@ class UpdateWindow:
         self.toggle_busy = False
         self.upgrade_checking = False
         self.window = Gtk.Window(title="Aggiornamenti labwc-q4os")
-        self.window.set_default_size(680, 560)
+        screen = Gdk.Screen.get_default()
+        if screen is not None:
+            mon = max(0, screen.get_primary_monitor())
+            geo = screen.get_monitor_workarea(mon)
+            self.window.set_default_size(
+                min(680, max(360, geo.width - 24)),
+                min(560, max(320, geo.height - 24)),
+            )
+        else:
+            self.window.set_default_size(680, 560)
         self.window.set_border_width(16)
         self.window.set_position(Gtk.WindowPosition.CENTER)
         self.window.set_icon_name("software-update-available")
@@ -250,7 +259,10 @@ class UpdateWindow:
         )
 
         outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        self.window.add(outer)
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll.add(outer)
+        self.window.add(scroll)
 
         title = Gtk.Label(label="Aggiornamenti labwc-q4os", xalign=0)
         title.get_style_context().add_class("title")

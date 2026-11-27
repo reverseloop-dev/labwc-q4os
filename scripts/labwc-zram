@@ -556,9 +556,18 @@ def run_gui() -> int:
                 Gtk.StyleContext.add_provider_for_screen(
                     screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
                 )
+                mon = max(0, screen.get_primary_monitor())
+                geo = screen.get_monitor_workarea(mon)
+                self.set_default_size(
+                    min(840, max(360, geo.width - 24)),
+                    min(620, max(320, geo.height - 24)),
+                )
 
             outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-            self.add(outer)
+            scroll = Gtk.ScrolledWindow()
+            scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+            scroll.add(outer)
+            self.add(scroll)
 
             header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
             titles = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)

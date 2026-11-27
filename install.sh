@@ -2010,11 +2010,33 @@ do
     install -m 0755 "$REPO_DIR/scripts/$helper" "$BIN/$helper"
 done
 
-# 1.22.18: rimosso il tool interno di scala schermo (non compatibile con
-# labwc/Wayland). Pulisce installazioni precedenti.
+# Scala dello schermo: port Rust del tool Q4OS, ricompilato sul target.
+# Nessuna dipendenza esterna oltre a rustc e a GTK3, gia' presenti.
+SCALER_SRC="$REPO_DIR/tools/labwc-screen-scaler.rs"
+if [ -f "$SCALER_SRC" ]; then
+    command -v rustc >/dev/null 2>&1 || install_packages rustc
+    if command -v rustc >/dev/null 2>&1; then
+        log "Compilazione labwc-screen-scaler (Rust)..."
+        if rustc --edition 2021 -O "$SCALER_SRC" -o "$BIN/labwc-screen-scaler.tmp" \
+            -C link-arg=-l:libgtk-3.so.0 \
+            -C link-arg=-l:libcairo.so.2 \
+            -C link-arg=-l:libgobject-2.0.so.0 \
+            -C link-arg=-l:libglib-2.0.so.0; then
+            install -m 0755 "$BIN/labwc-screen-scaler.tmp" "$BIN/labwc-screen-scaler"
+        else
+            warn "Compilazione di labwc-screen-scaler fallita."
+        fi
+        rm -f "$BIN/labwc-screen-scaler.tmp"
+    else
+        warn "rustc non disponibile: labwc-screen-scaler non installato."
+    fi
+fi
+
+# 1.22.18: rimosso il vecchio tool di scala schermo (non compatibile con
+# labwc/Wayland). Pulisce installazioni precedenti; screen-scale.conf viene
+# ora usato dal nuovo labwc-screen-scaler.
 rm -f "$BIN/labwc-screen-scaling" \
-      "$APPDATA/labwc-screen-scaling.desktop" \
-      "$CONFIG/labwc/screen-scale.conf" 2>/dev/null || true
+      "$APPDATA/labwc-screen-scaling.desktop" 2>/dev/null || true
 
 # Migrazione: rimuove il vecchio YouTube leggero e gtk-pipe-viewer.
 rm -f "$BIN/labwc-youtube" "$APPDATA/labwc-youtube.desktop"
@@ -2189,6 +2211,17 @@ Icon=preferences-desktop
 Terminal=false
 Categories=Settings;
 Keywords=labwc;preferenze;tema;tastiera;desktop;
+EOF
+cat > "$APPDATA/labwc-screen-scaler.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Scala dimensioni dello schermo
+Comment=DPI e fattore di scala per labwc (port del tool Q4OS)
+Exec=$HOME/.local/bin/labwc-screen-scaler
+Icon=preferences-desktop-display
+Terminal=false
+Categories=Settings;Utility;
+Keywords=labwc;schermo;scala;dpi;hidpi;
 EOF
 cat > "$APPDATA/labwc-app-manager.desktop" <<EOF
 [Desktop Entry]

@@ -262,13 +262,25 @@ def gui() -> int:
     state = read_login()
 
     window = Gtk.Window(title="Labwc Q4OS — schermata di login")
-    window.set_default_size(880, 540)
+    screen = Gdk.Screen.get_default()
+    if screen is not None:
+        mon = max(0, screen.get_primary_monitor())
+        geo = screen.get_monitor_workarea(mon)
+        window.set_default_size(
+            min(880, max(360, geo.width - 24)),
+            min(540, max(320, geo.height - 24)),
+        )
+    else:
+        window.set_default_size(880, 540)
     window.set_border_width(16)
     window.set_position(Gtk.WindowPosition.CENTER)
     window.set_icon_name("preferences-desktop-theme")
 
     outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-    window.add(outer)
+    scroll = Gtk.ScrolledWindow()
+    scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+    scroll.add(outer)
+    window.add(scroll)
 
     title = Gtk.Label(label="Schermata di login", xalign=0)
     title.get_style_context().add_class("title")

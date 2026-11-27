@@ -562,6 +562,7 @@ def build_menu(apps: list[App], favorites: list[tuple[str, str, str]]) -> str:
     ]
 
     screen_entries: list[tuple[str, str]] = [
+        ("Scala dimensioni dello schermo", item("Scala dimensioni dello schermo", helper("labwc-screen-scaler"))),
         ("Cattura schermo (area)", item("Cattura schermo (area)", helper("labwc-screenshot", "region"))),
         ("Cattura schermo (intero)", item("Cattura schermo (intero)", helper("labwc-screenshot", "full"))),
     ]

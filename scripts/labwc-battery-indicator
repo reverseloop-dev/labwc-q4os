@@ -99,9 +99,10 @@ def read_battery(root=None):
 
 
 def load_config(path: Path):
-    """Legge posizione e switch percentuale, con default sicuri."""
+    """Legge posizione e switch, con default sicuri."""
     position = DEFAULT_POSITION
     show_percent = True
+    show_indicator = True
     try:
         for raw in path.read_text(encoding="utf-8").splitlines():
             line = raw.strip()
@@ -114,9 +115,11 @@ def load_config(path: Path):
                 position = value
             elif key == "show_percent":
                 show_percent = value not in ("0", "no", "false")
+            elif key == "show_indicator":
+                show_indicator = value not in ("0", "no", "false")
     except OSError:
         pass
-    return position, show_percent
+    return position, show_percent, show_indicator
 
 
 def hex_rgb(value: str):
@@ -185,7 +188,7 @@ class Indicator:
         if not GtkLayerShell.is_supported():
             raise RuntimeError("il compositor non supporta wlr-layer-shell")
         self.config_path = config_path
-        self.position, self.show_percent = load_config(config_path)
+        self.position, self.show_percent, self.show_indicator = load_config(config_path)
         self.battery = read_battery()
         self.colors = theme_colors()
         self._config_mtime = self._mtime(config_path)
@@ -226,7 +229,10 @@ class Indicator:
         if monitor is not None:
             GtkLayerShell.set_monitor(self.win, monitor)
         self._apply_anchors()
-        self.win.show_all()
+        if self.show_indicator:
+            self.win.show_all()
+        else:
+            self.win.hide()
         GLib.timeout_add_seconds(2, self.on_tick)
 
     @staticmethod
@@ -254,10 +260,20 @@ class Indicator:
             shell.set_margin(self.win, shell.Edge.RIGHT, MARGIN)
 
     def apply_config(self) -> None:
-        position, show_percent = load_config(self.config_path)
-        changed = position != self.position or show_percent != self.show_percent
+        position, show_percent, show_indicator = load_config(self.config_path)
+        changed = (
+            position != self.position
+            or show_percent != self.show_percent
+            or show_indicator != self.show_indicator
+        )
         self.position = position
         self.show_percent = show_percent
+        if show_indicator != self.show_indicator:
+            self.show_indicator = show_indicator
+            if show_indicator:
+                self.win.show_all()
+            else:
+                self.win.hide()
         if changed:
             self.area.set_size_request(self._width(), HEIGHT)
             self.win.resize(self._width(), HEIGHT)
@@ -401,9 +417,11 @@ def self_test() -> int:
 
         conf = Path(tmp) / "battery.conf"
         conf.write_text("position=right\nshow_percent=0\n", encoding="utf-8")
-        assert load_config(conf) == ("right", False), "config valida"
+        assert load_config(conf) == ("right", False, True), "config valida"
         conf.write_text("position=strano\nshow_percent=1\n", encoding="utf-8")
-        assert load_config(conf) == ("left", True), "config non valida"
+        assert load_config(conf) == ("left", True, True), "config non valida"
+        conf.write_text("position=left\nshow_indicator=0\n", encoding="utf-8")
+        assert load_config(conf) == ("left", True, False), "indicatore nascosto"
         assert window_width(True) > window_width(False), "larghezza percentuale"
 
         colors = theme_colors()
@@ -447,8 +465,11 @@ def main(argv=None) -> int:
     if args.self_test:
         return self_test()
     if args.print_config:
-        position, show_percent = load_config(args.config)
-        print(f"position={position} show_percent={1 if show_percent else 0}")
+        position, show_percent, show_indicator = load_config(args.config)
+        print(
+            f"position={position} show_percent={1 if show_percent else 0} "
+            f"show_indicator={1 if show_indicator else 0}"
+        )
         return 0
     if args.detect:
         battery = read_battery()
