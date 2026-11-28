@@ -443,7 +443,7 @@ for f in install.sh bootstrap.sh scripts/labwc-theme-apply scripts/labwc-theme-s
          scripts/labwc-update-popup scripts/labwc-update-run scripts/labwc-update-toggle \
          scripts/labwc-update-gui scripts/labwc-preferences \
          scripts/labwc-login-theme scripts/labwc-login-theme-apply scripts/labwc-session-launch \
-         scripts/labwc-fuzzel-apps scripts/labwc-minimized scripts/labwc-install-wizard scripts/labwc-cage scripts/labwc-freetube scripts/labwc-freetube-cage scripts/freetube-close-overlay scripts/labwc-cage-help scripts/labwc-return \
+         scripts/labwc-fuzzel-apps scripts/labwc-minimized scripts/labwc-cage scripts/labwc-freetube scripts/labwc-freetube-cage scripts/freetube-close-overlay scripts/labwc-cage-help scripts/labwc-return \
          scripts/labwc-desktop scripts/labwc-desktop-state scripts/labwc-desktop-status scripts/labwc-desktop-menu \
          scripts/labwc-power-menu scripts/labwc-sysinfo \
          scripts/labwc-battery-indicator \

@@ -13,6 +13,8 @@ Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
   risultavano sfocati e fuori zona. `install.sh` passa ora larghezza e altezza.
 - Documentazione aggiornata: README, `help.txt` e commenti nei quattro
   `Main.qml`.
+- `scripts/validate.sh`: rimosso `labwc-install-wizard` duplicato nella lista
+  dei permessi eseguibili.
 
 ## [1.27.3]
 
