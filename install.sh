@@ -2134,30 +2134,15 @@ PY
 }
 
 configure_bluetooth_policy() {
-    # Bluetooth spento di default, senza perdere la scelta dell'utente: la
-    # scelta vive in /var/lib/labwc-q4os/bluetooth e una regola udev la
-    # riapplica quando l'adattatore compare (anche tardi al boot). Cosi' non
-    # dipendiamo solo da systemd-rfkill, che puo' non vedere un adattatore
-    # enumerato dopo l'avvio.
+    # La scelta vive in /var/lib/labwc-q4os/bluetooth e viene riapplicata da
+    # regola udev + servizio di boot (dopo systemd-rfkill e bluetooth.service).
+    # Helper, regola e unit si installano SEMPRE, anche senza adattatore ora:
+    # un dongle USB puo' comparire dopo, o su un'altra macchina.
     local helper=/usr/local/libexec/labwc-q4os/bluetooth-state
     local state_file=/var/lib/labwc-q4os/bluetooth
     local rule=/etc/udev/rules.d/70-labwc-q4os-bluetooth.rules
     local unit=/etc/systemd/system/labwc-q4os-bluetooth.service
     local migrated="" saved=""
-    if [ ! -d /sys/class/bluetooth ] ||
-        [ -z "$(ls -A /sys/class/bluetooth 2>/dev/null || true)" ]; then
-        info "Bluetooth: nessun adattatore rilevato, stato invariato."
-        return 0
-    fi
-    if ! command -v rfkill >/dev/null 2>&1; then
-        warn "Bluetooth: rfkill non disponibile, stato invariato."
-        return 0
-    fi
-    sudo systemctl unmask bluetooth.service systemd-rfkill.service systemd-rfkill.socket >/dev/null 2>&1 || true
-    # La persistenza di systemd-rfkill resta attiva come rete di sicurezza.
-    sudo systemctl enable systemd-rfkill.socket >/dev/null 2>&1 ||
-        systemctl is-active --quiet systemd-rfkill.socket ||
-        warn "Bluetooth: systemd-rfkill.socket non attivo."
     sudo install -d -m 0755 /usr/local/libexec/labwc-q4os
     sudo install -m 0755 "$REPO_DIR/scripts/bluetooth-state" "$helper"
     sudo install -d -m 0755 /etc/udev/rules.d
@@ -2165,8 +2150,6 @@ configure_bluetooth_policy() {
         'ACTION=="add", SUBSYSTEM=="rfkill", ATTR{type}=="2", RUN+="/usr/local/libexec/labwc-q4os/bluetooth-state apply"' |
         sudo tee "$rule" >/dev/null
     sudo udevadm control --reload-rules >/dev/null 2>&1 || true
-    # Servizio di boot: passa DOPO systemd-rfkill e bluetooth.service, cosi'
-    # nessuno dei due puo' riaccendere l'adattatore dopo la scelta dell'utente.
     printf '%s\n' \
         '[Unit]' \
         'Description=Applica la scelta Bluetooth salvata da labwc-q4os' \
@@ -2183,11 +2166,26 @@ configure_bluetooth_policy() {
     sudo systemctl daemon-reload >/dev/null 2>&1 || true
     sudo systemctl enable labwc-q4os-bluetooth.service >/dev/null 2>&1 ||
         warn "Bluetooth: servizio di boot non abilitato."
+    if [ ! -d /sys/class/bluetooth ] ||
+        [ -z "$(ls -A /sys/class/bluetooth 2>/dev/null || true)" ]; then
+        if ! sudo test -s "$state_file"; then
+            sudo "$helper" set off >/dev/null 2>&1 || true
+        fi
+        info "Bluetooth: nessun adattatore ora; scelta salvata per quando comparira'."
+        return 0
+    fi
+    if ! command -v rfkill >/dev/null 2>&1; then
+        warn "Bluetooth: rfkill non disponibile, scelta salvata ma non applicata."
+        return 0
+    fi
+    sudo systemctl unmask bluetooth.service systemd-rfkill.service systemd-rfkill.socket >/dev/null 2>&1 || true
+    sudo systemctl enable systemd-rfkill.socket >/dev/null 2>&1 ||
+        systemctl is-active --quiet systemd-rfkill.socket ||
+        warn "Bluetooth: systemd-rfkill.socket non attivo."
     if sudo test -s "$state_file"; then
         ok "Bluetooth: scelta utente salvata ($(sudo cat "$state_file")), resta anche al riavvio."
         return 0
     fi
-    # Migrazione: se systemd-rfkill aveva gia' uno stato, rispettalo.
     saved="$(sudo sh -c 'cat /var/lib/systemd/rfkill/*bluetooth* 2>/dev/null' |
         awk -F: '{print $NF}' | tr -d '[:space:]' | tail -n1)"
     case "$saved" in

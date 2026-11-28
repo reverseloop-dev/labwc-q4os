@@ -33,7 +33,17 @@
       host = document.createElement("div");
       host.id = "lbqc-ext-host";
       host.setAttribute("data-lbqc", "battery");
+      // Top layer: sopra video fullscreen e UI della pagina.
+      host.setAttribute("popover", "manual");
+      host.style.cssText = "position:fixed;inset:auto;left:0;bottom:0;width:0;height:0;" +
+        "margin:0;padding:0;border:0;background:transparent;overflow:visible;";
       document.documentElement.appendChild(host);
+      try { host.showPopover(); } catch (e) { /* browser senza popover */ }
+      try {
+        document.addEventListener("fullscreenchange", () => {
+          try { host.hidePopover(); host.showPopover(); } catch (e) { /* noop */ }
+        });
+      } catch (e) { /* noop */ }
     }
     let root = host.shadowRoot;
     if (!root) { root = host.attachShadow({ mode: "open" }); }

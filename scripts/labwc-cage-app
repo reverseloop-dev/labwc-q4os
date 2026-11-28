@@ -59,11 +59,18 @@ for arg in "${child_command[@]:1}"; do
     esac
 done
 
-# Addon batteria (Firefox/Chromium) installato dall'installer: in Chromium si
-# carica l'estensione non pacchettizzata; per Firefox e' un XPI di sistema.
-if [ "$is_chromium" -eq 1 ]; then
+# Addon batteria (Firefox/Chromium) installato dall'installer: se c'e', il HUD
+# arriva dall'estensione e non serve ne' il DevTools ne' la sessione BiDi.
+battery_addon=0
+if [ "$app" = "firefox" ] || [ "$app" = "firefox-esr" ]; then
+    for f in /usr/lib/firefox-esr/browser/extensions/labwc-q4os-battery@reverseloop.dev.xpi \
+             /usr/lib/firefox/browser/extensions/labwc-q4os-battery@reverseloop.dev.xpi; do
+        [ -s "$f" ] && battery_addon=1
+    done
+elif [ "$is_chromium" -eq 1 ]; then
     battery_ext="${LABWC_CAGE_BATTERY_EXT:-/usr/share/labwc-q4os/battery-hud/chromium}"
-    if [ -f "$battery_ext/manifest.json" ]; then
+    [ -f "$battery_ext/manifest.json" ] && battery_addon=1
+    if [ "$battery_addon" -eq 1 ]; then
         child_command+=("--load-extension=$battery_ext")
     fi
 fi
@@ -78,7 +85,9 @@ sock.close()
 PY
 }
 
-if [ "$is_chromium" -eq 1 ]; then
+if [ "$battery_addon" -eq 1 ]; then
+    : # HUD fornito dall'addon: niente porte di debug ne' sessione BiDi.
+elif [ "$is_chromium" -eq 1 ]; then
     if [ "$has_debug_port" -eq 0 ]; then
         port="$(free_port)"
         if [ -n "${port:-}" ]; then

@@ -2,6 +2,22 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.28.1]
+
+- **HUD in top layer**: addon e HUD iniettato vivono in un elemento `popover`
+  (`showPopover`), quindi restano sopra la UI di YouTube e sopra il video in
+  fullscreen; su `fullscreenchange` il popover viene rialzato.
+- **Cage + addon**: quando l'addon batteria è installato, `labwc-cage-app` non
+  aggiunge più `--remote-debugging-port` e non avvia la sessione BiDi/DevTools.
+  Dovrebbe anche evitare il blocco di riproduzione YouTube dopo ~1 minuto
+  legato alla modalità automazione.
+- **Bluetooth**: helper, regola udev e `labwc-q4os-bluetooth.service` vengono
+  installati **sempre**, anche se al momento dell'installazione non c'è un
+  adattatore; lo stato predefinito `off` viene salvato comunque, così un dongle
+  aggiunto dopo viene gestito al primo avvio.
+- Verificato su Firefox ESR 153 headless: addon attivo, HUD presente e
+  popover aperto su `www.youtube.com`, native host 96%.
+
 ## [1.28.0]
 
 - **Addon batteria per Firefox e Chromium** (`addons/battery-hud`): HUD dentro
