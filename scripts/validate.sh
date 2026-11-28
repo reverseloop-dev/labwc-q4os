@@ -28,7 +28,7 @@ done < <(find . -path ./.git -prune -o -type f \( -name '*.sh' -o -path './scrip
 # --- 2. sintassi Python ------------------------------------------------------
 check "sintassi Python"
 PYCACHE_DIR="$(mktemp -d)"
-if PYTHONPYCACHEPREFIX="$PYCACHE_DIR" python3 -m py_compile scripts/generate-wallpapers.py scripts/generate-login-logo.py scripts/render-menu.py scripts/labwc-zram scripts/labwc-bluetooth scripts/labwc-cage-hud scripts/labwc-app-manager scripts/labwc-update-gui scripts/labwc-login-theme scripts/labwc-fuzzel-apps scripts/labwc-preferences scripts/labwc-install-wizard scripts/freetube-close-overlay scripts/labwc-battery-indicator scripts/generate-icons.py; then
+if PYTHONPYCACHEPREFIX="$PYCACHE_DIR" python3 -m py_compile scripts/generate-wallpapers.py scripts/generate-login-logo.py scripts/render-menu.py scripts/labwc-zram scripts/labwc-bluetooth scripts/labwc-cage-hud scripts/labwc-app-manager scripts/labwc-update-gui scripts/labwc-login-theme scripts/labwc-fuzzel-apps scripts/labwc-preferences scripts/labwc-install-wizard scripts/freetube-close-overlay scripts/labwc-battery-indicator scripts/generate-icons.py scripts/battery-native-host; then
     pass "Python: sfondi, logo login, menu, zram, bluetooth, HUD batteria, app manager, update GUI, login, fuzzel, preferences, overlay FreeTube, batteria, icone"
 else
     bad "py_compile"
@@ -81,6 +81,18 @@ else
     bad "bluetooth-state: apply"
 fi
 rm -rf "$BT_TMP"
+
+# --- 2d. addon batteria (manifest validi + host eseguibile) ------------------
+check "addon batteria"
+if python3 -m json.tool addons/battery-hud/manifest.firefox.json >/dev/null 2>&1 &&
+    python3 -m json.tool addons/battery-hud/manifest.chromium.json >/dev/null 2>&1 &&
+    [ -s addons/battery-hud/content.js ] &&
+    [ -s addons/battery-hud/background.js ] &&
+    [ -x scripts/battery-native-host ]; then
+    pass "addon batteria: manifest, content, background, native host"
+else
+    bad "addon batteria: file o manifest mancanti"
+fi
 if python3 scripts/labwc-zram --status >/dev/null 2>&1; then
     pass "labwc-zram --status"
 else
@@ -500,7 +512,7 @@ for f in install.sh bootstrap.sh scripts/labwc-theme-apply scripts/labwc-theme-s
          scripts/labwc-touchscreen \
          scripts/labwc-touch-tap \
          scripts/labwc-session-start scripts/validate.sh scripts/generate-wallpapers.py \
-         scripts/render-menu.py scripts/generate-icons.py; do
+         scripts/render-menu.py scripts/generate-icons.py scripts/battery-native-host; do
     if [ -x "$f" ]; then pass "$f"; else bad "$f non eseguibile"; fi
 done
 

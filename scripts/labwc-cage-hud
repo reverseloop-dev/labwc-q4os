@@ -33,6 +33,9 @@ import urllib.request
 
 HUD_JS = r"""
 (function () {
+  // Se l'addon labwc-q4os battery monta gia' il suo HUD, non duplicarlo.
+  if (document.documentElement &&
+      document.documentElement.hasAttribute("data-lbqc-ext")) { return "extension"; }
   if (window.__lbqcHudInstalled) { return "already"; }
   window.__lbqcHudInstalled = true;
 

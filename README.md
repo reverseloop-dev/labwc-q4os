@@ -421,6 +421,20 @@ un'animazione e lascia a vista una **linguetta** sottile; un clic sulla
 linguetta lo riapre. Per tastiera **Ctrl+Alt+B** (e `Ctrl+.` come alias); dove
 Alt+lettera apre i menu (Firefox) vale **Ctrl+Shift+.** (Ctrl+>).
 
+**Addon batteria (Firefox e Chromium).** L'installer aggiunge anche un addon
+(`addons/battery-hud`) che disegna lo stesso HUD **dentro ogni pagina**,
+indipendente dal DevTools: mostra percentuale, stato di carica e **durata
+stimata** (`≈ 3h 20m`, oppure `≈ 1h 10m al pieno` in carica), calcolata dal
+native host `battery-native-host` leggendo `/sys/class/power_supply`.
+- Firefox: XPI di distribuzione in `/usr/lib/firefox-esr/browser/extensions`,
+  con pref di sistema che consente l'addon non firmato (ESR).
+- Chromium/Chrome: estensione in `/usr/share/labwc-q4os/battery-hud/chromium`,
+  caricata da `labwc-cage-app` con `--load-extension`.
+- Native messaging dichiarato in `/usr/lib/mozilla/native-messaging-hosts` e
+  `/etc/chromium|/etc/opt/chrome/native-messaging-hosts`.
+Se l'addon è attivo, il HUD iniettato da `labwc-cage-hud` non viene duplicato
+(marcatore `data-lbqc-ext`). Stesso clic/linguetta/Ctrl+Alt+B.
+
 **Mouse in Cage.** Cage su DRM (accesso diretto alla scheda video) legge
 direttamente mouse e tastiera: serve il backend `libinput` accanto a `drm` (`WLR_BACKENDS=drm,libinput`) e l’utente nel
 gruppo `input`. L’installer aggiunge il gruppo quando installa Cage e usa il

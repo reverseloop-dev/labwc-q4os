@@ -2,6 +2,21 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.28.0]
+
+- **Addon batteria per Firefox e Chromium** (`addons/battery-hud`): HUD dentro
+  la pagina con percentuale, stato di carica e **durata stimata**
+  (`≈ 3h 20m`, `≈ 1h al pieno`), letto dal native host
+  `scripts/battery-native-host` su `/sys/class/power_supply`.
+  Firefox: XPI di distribuzione + pref di sistema per l'addon non firmato (ESR).
+  Chromium/Chrome: estensione caricata con `--load-extension` da `labwc-cage-app`.
+  Native messaging in `/usr/lib/mozilla/native-messaging-hosts` e
+  `/etc/chromium|/etc/opt/chrome/native-messaging-hosts`.
+- Se l'addon è attivo, `labwc-cage-hud` non duplica il HUD (marcatore
+  `data-lbqc-ext`); clic, linguetta e Ctrl+Alt+B identici.
+- `install.sh`: nuova `install_battery_addons`; `validate.sh` controlla manifest,
+  script e host; documentazione e `help.txt` aggiornati.
+
 ## [1.27.8]
 
 - **Fix: il HUD spariva aprendo YouTube (o navigando) in Firefox Cage**, e non

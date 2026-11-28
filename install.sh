@@ -2063,6 +2063,76 @@ configure_grub_timeout() {
     fi
 }
 
+install_battery_addons() {
+    # Addon batteria per Firefox e Chromium in Cage: HUD nella pagina con
+    # percentuale, stato e durata stimata, dato letto dal native host.
+    local src="$REPO_DIR/addons/battery-hud"
+    local share=/usr/share/labwc-q4os/battery-hud
+    local host=/usr/local/libexec/labwc-q4os/battery-host
+    local ff_nm=/usr/lib/mozilla/native-messaging-hosts
+    local chrome_id xpi tmpdir dir
+    [ -f "$src/content.js" ] || return 0
+    log "Installazione addon batteria (Firefox/Chromium)..."
+    sudo install -d -m 0755 "$share/firefox" "$share/chromium"
+    sudo install -m 0644 "$src/content.js" "$src/background.js" "$share/firefox/"
+    sudo install -m 0644 "$src/content.js" "$src/background.js" "$share/chromium/"
+    sudo install -m 0644 "$src/manifest.firefox.json" "$share/firefox/manifest.json"
+    sudo install -m 0644 "$src/manifest.chromium.json" "$share/chromium/manifest.json"
+    sudo install -d -m 0755 /usr/local/libexec/labwc-q4os
+    sudo install -m 0755 "$REPO_DIR/scripts/battery-native-host" "$host"
+    # Native messaging: Firefox.
+    sudo install -d -m 0755 "$ff_nm"
+    printf '%s\n' \
+        '{"name":"labwc_q4os_battery","description":"Batteria labwc-q4os",'\
+        '"path":"'"$host"'","type":"stdio",'\
+        '"allowed_extensions":["labwc-q4os-battery@reverseloop.dev"]}' |
+        sudo tee "$ff_nm/labwc_q4os_battery.json" >/dev/null
+    # Native messaging: Chromium/Chrome. L'ID di un'estensione caricata da
+    # cartella deriva dal percorso assoluto.
+    chrome_id="$(python3 -c 'import hashlib,sys; h=hashlib.sha256(sys.argv[1].encode()).hexdigest()[:32]; print("".join(chr(97+int(c,16)) for c in h))' "$share/chromium" 2>/dev/null || true)"
+    if [ -n "$chrome_id" ]; then
+        for dir in /etc/chromium/native-messaging-hosts /etc/opt/chrome/native-messaging-hosts; do
+            sudo install -d -m 0755 "$dir"
+            printf '%s\n' \
+                '{"name":"labwc_q4os_battery","description":"Batteria labwc-q4os",'\
+                '"path":"'"$host"'","type":"stdio",'\
+                '"allowed_origins":["chrome-extension://'"$chrome_id"'/"]}' |
+                sudo tee "$dir/labwc_q4os_battery.json" >/dev/null
+        done
+    fi
+    # XPI di distribuzione per Firefox (ESR e release): niente firma AMO.
+    tmpdir="$(mktemp -d)"
+    xpi="$tmpdir/labwc-q4os-battery@reverseloop.dev.xpi"
+    ( cd "$share/firefox" && python3 - "$xpi" <<'PY'
+import os, sys, zipfile
+out = sys.argv[1]
+with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zf:
+    for name in ("manifest.json", "content.js", "background.js"):
+        zf.write(name, name)
+PY
+    ) || warn "Addon Firefox: creazione XPI non riuscita."
+    if [ -s "$xpi" ]; then
+        for dir in /usr/lib/firefox-esr/browser/extensions /usr/lib/firefox/browser/extensions; do
+            if [ -d "$(dirname "$dir")" ]; then
+                sudo install -d -m 0755 "$dir"
+                sudo install -m 0644 "$xpi" "$dir/"
+            fi
+        done
+        ok "Addon Firefox installato (distribuzione)."
+    fi
+    rm -rf "$tmpdir"
+    # Ubuntu/Debian: prefs di sistema, cosi' l'addon non firmato si carica.
+    for dir in /etc/firefox-esr/syspref /etc/firefox/syspref; do
+        if [ -d "$dir" ]; then
+            printf '%s\n' \
+                'pref("xpinstall.signatures.required", false);' \
+                'pref("extensions.autoDisableScopes", 0);' |
+                sudo tee "$dir/labwc-q4os-battery.js" >/dev/null
+        fi
+    done
+    ok "Addon Chromium pronto in $share/chromium (ID $chrome_id)."
+}
+
 configure_bluetooth_policy() {
     # Bluetooth spento di default, senza perdere la scelta dell'utente: la
     # scelta vive in /var/lib/labwc-q4os/bluetooth e una regola udev la
@@ -2386,6 +2456,7 @@ configure_keyboard
 configure_touchscreen
 configure_grub_timeout
 configure_bluetooth_policy
+install_battery_addons
 
 # Marker della shell scelta: letto da labwc-session-start, labwc-theme-apply
 # e labwc-doctor. Senza marker il comportamento resta quello classico (waybar).

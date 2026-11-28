@@ -59,6 +59,15 @@ for arg in "${child_command[@]:1}"; do
     esac
 done
 
+# Addon batteria (Firefox/Chromium) installato dall'installer: in Chromium si
+# carica l'estensione non pacchettizzata; per Firefox e' un XPI di sistema.
+if [ "$is_chromium" -eq 1 ]; then
+    battery_ext="${LABWC_CAGE_BATTERY_EXT:-/usr/share/labwc-q4os/battery-hud/chromium}"
+    if [ -f "$battery_ext/manifest.json" ]; then
+        child_command+=("--load-extension=$battery_ext")
+    fi
+fi
+
 free_port() {
     python3 - <<'PY' 2>/dev/null
 import socket
