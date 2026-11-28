@@ -3,17 +3,29 @@
   "name": "labwc-q4os Battery HUD",
   "version": "1.0.0",
   "description": "Batteria, carica e durata stimata nelle pagine di Chromium in Cage.",
-  "permissions": ["nativeMessaging"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": [
+    "nativeMessaging",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_start",
       "all_frames": false
     }
-  ]
+  ],
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  }
 }

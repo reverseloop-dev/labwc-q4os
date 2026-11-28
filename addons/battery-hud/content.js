@@ -14,6 +14,15 @@
   const api = (typeof browser !== "undefined") ? browser : chrome;
   const HINT = "clicca o Ctrl+Alt+B per nascondere";
   let last = null;
+  let hidden = false;
+
+  function applyHidden() {
+    const host = build();
+    if (!host) { return; }
+    const root = host.shadowRoot;
+    root.getElementById("lbqc-ext-hud").classList.toggle("lbqc-hidden", hidden);
+    root.getElementById("lbqc-ext-tab").classList.toggle("lbqc-visible", hidden);
+  }
   let timer = null;
 
   function fmtMinutes(min) {
@@ -106,22 +115,17 @@
     return host;
   }
 
-  function setHidden(hidden) {
-    const host = build();
-    if (!host) { return; }
-    const root = host.shadowRoot;
-    const box = root.getElementById("lbqc-ext-hud");
-    const tab = root.getElementById("lbqc-ext-tab");
-    box.classList.toggle("lbqc-hidden", hidden);
-    tab.classList.toggle("lbqc-visible", hidden);
+  function setHidden(value) {
+    hidden = !!value;
+    applyHidden();
+    try { api.storage.local.set({ lbqcHudHidden: hidden }); } catch (e) { /* noop */ }
     if (!hidden) { refresh(); }
   }
 
   function toggle() {
     const host = build();
     if (!host) { return; }
-    const box = host.shadowRoot.getElementById("lbqc-ext-hud");
-    setHidden(!box.classList.contains("lbqc-hidden"));
+    setHidden(!hidden);
   }
 
   function render(data) {
@@ -196,10 +200,25 @@
 
   function start() {
     build();
+    applyHidden();
+    try {
+      api.storage.local.get({ lbqcHudHidden: false }, (stored) => {
+        hidden = !!(stored && stored.lbqcHudHidden);
+        applyHidden();
+      });
+    } catch (e) { /* storage non disponibile */ }
     refresh();
     if (timer) { clearInterval(timer); }
     timer = setInterval(refresh, 15000);
   }
+
+  try {
+    api.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local" || !changes || !changes.lbqcHudHidden) { return; }
+      hidden = !!changes.lbqcHudHidden.newValue;
+      applyHidden();
+    });
+  } catch (e) { /* storage.onChanged non disponibile */ }
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", start, { once: true });

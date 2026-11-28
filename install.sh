@@ -951,7 +951,8 @@ if [ -z "$WANT_BROWSER" ]; then
     if [ "$QUICK_UPDATE" = "1" ]; then
         WANT_BROWSER=none
     elif [ "$ASSUME_YES" -eq 1 ]; then
-        WANT_BROWSER=chromium
+        # Aggiornamento non interattivo: non installare ne' cambiare browser.
+        WANT_BROWSER=none
     else
         default_choice=1
         if [ "$chromium_installed" -eq 0 ] && [ "$firefox_installed" -eq 1 ]; then
@@ -1083,6 +1084,7 @@ CORE_PKGS=(
     qml-module-qtquick-window2
     pkexec
     zram-tools
+    rfkill
     fonts-font-awesome
     fonts-jetbrains-mono
     fonts-inter
@@ -2074,8 +2076,10 @@ install_battery_addons() {
     [ -f "$src/content.js" ] || return 0
     log "Installazione addon batteria (Firefox/Chromium)..."
     sudo install -d -m 0755 "$share/firefox" "$share/chromium"
-    sudo install -m 0644 "$src/content.js" "$src/background.js" "$share/firefox/"
-    sudo install -m 0644 "$src/content.js" "$src/background.js" "$share/chromium/"
+    for name in content.js background.js newtab.js newtab.html; do
+        sudo install -m 0644 "$src/$name" "$share/firefox/$name"
+        sudo install -m 0644 "$src/$name" "$share/chromium/$name"
+    done
     sudo install -m 0644 "$src/manifest.firefox.json" "$share/firefox/manifest.json"
     sudo install -m 0644 "$src/manifest.chromium.json" "$share/chromium/manifest.json"
     sudo install -d -m 0755 /usr/local/libexec/labwc-q4os
@@ -2107,7 +2111,8 @@ install_battery_addons() {
 import os, sys, zipfile
 out = sys.argv[1]
 with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zf:
-    for name in ("manifest.json", "content.js", "background.js"):
+    for name in ("manifest.json", "content.js", "background.js",
+                 "newtab.html", "newtab.js"):
         zf.write(name, name)
 PY
     ) || warn "Addon Firefox: creazione XPI non riuscita."
@@ -2175,6 +2180,9 @@ configure_bluetooth_policy() {
         return 0
     fi
     if ! command -v rfkill >/dev/null 2>&1; then
+        if ! sudo test -s "$state_file"; then
+            sudo "$helper" set off >/dev/null 2>&1 || true
+        fi
         warn "Bluetooth: rfkill non disponibile, scelta salvata ma non applicata."
         return 0
     fi

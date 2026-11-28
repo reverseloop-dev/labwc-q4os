@@ -236,6 +236,11 @@ else
 fi
 
 for cmd in waybar fuzzel terminator foot python3 swaybg mako grim slurp swaylock lxpolkit pkexec; do
+    # Con Noctalia non servono Waybar, Fuzzel e Mako.
+    if [ "$shell_mode" = "noctalia" ] &&
+        { [ "$cmd" = waybar ] || [ "$cmd" = fuzzel ] || [ "$cmd" = mako ]; }; then
+        continue
+    fi
     if have "$cmd"; then
         ok "comando disponibile: $cmd"
     else
@@ -477,7 +482,7 @@ if [ -r /usr/share/wayland-sessions/labwc.desktop ]; then
     ok "sessione Wayland registrata"
     if grep -q '^Exec=/usr/local/libexec/labwc-q4os/labwc-session' /usr/share/wayland-sessions/labwc.desktop; then
         if [ -x /usr/local/libexec/labwc-q4os/labwc-session ]; then
-            if grep -q 'exec labwc -C' /usr/local/libexec/labwc-q4os/labwc-session; then
+            if grep -q 'labwc -C' /usr/local/libexec/labwc-q4os/labwc-session; then
                 ok "sessione Wayland usa il wrapper labwc (-C)"
             else
                 bad "wrapper sessione: manca 'labwc -C' (config directory)"

@@ -75,6 +75,59 @@ elif [ "$is_chromium" -eq 1 ]; then
     fi
 fi
 
+# Firefox: apri direttamente la nuova scheda dell'addon come prima pagina, cosi'
+# il HUD c'e' anche sulla pagina iniziale vuota (about:blank non puo' ospitare
+# content script). L'UUID dell'estensione e' nel profilo.
+if [ "$battery_addon" -eq 1 ] && { [ "$app" = "firefox" ] || [ "$app" = "firefox-esr" ]; }; then
+    has_url=0
+    for arg in "${child_command[@]:1}"; do
+        case "$arg" in
+            http://*|https://*|file://*|about:*|moz-extension://*) has_url=1 ;;
+        esac
+    done
+    if [ "$has_url" -eq 0 ]; then
+        ff_uuid="$(
+            python3 - "$HOME/.mozilla/firefox" <<'PY' 2>/dev/null || true
+import json, os, re, sys
+base = sys.argv[1]
+ini = os.path.join(base, "profiles.ini")
+profile = ""
+try:
+    section = ""
+    for line in open(ini, encoding="utf-8", errors="ignore"):
+        line = line.strip()
+        if line.startswith("["):
+            section = line
+        elif line.startswith("Default=") and section == "[Install4F96D1932A9F858E]":
+            profile = line.split("=", 1)[1]
+    if not profile:
+        for line in open(ini, encoding="utf-8", errors="ignore"):
+            if line.startswith("Default="):
+                profile = line.split("=", 1)[1].strip()
+                break
+except OSError:
+    profile = ""
+prefs = os.path.join(base, profile, "prefs.js") if profile else ""
+try:
+    text = open(prefs, encoding="utf-8", errors="ignore").read()
+except OSError:
+    raise SystemExit(0)
+match = re.search(r'user_pref\("extensions\.webextensions\.uuids",\s*(".*?")\);', text, re.S)
+if not match:
+    raise SystemExit(0)
+try:
+    mapping = json.loads(json.loads(match.group(1)))
+except Exception:
+    raise SystemExit(0)
+print(mapping.get("labwc-q4os-battery@reverseloop.dev", ""))
+PY
+        )"
+        if [ -n "${ff_uuid:-}" ]; then
+            child_command+=("moz-extension://$ff_uuid/newtab.html")
+        fi
+    fi
+fi
+
 free_port() {
     python3 - <<'PY' 2>/dev/null
 import socket

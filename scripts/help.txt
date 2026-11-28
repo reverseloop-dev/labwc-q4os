@@ -419,9 +419,10 @@ CAGE (kiosk) E BATTERIA:  • le app in Cage passano da labwc-cage-app; il HUD b
     linguetta lo riapre (animazione fluida)
   • Ctrl+Alt+B (B = batteria) nasconde/mostra il HUD; dove Alt+lettera apre i
     menu (Firefox) vale Ctrl+Shift+.; Ctrl+. resta alias
-  • addon batteria per Firefox/Chromium: HUD nella pagina con percentuale,
-    stato e durata stimata (native host legge /sys/class/power_supply);
-    se attivo l'addon sostituisce il HUD iniettato, stessi clic e tasti
+  • addon batteria per Firefox/Chromium: HUD nella pagina e nella nuova scheda
+    con percentuale, stato e durata stimata (native host legge
+    /sys/class/power_supply); se lo chiudi resta chiuso anche sulle altre pagine
+  • se l'addon e' attivo sostituisce il HUD iniettato, stessi clic e tasti
   • HUD iniettato via DevTools locale (Chromium/Chrome/Brave/Edge/Vivaldi/Opera,
     FreeTube) o via WebDriver BiDi (Firefox)
   • Cage mostra un solo client e non ha layer-shell: il HUD sta dentro l'app

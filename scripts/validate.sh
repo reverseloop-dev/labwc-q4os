@@ -88,8 +88,10 @@ if python3 -m json.tool addons/battery-hud/manifest.firefox.json >/dev/null 2>&1
     python3 -m json.tool addons/battery-hud/manifest.chromium.json >/dev/null 2>&1 &&
     [ -s addons/battery-hud/content.js ] &&
     [ -s addons/battery-hud/background.js ] &&
+    [ -s addons/battery-hud/newtab.js ] &&
+    [ -s addons/battery-hud/newtab.html ] &&
     [ -x scripts/battery-native-host ]; then
-    pass "addon batteria: manifest, content, background, native host"
+    pass "addon batteria: manifest, content, background, newtab, native host"
 else
     bad "addon batteria: file o manifest mancanti"
 fi

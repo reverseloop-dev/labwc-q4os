@@ -433,7 +433,10 @@ native host `battery-native-host` leggendo `/sys/class/power_supply`.
 - Native messaging dichiarato in `/usr/lib/mozilla/native-messaging-hosts` e
   `/etc/chromium|/etc/opt/chrome/native-messaging-hosts`.
 Se l'addon è attivo, il HUD iniettato da `labwc-cage-hud` non viene duplicato
-(marcatore `data-lbqc-ext`). Stesso clic/linguetta/Ctrl+Alt+B.
+(marcatore `data-lbqc-ext`). Stesso clic/linguetta/Ctrl+Alt+B. Il HUD compare
+anche sulla **nuova scheda** (pagina interna dell'addon) e lo stato "chiuso"
+viene ricordato: se lo nascondi, resta nascosto anche aprendo altre pagine e
+schede.
 
 **Mouse in Cage.** Cage su DRM (accesso diretto alla scheda video) legge
 direttamente mouse e tastiera: serve il backend `libinput` accanto a `drm` (`WLR_BACKENDS=drm,libinput`) e l’utente nel

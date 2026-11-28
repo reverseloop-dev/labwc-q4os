@@ -2,6 +2,24 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.28.2]
+
+- **HUD anche sulla prima pagina**: Firefox Cage apre direttamente la nuova
+  scheda dell'addon (`moz-extension://<uuid>/newtab.html`) quando non c'è un URL;
+  la nuova scheda è una pagina dell'addon con batteria, carica e durata.
+  Chromium la ottiene con `chrome_url_overrides`.
+- **Stato "chiuso" persistente**: se nascondi il HUD resta nascosto anche
+  aprendo altre pagine e schede (`storage.local`, sincronizzato tra tab).
+- **Chromium non viene più installato automaticamente** con `--yes`: la scelta
+  del browser resta dell'utente in fase di installazione. Rimosso anche dal
+  sistema di prova.
+- Native host e addon: XPI aggiornato con `newtab.html`/`newtab.js`, manifest
+  con `storage` e `chrome_url_overrides`.
+- `labwc-doctor`: con shell Noctalia non segnala più Waybar/Fuzzel/Mako come
+  mancanti; accetta il wrapper con `labwc -C` (senza `exec`).
+- Bluetooth: `rfkill` aggiunto ai pacchetti; lo stato `off` viene salvato anche
+  quando `rfkill` o l'adattatore non sono presenti all'installazione.
+
 ## [1.28.1]
 
 - **HUD in top layer**: addon e HUD iniettato vivono in un elemento `popover`
