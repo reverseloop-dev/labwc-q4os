@@ -37,6 +37,8 @@ HUD_JS = r"""
   window.__lbqcHudInstalled = true;
 
   function build() {
+    // Con addPreloadScript il codice gira anche prima che esista <html>.
+    if (!document.documentElement) { return null; }
     var host = document.getElementById("lbqc-hud-host");
     if (!host) {
       host = document.createElement("div");
@@ -125,6 +127,7 @@ HUD_JS = r"""
 
   window.__lbqcHudToggle = function (hidden) {
     var host = build();
+    if (!host) { return; }
     var root = host.shadowRoot;
     var box = root.getElementById("lbqc-hud");
     var tab = root.getElementById("lbqc-tab");
@@ -139,6 +142,7 @@ HUD_JS = r"""
 
   window.__lbqcHudSet = function (data) {
     var host = build();
+    if (!host) { return "pending"; }
     var root = host.shadowRoot;
     var pct = Number(data && data.pct);
     var txt = root.getElementById("lbqc-pct");
@@ -341,9 +345,9 @@ async def worker(hud: Hud, ws_url: str) -> None:
                     })
                 except Exception:
                     installed = False
-                # Attesa interrompibile: SIGTERM non deve aspettare 10 s.
+                # Attesa interrompibile: SIGTERM non deve aspettare.
                 with contextlib.suppress(asyncio.TimeoutError):
-                    await asyncio.wait_for(hud.stop.wait(), timeout=10)
+                    await asyncio.wait_for(hud.stop.wait(), timeout=4)
     except Exception as error:
         log(f"connessione persa: {error}")
         raise
@@ -405,7 +409,7 @@ async def _bidi_hud_loop(hud: Hud, call) -> None:
                 if os.environ.get("LABWC_CAGE_HUD_DEBUG") == "1":
                     log(f"BiDi: contesto {context}: {error}")
         with contextlib.suppress(asyncio.TimeoutError):
-            await asyncio.wait_for(hud.stop.wait(), timeout=5)
+            await asyncio.wait_for(hud.stop.wait(), timeout=3)
 
 
 async def bidi_worker(hud: Hud, port: int) -> None:
@@ -432,6 +436,15 @@ async def bidi_worker(hud: Hud, port: int) -> None:
                     return message.get("result") or {}
 
         await call("session.new", {"capabilities": {}})
+        # Preload: reinstalla il HUD in ogni nuovo documento (YouTube, SPA,
+        # navigazioni complete), cosi' non sparisce cambiando pagina.
+        try:
+            await call("script.addPreloadScript", {
+                "functionDeclaration": "function () {\n" + HUD_JS + "\n}",
+            })
+        except Exception as error:
+            if os.environ.get("LABWC_CAGE_HUD_DEBUG") == "1":
+                log(f"BiDi: preload non disponibile: {error}")
         if os.environ.get("LABWC_CAGE_HUD_DEBUG") == "1":
             log("BiDi: sessione Firefox aperta")
         try:

@@ -2,6 +2,19 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.27.8]
+
+- **Fix: il HUD spariva aprendo YouTube (o navigando) in Firefox Cage**, e non
+  tornava più né col clic né con Ctrl+Alt+B. Ora il HUD viene installato con
+  `script.addPreloadScript` nella sessione WebDriver BiDi: si reinstalla in
+  **ogni nuovo documento**, quindi compare subito anche dopo una navigazione
+  completa o una pagina SPA. Chromium/Electron usano già
+  `Page.addScriptToEvaluateOnNewDocument`; il ciclo di aggiornamento scende a
+  4 s (Chromium) e 3 s (Firefox).
+- `build()` del HUD non fallisce più se viene eseguito prima che esista
+  `<html>` (avvio del documento durante il preload).
+- `validate.sh` invariato nei controlli, test del HUD ancora verdi.
+
 ## [1.27.7]
 
 - **HUD batteria in Cage**: un clic sul riquadro lo ritrae verso sinistra con
