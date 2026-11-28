@@ -407,15 +407,19 @@ Cage e tutte le app rimaste, esattamente come la X di FreeTube: il wrapper di
 sessione termina l’albero di processi e labwc riparte. Non serve più
 `labwc-return` per questo caso. Salva i documenti aperti prima di uscire.
 
-**Batteria in Cage (Ctrl+.).** Le app avviate in Cage — dal menu, dai
+**Batteria in Cage (Ctrl+Alt+B).** Le app avviate in Cage — dal menu, dai
 collegamenti *(cage)* o a mano con `labwc-cage` — passano da `labwc-cage-app`.
 In Cage non esiste layer-shell e c'è un solo client, quindi il HUD viene
 disegnato **dentro l'app** (`labwc-cage-hud`): Chromium, Chrome, Brave, Edge,
 Vivaldi, Opera e FreeTube usano il **DevTools locale** su `127.0.0.1`;
 **Firefox** usa il suo **WebDriver BiDi** (`--remote-debugging-port`).
-Premi **Ctrl+.** (Ctrl e il punto): in basso a sinistra compare un riquadro
-con batteria e percentuale (verde, ambra sotto il 35%, rossa sotto il 15%;
-"in carica" se collegato; "AC" senza batteria). Ctrl+. di nuovo lo nasconde.
+Il riquadro è **visibile all'avvio** in basso a sinistra, con batteria,
+percentuale e la combinazione accanto: `clicca o Ctrl+Alt+B per nascondere`
+(verde, ambra sotto il 35%, rossa sotto il 15%; "in carica" se collegato;
+"AC" senza batteria). Un **clic sul riquadro** lo ritrae verso sinistra con
+un'animazione e lascia a vista una **linguetta** sottile; un clic sulla
+linguetta lo riapre. Per tastiera **Ctrl+Alt+B** (e `Ctrl+.` come alias); dove
+Alt+lettera apre i menu (Firefox) vale **Ctrl+Shift+.** (Ctrl+>).
 
 **Mouse in Cage.** Cage su DRM (accesso diretto alla scheda video) legge
 direttamente mouse e tastiera: serve il backend `libinput` accanto a `drm` (`WLR_BACKENDS=drm,libinput`) e l’utente nel
@@ -556,9 +560,11 @@ servizio resta normale.
 
 Con un adattatore il Bluetooth parte **spento**: l'installer applica un
 soft-block `rfkill` solo se non esiste già una scelta salvata. La scelta vive
-in `/var/lib/labwc-q4os/bluetooth` e una regola udev la riapplica quando
-l'adattatore compare, quindi vale anche se l'adattatore viene enumerato tardi
-al boot; `systemd-rfkill` resta come rete di sicurezza. Se lo accendi
+in `/var/lib/labwc-q4os/bluetooth` e viene riapplicata in tre momenti: dalla
+regola udev quando l'adattatore compare, dal servizio di boot
+`labwc-q4os-bluetooth.service` (dopo `systemd-rfkill` e `bluetooth.service`,
+così nessuno dei due può riaccenderlo) e da `labwc-bluetooth` quando cambi
+scelta. Vale anche se l'adattatore viene enumerato tardi al boot. Se lo accendi
 (menu *TOOL reverseloop > Bluetooth*, `labwc-bluetooth on` o `bluetoothctl`)
 al riavvio resta acceso, e se lo spegni resta spento.
 

@@ -413,8 +413,12 @@ MENU DI AVVIO (GRUB):
     diventa 1 secondo (backup di /etc/default/grub, poi update-grub)
   • flag: --grub-1s / --no-grub-1s
 
-CAGE (kiosk) E BATTERIA:  • le app in Cage passano da labwc-cage-app; Ctrl+. (Ctrl e punto) mostra/nasconde in basso
-    a sinistra un riquadro con batteria e percentuale; Ctrl+. di nuovo lo nasconde
+CAGE (kiosk) E BATTERIA:  • le app in Cage passano da labwc-cage-app; il HUD batteria e' visibile
+    all'avvio in basso a sinistra, con la combinazione accanto
+  • clic sul riquadro: si ritrae a sinistra e resta una linguetta; clic sulla
+    linguetta lo riapre (animazione fluida)
+  • Ctrl+Alt+B (B = batteria) nasconde/mostra il HUD; dove Alt+lettera apre i
+    menu (Firefox) vale Ctrl+Shift+.; Ctrl+. resta alias
   • HUD iniettato via DevTools locale (Chromium/Chrome/Brave/Edge/Vivaldi/Opera,
     FreeTube) o via WebDriver BiDi (Firefox)
   • Cage mostra un solo client e non ha layer-shell: il HUD sta dentro l'app

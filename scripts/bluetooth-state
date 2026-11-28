@@ -3,12 +3,13 @@
 #  bluetooth-state - applica lo stato Bluetooth scelto dall'utente.
 #
 #  La scelta vive in /var/lib/labwc-q4os/bluetooth ("on" / "off") e viene
-#  riapplicata a ogni comparsa dell'adattatore (regola udev): cosi' lo stato
-#  resta quello scelto anche quando l'adattatore viene enumerato tardi al
-#  boot, dove il solo systemd-rfkill non basta.
+#  riapplicata in tre momenti: dalla regola udev quando l'adattatore compare,
+#  dal servizio di boot labwc-q4os-bluetooth.service (dopo systemd-rfkill e
+#  bluetooth.service), e da labwc-bluetooth quando l'utente cambia scelta.
 #
 #  Uso:
 #    bluetooth-state apply       applica lo stato salvato (root o udev)
+#    bluetooth-state wait        come apply, ritenta 10 s (servizio di boot)
 #    bluetooth-state show        stampa "on" / "off" (vuoto se mai scelto)
 #    bluetooth-state set on|off  salva lo stato e lo applica (root)
 #
@@ -31,19 +32,33 @@ read_state() {
 }
 
 apply_state() {
-    local state
+    local state tries="${1:-1}" i=1
     state="$(read_state)"
     [ -n "$state" ] || return 0
     command -v "$RFKILL" >/dev/null 2>&1 || [ -x "$RFKILL" ] || return 0
-    case "$state" in
-        off) "$RFKILL" block bluetooth >/dev/null 2>&1 || true ;;
-        on) "$RFKILL" unblock bluetooth >/dev/null 2>&1 || true ;;
-    esac
+    while :; do
+        case "$state" in
+            off) "$RFKILL" block bluetooth >/dev/null 2>&1 || true ;;
+            on) "$RFKILL" unblock bluetooth >/dev/null 2>&1 || true ;;
+        esac
+        [ "$i" -ge "$tries" ] && break
+        if [ "$state" = off ]; then
+            "$RFKILL" list bluetooth 2>/dev/null | grep -q "Soft blocked: yes" && break
+        else
+            "$RFKILL" list bluetooth 2>/dev/null | grep -q "Soft blocked: yes" || break
+        fi
+        sleep 1
+        i=$((i + 1))
+    done
 }
 
 case "${1:-apply}" in
     apply)
-        apply_state
+        apply_state 1
+        ;;
+    wait)
+        # Usato dal servizio di boot: attende che l'adattatore compaia.
+        apply_state 10
         ;;
     show)
         read_state

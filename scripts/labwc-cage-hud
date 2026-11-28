@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-labwc-cage-hud - HUD batteria per le app in Cage, acceso da Ctrl+Alt+H.
+labwc-cage-hud - HUD batteria per le app in Cage, acceso da Ctrl+Alt+B.
 
 In Cage un solo client occupa lo schermo e non esiste layer-shell: il riquadro
 viene quindi disegnato *dentro* l'app. Chromium/Electron espongono il DevTools
@@ -9,10 +9,10 @@ BiDi su localhost (--bidi). labwc-cage-app avvia questo processo e passa la
 modalita' giusta.
 
 Il riquadro e' visibile all'avvio, in basso a sinistra, con percentuale, stato
-di carica e la combinazione per nasconderlo. Ctrl+Shift+. (Ctrl+>) lo
-nasconde e lo rimostra; valgono anche Ctrl+Alt+H (H = HUD) e il vecchio Ctrl+..
-Ctrl+Shift+. e Ctrl+Alt+H sono liberi in Firefox, Chromium e FreeTube (Ctrl+B
-apre i segnalibri in Firefox, quindi non si usa).
+di carica e la combinazione per nasconderlo. Un clic sul riquadro lo ritrae
+verso sinistra con un'animazione e lascia a vista una linguetta sottile; un
+clic sulla linguetta lo riapre. Ctrl+Alt+B (B = batteria) fa lo stesso; il
+vecchio Ctrl+. resta alias. Ctrl+B non si usa: apre i segnalibri in Firefox.
 
 Uso:
   labwc-cage-hud --port 9222 [--pid PID]
@@ -51,16 +51,31 @@ HUD_JS = r"""
       style.textContent = `
         :host { all: initial; }
         #lbqc-hud {
-          position: fixed; left: 18px; bottom: 18px; z-index: 2147483647;
+          position: fixed; left: 0; bottom: 18px; z-index: 2147483646;
           display: flex; align-items: center; gap: 10px;
-          padding: 9px 14px; border-radius: 999px;
+          padding: 9px 16px 9px 18px; border-radius: 0 999px 999px 0;
           background: rgba(15, 23, 42, 0.82);
-          border: 1px solid rgba(148, 163, 184, 0.45);
+          border: 1px solid rgba(148, 163, 184, 0.45); border-left: 0;
           color: #e2e8f0; font: 600 15px/1.1 system-ui, sans-serif;
           box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-          pointer-events: none; user-select: none;
+          pointer-events: auto; cursor: pointer; user-select: none;
+          transform: translateX(0); opacity: 1;
+          transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease;
         }
-        #lbqc-hud.lbqc-hidden { display: none; }
+        #lbqc-hud.lbqc-hidden {
+          transform: translateX(-102%); opacity: 0; pointer-events: none;
+        }
+        #lbqc-tab {
+          position: fixed; left: 0; bottom: 18px; z-index: 2147483647;
+          width: 22px; height: 44px; box-sizing: border-box;
+          display: flex; align-items: center; justify-content: center;
+          border-radius: 0 10px 10px 0; background: rgba(15, 23, 42, 0.9);
+          border: 1px solid rgba(148, 163, 184, 0.45); border-left: 0;
+          color: #e2e8f0; cursor: pointer; user-select: none;
+          pointer-events: auto; opacity: 0; transform: translateX(-10px);
+          transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+        #lbqc-tab.lbqc-visible { opacity: 1; transform: translateX(0); }
         #lbqc-batt {
           position: relative; width: 34px; height: 16px; border-radius: 4px;
           border: 2px solid currentColor; box-sizing: border-box;
@@ -87,14 +102,40 @@ HUD_JS = r"""
       var box = document.createElement("div");
       box.id = "lbqc-hud";
       box.setAttribute("role", "status");
+      box.title = "Clicca per nascondere";
       box.innerHTML = '<div id="lbqc-batt"><div id="lbqc-fill"></div></div>' +
         '<span id="lbqc-pct">--%</span><span id="lbqc-state"></span>' +
-        '<span id="lbqc-hint">Ctrl+Shift+. per nascondere</span>';
+        '<span id="lbqc-hint">clicca o Ctrl+Alt+B per nascondere</span>';
+      var tab = document.createElement("div");
+      tab.id = "lbqc-tab";
+      tab.title = "Mostra batteria";
+      tab.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">' +
+        '<rect x="2" y="7" width="16" height="10" rx="2"></rect>' +
+        '<rect x="19" y="10" width="2" height="4" rx="1" fill="currentColor" stroke="none"></rect>' +
+        '<rect id="lbqc-tab-fill" x="4.5" y="9" width="8" height="6" rx="1" fill="currentColor" stroke="none"></rect>' +
+        '</svg>';
       root.appendChild(style);
       root.appendChild(box);
+      root.appendChild(tab);
+      box.addEventListener("click", function () { window.__lbqcHudToggle(true); });
+      tab.addEventListener("click", function () { window.__lbqcHudToggle(false); });
     }
     return host;
   }
+
+  window.__lbqcHudToggle = function (hidden) {
+    var host = build();
+    var root = host.shadowRoot;
+    var box = root.getElementById("lbqc-hud");
+    var tab = root.getElementById("lbqc-tab");
+    if (!box || !tab) { return; }
+    var hide = (typeof hidden === "boolean") ? hidden : !box.classList.contains("lbqc-hidden");
+    box.classList.toggle("lbqc-hidden", hide);
+    tab.classList.toggle("lbqc-visible", hide);
+    if (!hide && window.__lbqcHudRefresh) {
+      window.__lbqcHudRefresh();
+    }
+  };
 
   window.__lbqcHudSet = function (data) {
     var host = build();
@@ -103,44 +144,44 @@ HUD_JS = r"""
     var txt = root.getElementById("lbqc-pct");
     var fill = root.getElementById("lbqc-fill");
     var state = root.getElementById("lbqc-state");
+    var tabFill = root.getElementById("lbqc-tab-fill");
+    function setTabFill(value) {
+      if (tabFill) { tabFill.setAttribute("width", String(value)); }
+    }
     if (!isFinite(pct) || pct < 0) {
       txt.textContent = "AC";
       fill.style.width = "100%";
       fill.className = "";
       state.textContent = data && data.source ? String(data.source) : "";
+      setTabFill(12);
       return "ac";
     }
     pct = Math.max(0, Math.min(100, Math.round(pct)));
     txt.textContent = pct + "%";
     fill.style.width = Math.max(4, pct) + "%";
     fill.className = pct <= 15 ? "lbqc-low" : (pct <= 35 ? "lbqc-mid" : "");
+    setTabFill(Math.max(1.5, 10 * pct / 100));
     var charging = data && data.charging;
     state.textContent = charging ? "in carica" : "";
     return pct;
   };
 
   window.addEventListener("keydown", function (event) {
-    // Comandi accettati, tutti liberi in Firefox, Chromium e FreeTube:
-    //   Ctrl+Alt+H (H = HUD), Ctrl+Shift+. (Ctrl+>), Ctrl+. (alias storico).
-    // Alt da solo apre i menu di Firefox, quindi Ctrl+Shift+. e' il ripiego.
+    // Comandi accettati: Ctrl+Alt+B (B = batteria) e, per Firefox dove i menu
+    // rubano Alt+lettera, Ctrl+Shift+. come ripiego; Ctrl+. resta alias.
     window.__lbqcHudLastKey = [event.key, event.code, event.ctrlKey, event.altKey, event.shiftKey].join("|");
     if (event.metaKey) { return; }
     var key = (event.key || "").toLowerCase();
-    var altH = event.ctrlKey && event.altKey && !event.shiftKey &&
-      (key === "h" || event.code === "KeyH");
+    var altB = event.ctrlKey && event.altKey && !event.shiftKey &&
+      (key === "b" || event.code === "KeyB");
     var shiftDot = event.ctrlKey && !event.altKey && event.shiftKey &&
       (key === ">" || key === "." || event.code === "Period" || event.code === "NumpadDecimal");
     var plainDot = event.ctrlKey && !event.altKey && !event.shiftKey &&
       (key === "." || event.code === "Period" || event.code === "NumpadDecimal");
-    if (!altH && !shiftDot && !plainDot) { return; }
-    var host = build();
-    var box = host.shadowRoot.getElementById("lbqc-hud");
+    if (!altB && !shiftDot && !plainDot) { return; }
     event.preventDefault();
     event.stopPropagation();
-    box.classList.toggle("lbqc-hidden");
-    if (!box.classList.contains("lbqc-hidden") && window.__lbqcHudRefresh) {
-      window.__lbqcHudRefresh();
-    }
+    window.__lbqcHudToggle();
   }, true);
 
   return "installed";
@@ -447,7 +488,7 @@ async def main_loop(hud: Hud) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="HUD batteria per Cage (Ctrl+Alt+H)")
+    parser = argparse.ArgumentParser(description="HUD batteria per Cage (Ctrl+Alt+B)")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--port", type=int, help="porta DevTools su 127.0.0.1")
     group.add_argument("--port-file", help="file DevToolsActivePort dell'app")

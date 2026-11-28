@@ -2,6 +2,21 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.27.7]
+
+- **HUD batteria in Cage**: un clic sul riquadro lo ritrae verso sinistra con
+  animazione fluida e lascia a vista una **linguetta** sottile con la batteria;
+  un clic sulla linguetta lo riapre. Resta **visibile all'avvio** con l'hint
+  `clicca o Ctrl+Alt+B per nascondere`.
+- Scorciatoia principale **Ctrl+Alt+B** (B = batteria); restano `Ctrl+Shift+.`
+  e `Ctrl+.` come alias.
+- **Bluetooth: fix definitivo al riavvio.** Nuovo servizio di boot
+  `labwc-q4os-bluetooth.service`, eseguito **dopo** `systemd-rfkill.service` e
+  `bluetooth.service`, che riapplica la scelta salvata in
+  `/var/lib/labwc-q4os/bluetooth`. La regola udev resta per gli adattatori
+  enumerati tardi; `bluetooth-state wait` ritenta per 10 s.
+- `validate.sh`: verifica clic, linguetta e scorciatoie del HUD.
+
 ## [1.27.6]
 
 - **HUD batteria in Cage visibile all'avvio** per ogni app (Firefox, Chromium,

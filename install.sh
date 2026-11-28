@@ -2072,6 +2072,7 @@ configure_bluetooth_policy() {
     local helper=/usr/local/libexec/labwc-q4os/bluetooth-state
     local state_file=/var/lib/labwc-q4os/bluetooth
     local rule=/etc/udev/rules.d/70-labwc-q4os-bluetooth.rules
+    local unit=/etc/systemd/system/labwc-q4os-bluetooth.service
     local migrated="" saved=""
     if [ ! -d /sys/class/bluetooth ] ||
         [ -z "$(ls -A /sys/class/bluetooth 2>/dev/null || true)" ]; then
@@ -2094,6 +2095,24 @@ configure_bluetooth_policy() {
         'ACTION=="add", SUBSYSTEM=="rfkill", ATTR{type}=="2", RUN+="/usr/local/libexec/labwc-q4os/bluetooth-state apply"' |
         sudo tee "$rule" >/dev/null
     sudo udevadm control --reload-rules >/dev/null 2>&1 || true
+    # Servizio di boot: passa DOPO systemd-rfkill e bluetooth.service, cosi'
+    # nessuno dei due puo' riaccendere l'adattatore dopo la scelta dell'utente.
+    printf '%s\n' \
+        '[Unit]' \
+        'Description=Applica la scelta Bluetooth salvata da labwc-q4os' \
+        'After=systemd-rfkill.service bluetooth.service' \
+        'Wants=bluetooth.service' \
+        '' \
+        '[Service]' \
+        'Type=oneshot' \
+        'ExecStart=/usr/local/libexec/labwc-q4os/bluetooth-state wait' \
+        '' \
+        '[Install]' \
+        'WantedBy=multi-user.target' |
+        sudo tee "$unit" >/dev/null
+    sudo systemctl daemon-reload >/dev/null 2>&1 || true
+    sudo systemctl enable labwc-q4os-bluetooth.service >/dev/null 2>&1 ||
+        warn "Bluetooth: servizio di boot non abilitato."
     if sudo test -s "$state_file"; then
         ok "Bluetooth: scelta utente salvata ($(sudo cat "$state_file")), resta anche al riavvio."
         return 0
