@@ -419,9 +419,9 @@ CAGE (kiosk) E BATTERIA:  • le app in Cage passano da labwc-cage-app; Ctrl+. (
   • Cage mostra un solo client e non ha layer-shell: il HUD sta dentro l'app
 
 LOGIN (SDDM):
-  • logo reverseloop-dev tono su tono al centro dei tre temi, tinto con il
-    colore del tema e molto trasparente
-  • generate-login-logo.py crea logo.png in ogni tema login (Pillow)
+  • quattro loghi reverseloop-dev tono su tono nei tre temi, di dimensione e
+    posizione diversa, tinti con il colore del tema e molto trasparenti
+  • generate-login-logo.py crea logo-pattern.png (4 loghi) in ogni tema login (Pillow)
 
 LOOKSWITCHER PER TRINITY (solo Trinity):
   • se Trinity e' installato, l'installer chiede se aggiungere LookSwitcher,

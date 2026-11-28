@@ -245,12 +245,11 @@ labwc-login-theme --apply muted-crimson
 L'applicazione al login richiede la password di root una sola volta
 (`pkexec`); il cambio diventa effettivo al login successivo.
 
-Al centro dello sfondo, attorno alle card, il **logo reverseloop-dev** è
-ripetuto in **più copie di dimensioni e trasparenze diverse**, come un pattern
+Al centro dello sfondo, attorno alle card, il **logo reverseloop-dev** compare
+in **quattro copie di dimensioni e posizioni diverse**, come un motivo
 tono su tono: monocromatico, tinto con il colore del tema (blu `#3b82f6`,
-rosso `#c0565b`, verde `#4d9375`), disposto su una griglia con collisioni
-evitate — nessun logo si sovrappone a un altro e nessuno finisce sotto card,
-form o orologio. Il PNG si genera in
+rosso `#c0565b`, verde `#4d9375`), senza collisioni — nessun logo si sovrappone
+a un altro e nessuno finisce sotto card, form o orologio. Il PNG si genera in
 `/usr/share/labwc-q4os/login-themes/<tema>/logo-pattern.png` con
 `scripts/generate-login-logo.py` (Pillow, stessa maschera di luminanza degli
 sfondi, seed fisso per tema: il risultato è sempre identico).

@@ -3,9 +3,9 @@
 generate-login-logo.py - pattern del logo reverseloop-dev per SDDM.
 
 Per ogni tema in --themes-dir legge theme.conf e genera "logo-pattern.png":
-lo stesso logo ripetuto in varie dimensioni e trasparenze, tinto con
-logo_tint (o accent), distribuito sullo sfondo senza sovrapposizioni e senza
-coprire le zone dove stanno card, form e orologio. Tutto deterministico
+quattro copie dello stesso logo, ognuna con dimensione e posizione diversa,
+tinte con logo_tint (o accent), distribuite sullo sfondo senza sovrapposizioni
+e senza coprire le zone dove stanno card, form e orologio. Tutto deterministico
 (seed fisso per tema): due esecuzioni producono lo stesso pattern.
 
 Uso:
@@ -33,6 +33,9 @@ except AttributeError:  # Pillow < 9.1
     RESAMPLE = Image.LANCZOS
 
 THEME_SEEDS = {"nordic-cobalt": 1301, "muted-crimson": 2203, "sage-emerald": 3301}
+
+# Quattro loghi, dal piu' grande al piu' piccolo: frazioni della larghezza.
+LOGO_SIZES = (0.16, 0.115, 0.085, 0.06)
 
 # Zone da lasciare libere (frazioni di larghezza/altezza): card centrale,
 # form a destra dello Split Studio, dock in basso del Bottom Dock.
@@ -143,42 +146,38 @@ def build_pattern(
     blocked = forbidden_rects(theme, width, height)
     margin = int(width * 0.04)
     pad = int(width * 0.03)
+    step = max(8, int(width * 0.02))
 
-    # Griglia 3x3: un logo per cella, dimensioni e trasparenze diverse.
-    # Le celle che toccano le zone vietate restano vuote, quindi il logo
-    # non finisce mai sotto card, form o orologio e non si sovrappone.
-    rows, cols = 3, 4
-    cell_w = (width - 2 * margin) / cols
-    cell_h = (height - 2 * margin) / rows
-    accent_cell = rng.randrange(rows * cols)
-    order = list(range(rows * cols))
-    rng.shuffle(order)
-
-    for index in order:
-        row, col = divmod(index, cols)
-        cell_left = margin + col * cell_w
-        cell_top = margin + row * cell_h
-        for _attempt in range(200):
-            if index == accent_cell:
-                fraction = rng.uniform(0.14, 0.18)
-            else:
-                fraction = rng.uniform(0.055, 0.115)
-            logo_w = int(width * fraction)
-            logo_h = max(1, int(mask.height * logo_w / mask.width))
-            if logo_w > cell_w - pad or logo_h > cell_h - pad:
-                continue
-            x = int(cell_left + rng.uniform(0, max(0.0, cell_w - logo_w)))
-            y = int(cell_top + rng.uniform(0, max(0.0, cell_h - logo_h)))
-            box = (x, y, x + logo_w, y + logo_h)
-            if any(overlaps(box, other, pad) for other in placed):
-                continue
-            if any(overlaps(box, zone, pad) for zone in blocked):
-                continue
-            alpha = 0.05 + rng.random() * 0.06
-            logo = tinted_logo(mask, tint, logo_w, alpha)
-            canvas.alpha_composite(logo, (x, y))
-            placed.append(box)
-            break
+    # Quattro loghi di dimensioni diverse, ognuno in una posizione libera
+    # scelta a caso sui punti di una griglia fine: mai sovrapposti e mai
+    # sopra card, form o orologio.
+    sizes = [max(1, int(width * fraction * rng.uniform(0.94, 1.06))) for fraction in LOGO_SIZES]
+    for logo_w in sizes:
+        logo_h = max(1, int(mask.height * logo_w / mask.width))
+        if logo_w > width - 2 * margin or logo_h > height - 2 * margin:
+            continue
+        spots = [
+            (x, y)
+            for x in range(margin, width - margin - logo_w + 1, step)
+            for y in range(margin, height - margin - logo_h + 1, step)
+        ]
+        rng.shuffle(spots)
+        for spacing in (pad, 0):
+            chosen = None
+            for x, y in spots:
+                box = (x, y, x + logo_w, y + logo_h)
+                if any(overlaps(box, other, spacing) for other in placed):
+                    continue
+                if any(overlaps(box, zone, spacing) for zone in blocked):
+                    continue
+                chosen = box
+                break
+            if chosen:
+                alpha = 0.05 + rng.random() * 0.06
+                logo = tinted_logo(mask, tint, logo_w, alpha)
+                canvas.alpha_composite(logo, (chosen[0], chosen[1]))
+                placed.append(chosen)
+                break
     if os.environ.get("LABWC_Q4OS_LOGIN_DEBUG") == "1":
         print(f"pattern {theme}: {len(placed)} loghi -> {placed}", file=sys.stderr)
     return canvas

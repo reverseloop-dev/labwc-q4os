@@ -2,6 +2,18 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.27.4]
+
+- **Logo del login: quattro copie invece di dodici**, ognuna con dimensione e
+  posizione diversa (`0.16`, `0.115`, `0.085`, `0.06` della larghezza), sempre
+  senza sovrapposizioni e senza coprire card, form e orologio. Trasparenza
+  invariata (`0.05`–`0.11`).
+- **Pattern generato a 1920x1080** invece di 640x1080: prima l'immagine veniva
+  ritagliata da `PreserveAspectCrop` con proporzioni sbagliate e i loghi
+  risultavano sfocati e fuori zona. `install.sh` passa ora larghezza e altezza.
+- Documentazione aggiornata: README, `help.txt` e commenti nei quattro
+  `Main.qml`.
+
 ## [1.27.3]
 
 - **HUD batteria anche in Firefox**: `labwc-cage-app` avvia Firefox (e

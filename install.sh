@@ -2700,7 +2700,7 @@ install_sddm_theme() {
     # Logo "tono su tono" per ogni tema login: stesso trattamento degli sfondi.
     if sudo python3 "$REPO_DIR/scripts/generate-login-logo.py" \
         --themes-dir /usr/share/labwc-q4os/login-themes \
-        --logo "$REPO_DIR/configs/logo/rl-dev.png" --width 640 >/dev/null 2>&1; then
+        --logo "$REPO_DIR/configs/logo/rl-dev.png" --width 1920 --height 1080 >/dev/null 2>&1; then
         ok "Logo tono su tono generato per i tre temi login."
     else
         warn "Logo login non generato (python3-pil o logo mancanti)."
