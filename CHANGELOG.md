@@ -2,6 +2,18 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.27.6]
+
+- **HUD batteria in Cage visibile all'avvio** per ogni app (Firefox, Chromium,
+  FreeTube): mostra carica e, accanto, `Ctrl+Shift+. per nascondere`.
+- Scorciatoie del HUD: **Ctrl+Shift+.** (Ctrl+>, prevista), **Ctrl+Alt+H**
+  (H = HUD) e **Ctrl+.** (alias storico). `Ctrl+B` resta escluso: in Firefox
+  apre i segnalibri.
+- Diagnostica: con `LABWC_CAGE_HUD_DEBUG=1` il log va in
+  `~/.local/state/labwc-q4os/cage-hud.log`; il HUD annota l'ultimo tasto
+  ricevuto via BiDi per capire se Firefox li consegna alla pagina.
+- `validate.sh`: verifica HUD visibile, hint e le tre scorciatoie.
+
 ## [1.27.5]
 
 - **Login: un solo logo grande e centrato**, con **2 cm di margine a sinistra
