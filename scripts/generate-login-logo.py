@@ -3,10 +3,9 @@
 generate-login-logo.py - pattern del logo reverseloop-dev per SDDM.
 
 Per ogni tema in --themes-dir legge theme.conf e genera "logo-pattern.png":
-quattro copie dello stesso logo, ognuna con dimensione e posizione diversa,
-tinte con logo_tint (o accent), distribuite sullo sfondo senza sovrapposizioni
-e senza coprire le zone dove stanno card, form e orologio. Tutto deterministico
-(seed fisso per tema): due esecuzioni producono lo stesso pattern.
+un solo logo grande, centrato, con 2 cm di margine a sinistra e a destra,
+tinto con logo_tint (o accent) e con la stessa trasparenza di sempre. Tutto
+deterministico (seed fisso per tema): due esecuzioni producono lo stesso logo.
 
 Uso:
   generate-login-logo.py --themes-dir configs/sddm/themes
@@ -34,16 +33,9 @@ except AttributeError:  # Pillow < 9.1
 
 THEME_SEEDS = {"nordic-cobalt": 1301, "muted-crimson": 2203, "sage-emerald": 3301}
 
-# Quattro loghi, dal piu' grande al piu' piccolo: frazioni della larghezza.
-LOGO_SIZES = (0.16, 0.115, 0.085, 0.06)
-
-# Zone da lasciare libere (frazioni di larghezza/altezza): card centrale,
-# form a destra dello Split Studio, dock in basso del Bottom Dock.
-FORBIDDEN = {
-    "default": [(0.32, 0.18, 0.68, 0.86)],
-    "muted-crimson": [(0.42, 0.20, 0.86, 0.80)],
-    "sage-emerald": [(0.28, 0.00, 0.72, 0.22), (0.08, 0.62, 0.92, 0.98)],
-}
+# Un solo logo grande, centrato, con 2 cm di margine a sinistra e a destra.
+LOGIN_MARGIN_CM = 2.0
+CSS_DPI = 96.0
 
 
 
@@ -116,70 +108,27 @@ def tinted_logo(
     return logo
 
 
-def overlaps(
-    a: tuple[int, int, int, int], b: tuple[int, int, int, int], pad: int
-) -> bool:
-    return not (
-        a[2] + pad <= b[0]
-        or b[2] + pad <= a[0]
-        or a[3] + pad <= b[1]
-        or b[3] + pad <= a[1]
-    )
-
-
-def forbidden_rects(
-    theme: str, width: int, height: int
-) -> list[tuple[int, int, int, int]]:
-    boxes = FORBIDDEN.get(theme, FORBIDDEN["default"])
-    return [
-        (int(x0 * width), int(y0 * height), int(x1 * width), int(y1 * height))
-        for x0, y0, x1, y1 in boxes
-    ]
-
-
 def build_pattern(
     mask: Image.Image, tint: str, theme: str, width: int, height: int
 ) -> Image.Image:
     rng = random.Random(THEME_SEEDS.get(theme, 4242))
     canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    placed: list[tuple[int, int, int, int]] = []
-    blocked = forbidden_rects(theme, width, height)
-    margin = int(width * 0.04)
-    pad = int(width * 0.03)
-    step = max(8, int(width * 0.02))
 
-    # Quattro loghi di dimensioni diverse, ognuno in una posizione libera
-    # scelta a caso sui punti di una griglia fine: mai sovrapposti e mai
-    # sopra card, form o orologio.
-    sizes = [max(1, int(width * fraction * rng.uniform(0.94, 1.06))) for fraction in LOGO_SIZES]
-    for logo_w in sizes:
-        logo_h = max(1, int(mask.height * logo_w / mask.width))
-        if logo_w > width - 2 * margin or logo_h > height - 2 * margin:
-            continue
-        spots = [
-            (x, y)
-            for x in range(margin, width - margin - logo_w + 1, step)
-            for y in range(margin, height - margin - logo_h + 1, step)
-        ]
-        rng.shuffle(spots)
-        for spacing in (pad, 0):
-            chosen = None
-            for x, y in spots:
-                box = (x, y, x + logo_w, y + logo_h)
-                if any(overlaps(box, other, spacing) for other in placed):
-                    continue
-                if any(overlaps(box, zone, spacing) for zone in blocked):
-                    continue
-                chosen = box
-                break
-            if chosen:
-                alpha = 0.05 + rng.random() * 0.06
-                logo = tinted_logo(mask, tint, logo_w, alpha)
-                canvas.alpha_composite(logo, (chosen[0], chosen[1]))
-                placed.append(chosen)
-                break
+    # Un solo logo grande, centrato: 2 cm di margine a sinistra e a destra.
+    # Se cosi' fosse troppo alto, si riduce per stare dentro i margini.
+    margin = int(round(width * LOGIN_MARGIN_CM * CSS_DPI / 2.54 / 1920))
+    max_w = max(1, width - 2 * margin)
+    max_h = max(1, height - 2 * margin)
+    scale = min(max_w / mask.width, max_h / mask.height)
+    logo_w = max(1, int(mask.width * scale))
+    logo_h = max(1, int(mask.height * scale))
+    x = (width - logo_w) // 2
+    y = (height - logo_h) // 2
+    alpha = 0.05 + rng.random() * 0.06
+    logo = tinted_logo(mask, tint, logo_w, alpha)
+    canvas.alpha_composite(logo, (x, y))
     if os.environ.get("LABWC_Q4OS_LOGIN_DEBUG") == "1":
-        print(f"pattern {theme}: {len(placed)} loghi -> {placed}", file=sys.stderr)
+        print(f"pattern {theme}: 1 logo -> ({x}, {y}, {logo_w}, {logo_h})", file=sys.stderr)
     return canvas
 
 

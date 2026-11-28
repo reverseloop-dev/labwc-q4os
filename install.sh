@@ -2064,9 +2064,15 @@ configure_grub_timeout() {
 }
 
 configure_bluetooth_policy() {
-    # Bluetooth spento di default, senza perdere la scelta dell'utente: il
-    # soft-block rfkill e' persistito da systemd-rfkill, quindi se l'utente lo
-    # accende (menu TOOL reverseloop o bluetoothctl) al riavvio resta acceso.
+    # Bluetooth spento di default, senza perdere la scelta dell'utente: la
+    # scelta vive in /var/lib/labwc-q4os/bluetooth e una regola udev la
+    # riapplica quando l'adattatore compare (anche tardi al boot). Cosi' non
+    # dipendiamo solo da systemd-rfkill, che puo' non vedere un adattatore
+    # enumerato dopo l'avvio.
+    local helper=/usr/local/libexec/labwc-q4os/bluetooth-state
+    local state_file=/var/lib/labwc-q4os/bluetooth
+    local rule=/etc/udev/rules.d/70-labwc-q4os-bluetooth.rules
+    local migrated="" saved=""
     if [ ! -d /sys/class/bluetooth ] ||
         [ -z "$(ls -A /sys/class/bluetooth 2>/dev/null || true)" ]; then
         info "Bluetooth: nessun adattatore rilevato, stato invariato."
@@ -2077,20 +2083,42 @@ configure_bluetooth_policy() {
         return 0
     fi
     sudo systemctl unmask bluetooth.service systemd-rfkill.service systemd-rfkill.socket >/dev/null 2>&1 || true
-    # Su Debian systemd-rfkill.service e' statica: la persistenza passa dal
-    # socket, gia' attivo di default. Nessun avviso se il socket funziona.
+    # La persistenza di systemd-rfkill resta attiva come rete di sicurezza.
     sudo systemctl enable systemd-rfkill.socket >/dev/null 2>&1 ||
         systemctl is-active --quiet systemd-rfkill.socket ||
-        warn "Bluetooth: systemd-rfkill.socket non attivo (stato non persistente)."
-    if sudo sh -c 'ls /var/lib/systemd/rfkill/*bluetooth* >/dev/null 2>&1'; then
-        ok "Bluetooth: stato utente gia' salvato, resta com'e' anche al riavvio."
+        warn "Bluetooth: systemd-rfkill.socket non attivo."
+    sudo install -d -m 0755 /usr/local/libexec/labwc-q4os
+    sudo install -m 0755 "$REPO_DIR/scripts/bluetooth-state" "$helper"
+    sudo install -d -m 0755 /etc/udev/rules.d
+    printf '%s\n' \
+        'ACTION=="add", SUBSYSTEM=="rfkill", ATTR{type}=="2", RUN+="/usr/local/libexec/labwc-q4os/bluetooth-state apply"' |
+        sudo tee "$rule" >/dev/null
+    sudo udevadm control --reload-rules >/dev/null 2>&1 || true
+    if sudo test -s "$state_file"; then
+        ok "Bluetooth: scelta utente salvata ($(sudo cat "$state_file")), resta anche al riavvio."
         return 0
     fi
-    if sudo rfkill block bluetooth 2>/dev/null; then
-        ok "Bluetooth: spento di default (accendilo da TOOL reverseloop > Bluetooth)."
+    # Migrazione: se systemd-rfkill aveva gia' uno stato, rispettalo.
+    saved="$(sudo sh -c 'cat /var/lib/systemd/rfkill/*bluetooth* 2>/dev/null' |
+        awk -F: '{print $NF}' | tr -d '[:space:]' | tail -n1)"
+    case "$saved" in
+        1) migrated=off ;;
+        0) migrated=on ;;
+    esac
+    if [ "$migrated" = on ]; then
+        if sudo "$helper" set on; then
+            ok "Bluetooth: acceso, scelta salvata e applicata al riavvio."
+        else
+            warn "Bluetooth: salvataggio dello stato non riuscito."
+        fi
     else
-        warn "Bluetooth: soft-block non riuscito, stato invariato."
+        if sudo "$helper" set off; then
+            ok "Bluetooth: spento di default (accendilo da TOOL reverseloop > Bluetooth)."
+        else
+            warn "Bluetooth: soft-block non riuscito, stato invariato."
+        fi
     fi
+    sudo udevadm trigger --subsystem-match=rfkill --action=add >/dev/null 2>&1 || true
 }
 
 configure_keyboard() {
@@ -2786,6 +2814,9 @@ sudo install -m 0755 "$REPO_DIR/scripts/labwc-update-toggle" \
 # Login: applica uno dei tre temi SDDM (sorgenti root-owned in /usr/share).
 sudo install -m 0755 "$REPO_DIR/scripts/labwc-login-theme-apply" \
     /usr/local/libexec/labwc-q4os/login-theme-apply
+# Bluetooth: salva la scelta dell'utente e la riapplica a ogni avvio.
+sudo install -m 0755 "$REPO_DIR/scripts/bluetooth-state" \
+    /usr/local/libexec/labwc-q4os/bluetooth-state
 
 # Preferenza login: normalmente scritta da labwc-theme-apply; default = tema.
 mkdir -p "$CONFIG/labwc"
@@ -2950,6 +2981,7 @@ log "Verifica finale..."
 [ -f "$SHARE/version-info" ] || die "version-info mancante."
 [ -r "${XDG_DATA_HOME:-$HOME/.local/share}/icons/labwc-q4os/index.theme" ] || die "icon theme labwc-q4os mancante."
 [ -x /usr/local/libexec/labwc-q4os/login-theme-apply ] || die "helper tema login mancante."
+[ -x /usr/local/libexec/labwc-q4os/bluetooth-state ] || die "helper Bluetooth mancante."
 [ -x /usr/local/libexec/labwc-q4os/labwc-session ] || die "wrapper sessione labwc mancante."
 grep -q 'Exec=/usr/local/libexec/labwc-q4os/labwc-session' /usr/share/wayland-sessions/labwc.desktop ||
     die "file sessione labwc non punta al wrapper."

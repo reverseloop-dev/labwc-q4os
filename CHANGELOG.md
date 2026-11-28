@@ -2,6 +2,21 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.27.5]
+
+- **Login: un solo logo grande e centrato**, con **2 cm di margine a sinistra
+  e a destra**, stessa trasparenza (`0.05`–`0.11`). Sostituisce le quattro copie
+  sparse della 1.27.4. Ridotto in altezza solo se non entra nei margini.
+- **Bluetooth: la scelta dell'utente resta davvero al riavvio.** La scelta vive
+  in `/var/lib/labwc-q4os/bluetooth` e una regola udev
+  (`/etc/udev/rules.d/70-labwc-q4os-bluetooth.rules`) la riapplica quando
+  l'adattatore compare: se l'utente l'ha spento resta spento anche quando
+  l'adattatore viene enumerato tardi al boot, caso in cui il solo
+  `systemd-rfkill` non bastava. Nuovo helper root `bluetooth-state`
+  (`apply|show|set on|off`), `systemd-rfkill` resta come rete di sicurezza.
+- `labwc-bluetooth` usa l'helper quando presente; fallback a `rfkill` diretto.
+- `validate.sh`: test di `bluetooth-state` e del logo singolo con margine.
+
 ## [1.27.4]
 
 - **Logo del login: quattro copie invece di dodici**, ognuna con dimensione e

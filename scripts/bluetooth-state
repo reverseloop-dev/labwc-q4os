@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  bluetooth-state - applica lo stato Bluetooth scelto dall'utente.
+#
+#  La scelta vive in /var/lib/labwc-q4os/bluetooth ("on" / "off") e viene
+#  riapplicata a ogni comparsa dell'adattatore (regola udev): cosi' lo stato
+#  resta quello scelto anche quando l'adattatore viene enumerato tardi al
+#  boot, dove il solo systemd-rfkill non basta.
+#
+#  Uso:
+#    bluetooth-state apply       applica lo stato salvato (root o udev)
+#    bluetooth-state show        stampa "on" / "off" (vuoto se mai scelto)
+#    bluetooth-state set on|off  salva lo stato e lo applica (root)
+#
+#  Variabili per i test: LABWC_BLUETOOTH_STATE (file), LABWC_BLUETOOTH_RFKILL
+#  (comando rfkill da usare).
+# =============================================================================
+set -euo pipefail
+
+STATE_FILE="${LABWC_BLUETOOTH_STATE:-/var/lib/labwc-q4os/bluetooth}"
+if [ -n "${LABWC_BLUETOOTH_RFKILL:-}" ]; then
+    RFKILL="$LABWC_BLUETOOTH_RFKILL"
+else
+    RFKILL="$(command -v rfkill 2>/dev/null || true)"
+    [ -n "$RFKILL" ] || RFKILL="/usr/sbin/rfkill"
+fi
+
+read_state() {
+    [ -r "$STATE_FILE" ] || return 0
+    tr -d '[:space:]' < "$STATE_FILE"
+}
+
+apply_state() {
+    local state
+    state="$(read_state)"
+    [ -n "$state" ] || return 0
+    command -v "$RFKILL" >/dev/null 2>&1 || [ -x "$RFKILL" ] || return 0
+    case "$state" in
+        off) "$RFKILL" block bluetooth >/dev/null 2>&1 || true ;;
+        on) "$RFKILL" unblock bluetooth >/dev/null 2>&1 || true ;;
+    esac
+}
+
+case "${1:-apply}" in
+    apply)
+        apply_state
+        ;;
+    show)
+        read_state
+        ;;
+    set)
+        state="${2:-}"
+        case "$state" in
+            on | off) ;;
+            *)
+                printf 'Uso: %s set on|off\n' "$0" >&2
+                exit 2
+                ;;
+        esac
+        install -d -m 0755 "$(dirname "$STATE_FILE")"
+        printf '%s\n' "$state" >"$STATE_FILE"
+        apply_state
+        ;;
+    -h | --help)
+        sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+        ;;
+    *)
+        printf 'Uso: %s [apply|show|set on|off]\n' "$0" >&2
+        exit 2
+        ;;
+esac

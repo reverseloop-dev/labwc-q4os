@@ -2,9 +2,11 @@
 """
 labwc-bluetooth - accende o spegne il Bluetooth e ricorda la scelta.
 
-All'installazione il Bluetooth e' spento di default. Lo stato di soft-block
-rfkill viene salvato da systemd-rfkill (/var/lib/systemd/rfkill): se accendi il
-Bluetooth al riavvio resta acceso, se lo spegni resta spento.
+All'installazione il Bluetooth e' spento di default. La scelta viene salvata in
+/var/lib/labwc-q4os/bluetooth e riapplicata all'adattatore da una regola udev,
+quindi resta anche se l'adattatore compare tardi al riavvio (dove il solo
+systemd-rfkill puo' non bastare). Se accendi il Bluetooth al riavvio resta
+acceso, se lo spegni resta spento.
 
 Uso:
   labwc-bluetooth            finestra (zenity) o stato nel terminale
@@ -25,6 +27,8 @@ from pathlib import Path
 ADAPTERS_DIR = Path("/sys/class/bluetooth")
 # pkexec non eredita /usr/sbin nel PATH della sessione labwc: percorso esplicito.
 RFKILL = shutil.which("rfkill") or "/usr/sbin/rfkill"
+# Helper root installato dall'installer: salva la scelta e la riapplica al boot.
+STATE_HELPER = "/usr/local/libexec/labwc-q4os/bluetooth-state"
 
 
 def notify(title: str, body: str) -> None:
@@ -132,18 +136,25 @@ def bluetoothctl(*args: str) -> None:
         return
 
 
+def apply_choice(on: bool) -> bool:
+    """Salva e applica la scelta: helper root se installato, altrimenti rfkill."""
+    if os.access(STATE_HELPER, os.X_OK):
+        return run_root(STATE_HELPER, "set", "on" if on else "off")
+    return run_root(RFKILL, "unblock" if on else "block", "bluetooth")
+
+
 def set_power(on: bool) -> int:
     if not adapters():
         notify("Bluetooth", "Nessun adattatore Bluetooth rilevato.")
         return 0
     if on:
-        if not run_root(RFKILL, "unblock", "bluetooth"):
+        if not apply_choice(True):
             notify("Bluetooth", "Sblocco non riuscito (Serve la password di amministratore).")
             return 1
         bluetoothctl("power", "on")
     else:
         bluetoothctl("power", "off")
-        if not run_root(RFKILL, "block", "bluetooth"):
+        if not apply_choice(False):
             notify("Bluetooth", "Spegnimento non riuscito (serve la password di amministratore).")
             return 1
     notify("Bluetooth", f"Bluetooth {status()}. La scelta resta anche al riavvio.")

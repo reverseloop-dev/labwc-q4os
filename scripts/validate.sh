@@ -36,7 +36,7 @@ fi
 rm -rf "$PYCACHE_DIR"
 
 # --- 2b. pattern del logo login: esattamente quattro copie --------------------
-check "pattern logo login (4 copie)"
+check "pattern logo login (1 logo, 2 cm di margine)"
 LOGO_TMP="$(mktemp -d)"
 if python3 -c 'import PIL' 2>/dev/null; then
     for theme in nordic-cobalt muted-crimson sage-emerald; do
@@ -47,10 +47,10 @@ if python3 -c 'import PIL' 2>/dev/null; then
         python3 scripts/generate-login-logo.py --themes-dir "$LOGO_TMP/themes" \
         --logo configs/logo/rl-dev.png --width 640 --height 360 2>&1)"; then
         for theme in nordic-cobalt muted-crimson sage-emerald; do
-            if grep -q "$theme: 4 " <<<"$logo_out"; then
-                pass "4 loghi: $theme"
+            if grep -q "$theme: 1 logo -> (25, " <<<"$logo_out"; then
+                pass "1 logo con 2 cm di margine: $theme"
             else
-                bad "loghi non 4: $theme"
+                bad "logo mancante o margine errato: $theme"
             fi
         done
     else
@@ -60,6 +60,27 @@ else
     printf '[  skip ] Pillow non installato\n'
 fi
 rm -rf "$LOGO_TMP"
+
+# --- 2c. bluetooth-state: salvataggio e riapplicazione della scelta -------------
+check "bluetooth-state (scelta persistente)"
+BT_TMP="$(mktemp -d)"
+if LABWC_BLUETOOTH_STATE="$BT_TMP/state" LABWC_BLUETOOTH_RFKILL=true \
+    bash scripts/bluetooth-state set off &&
+    [ "$(cat "$BT_TMP/state")" = off ] &&
+    [ "$(LABWC_BLUETOOTH_STATE="$BT_TMP/state" LABWC_BLUETOOTH_RFKILL=true \
+        bash scripts/bluetooth-state show)" = off ]; then
+    pass "bluetooth-state: set off + show"
+else
+    bad "bluetooth-state: set off + show"
+fi
+printf 'on\n' >"$BT_TMP/state"
+if LABWC_BLUETOOTH_STATE="$BT_TMP/state" LABWC_BLUETOOTH_RFKILL=true \
+    bash scripts/bluetooth-state apply; then
+    pass "bluetooth-state: apply"
+else
+    bad "bluetooth-state: apply"
+fi
+rm -rf "$BT_TMP"
 if python3 scripts/labwc-zram --status >/dev/null 2>&1; then
     pass "labwc-zram --status"
 else
@@ -464,7 +485,7 @@ fi
 check "permessi eseguibili"
 for f in install.sh bootstrap.sh scripts/labwc-theme-apply scripts/labwc-theme-switcher \
          scripts/labwc-menu-editor scripts/labwc-reload scripts/labwc-generate-wallpapers \
-         scripts/labwc-help scripts/labwc-screenshot scripts/labwc-zram scripts/labwc-bluetooth scripts/labwc-doctor \
+         scripts/labwc-help scripts/labwc-screenshot scripts/labwc-zram scripts/labwc-bluetooth scripts/bluetooth-state scripts/labwc-doctor \
          scripts/labwc-app-manager scripts/labwc-install-wizard scripts/labwc-update-check scripts/labwc-update-copy \
          scripts/labwc-update-popup scripts/labwc-update-run scripts/labwc-update-toggle \
          scripts/labwc-update-gui scripts/labwc-preferences \

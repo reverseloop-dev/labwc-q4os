@@ -245,12 +245,11 @@ labwc-login-theme --apply muted-crimson
 L'applicazione al login richiede la password di root una sola volta
 (`pkexec`); il cambio diventa effettivo al login successivo.
 
-Al centro dello sfondo, attorno alle card, il **logo reverseloop-dev** compare
-in **quattro copie di dimensioni e posizioni diverse**, come un motivo
-tono su tono: monocromatico, tinto con il colore del tema (blu `#3b82f6`,
-rosso `#c0565b`, verde `#4d9375`), senza collisioni — nessun logo si sovrappone
-a un altro e nessuno finisce sotto card, form o orologio. Il PNG si genera in
-`/usr/share/labwc-q4os/login-themes/<tema>/logo-pattern.png` con
+Al centro dello sfondo, dietro le card, il **logo reverseloop-dev** compare
+**una sola volta, grande e centrato**, con **2 cm di margine a sinistra e a
+destra**: monocromatico, tinto con il colore del tema (blu `#3b82f6`,
+rosso `#c0565b`, verde `#4d9375`) e molto trasparente, come prima. Il PNG si
+genera in `/usr/share/labwc-q4os/login-themes/<tema>/logo-pattern.png` con
 `scripts/generate-login-logo.py` (Pillow, stessa maschera di luminanza degli
 sfondi, seed fisso per tema: il risultato è sempre identico).
 
@@ -556,8 +555,10 @@ Noctalia aspetterebbe 25 secondi il D-Bus a ogni login. Con un adattatore il
 servizio resta normale.
 
 Con un adattatore il Bluetooth parte **spento**: l'installer applica un
-soft-block `rfkill` solo se non esiste già uno stato salvato. `systemd-rfkill`
-registra in `/var/lib/systemd/rfkill` l'ultima scelta, quindi se lo accendi
+soft-block `rfkill` solo se non esiste già una scelta salvata. La scelta vive
+in `/var/lib/labwc-q4os/bluetooth` e una regola udev la riapplica quando
+l'adattatore compare, quindi vale anche se l'adattatore viene enumerato tardi
+al boot; `systemd-rfkill` resta come rete di sicurezza. Se lo accendi
 (menu *TOOL reverseloop > Bluetooth*, `labwc-bluetooth on` o `bluetoothctl`)
 al riavvio resta acceso, e se lo spegni resta spento.
 

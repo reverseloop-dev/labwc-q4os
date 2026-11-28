@@ -54,8 +54,7 @@ Rectangle {
 
     // Logo reverseloop-dev "tono su tono" (logo-pattern.png dal tema corrente).
     // Pattern del logo reverseloop-dev "tono su tono": logo-pattern.png
-    // generato da generate-login-logo.py (quattro copie, dimensioni e
-    // posizioni diverse, mai sovrapposte).
+    // generato da generate-login-logo.py (un logo grande, centrato, 2 cm dai bordi).
     Image {
         id: brandLogo
         source: "logo-pattern.png"
