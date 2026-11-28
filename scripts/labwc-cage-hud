@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-labwc-cage-hud - HUD batteria per le app in Cage, acceso da Ctrl+.
+labwc-cage-hud - HUD batteria per le app in Cage, acceso da Ctrl+Alt+H.
 
 In Cage un solo client occupa lo schermo e non esiste layer-shell: il riquadro
 viene quindi disegnato *dentro* l'app. Chromium/Electron espongono il DevTools
@@ -8,9 +8,10 @@ su localhost (--port, oppure --port-file per FreeTube); Firefox espone WebDriver
 BiDi su localhost (--bidi). labwc-cage-app avvia questo processo e passa la
 modalita' giusta.
 
-Il riquadro e' nascosto all'avvio: Ctrl+. lo mostra in basso a sinistra con
-percentuale e stato di carica; Ctrl+. di nuovo lo nasconde. Ctrl+. e' libero
-in Firefox, Chromium e FreeTube (Ctrl+B apre i segnalibri in Firefox).
+Il riquadro e' nascosto all'avvio: Ctrl+Alt+H (H = HUD) lo mostra in basso a
+sinistra con percentuale e stato di carica; Ctrl+Alt+H di nuovo lo nasconde.
+Ctrl+Alt+H e' libero in Firefox, Chromium e FreeTube; il vecchio Ctrl+. resta
+come alias (Ctrl+B apre i segnalibri in Firefox, quindi non si usa).
 
 Uso:
   labwc-cage-hud --port 9222 [--pid PID]
@@ -112,10 +113,14 @@ HUD_JS = r"""
   };
 
   window.addEventListener("keydown", function (event) {
-    // Ctrl+. (punto): libero in Firefox, Chromium e FreeTube; Ctrl+B apriva i
-    // segnalibri in Firefox, quindi non si usa piu'.
-    if (!event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) { return; }
-    if (event.key !== "." && event.code !== "Period" && event.code !== "NumpadDecimal") { return; }
+    // Ctrl+Alt+H (H = HUD): libero in Firefox, Chromium e FreeTube.
+    // Resta valido anche il vecchio Ctrl+. come alias.
+    if (event.metaKey) { return; }
+    var hudKey = event.ctrlKey && event.altKey && !event.shiftKey &&
+      (event.key === "h" || event.key === "H" || event.code === "KeyH");
+    var legacyKey = event.ctrlKey && !event.altKey && !event.shiftKey &&
+      (event.key === "." || event.code === "Period" || event.code === "NumpadDecimal");
+    if (!hudKey && !legacyKey) { return; }
     var host = build();
     var box = host.shadowRoot.getElementById("lbqc-hud");
     event.preventDefault();
@@ -418,7 +423,7 @@ async def main_loop(hud: Hud) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="HUD batteria per Cage (Ctrl+.)")
+    parser = argparse.ArgumentParser(description="HUD batteria per Cage (Ctrl+Alt+H)")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--port", type=int, help="porta DevTools su 127.0.0.1")
     group.add_argument("--port-file", help="file DevToolsActivePort dell'app")

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  labwc-cage-app - avvia l'app dentro Cage con il HUD batteria (Ctrl+.).
+#  labwc-cage-app - avvia l'app dentro Cage con il HUD batteria (Ctrl+Alt+H).
 #
 #  Cage mostra un solo client e non ha layer-shell: il HUD viene iniettato
 #  nella pagina tramite il DevTools di Chromium/Electron su 127.0.0.1.

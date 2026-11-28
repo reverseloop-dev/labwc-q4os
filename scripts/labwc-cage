@@ -123,7 +123,7 @@ if [ "${1:-}" = "--" ]; then
 fi
 [ "$#" -gt 0 ] || { notify "Nessun comando da avviare"; exit 1; }
 
-# HUD batteria (Ctrl+B) iniettato nell'app: labwc-cage-app aggiunge la porta
+# HUD batteria (Ctrl+Alt+H) iniettato nell'app: labwc-cage-app aggiunge la porta
 # DevTools per Chromium e avvia labwc-cage-hud. Se l'helper non c'e' (sessione
 # vecchia) si avvia il comando com'era.
 cage_app="$HOME/.local/bin/labwc-cage-app"
