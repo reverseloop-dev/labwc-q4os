@@ -433,13 +433,14 @@ rm -rf "$SHORTCUT_TMP"
 
 # Regressione: scorciatoia HUD batteria Ctrl+Alt+H, con Ctrl+. come alias
 # (non Ctrl+B, che in Firefox apre i segnalibri).
-check "HUD batteria: scorciatoia Ctrl+Alt+H"
+check "HUD batteria: scorciatoia Ctrl+Alt+H / Ctrl+Shift+."
 if grep -q 'event.code === "KeyH"' scripts/labwc-cage-hud &&
     grep -q 'event.code === "Period"' scripts/labwc-cage-hud &&
+    grep -q 'event.shiftKey' scripts/labwc-cage-hud &&
     ! grep -q 'event.code === "KeyB"' scripts/labwc-cage-hud; then
-    pass "HUD batteria: scorciatoia Ctrl+Alt+H (Ctrl+. alias)"
+    pass "HUD batteria: Ctrl+Alt+H, Ctrl+Shift+. e Ctrl+."
 else
-    bad "HUD batteria: scorciatoia Ctrl+Alt+H mancante o Ctrl+B ancora presente"
+    bad "HUD batteria: scorciatoia mancante o Ctrl+B ancora presente"
 fi
 
 # Regressione: HUD iniettato in Chromium (DevTools) e Firefox (WebDriver BiDi)

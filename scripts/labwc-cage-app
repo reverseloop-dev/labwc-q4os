@@ -33,7 +33,14 @@ trap stop_hud EXIT TERM INT HUP
 start_hud() {
     [ -f "$hud" ] || return 0
     command -v python3 >/dev/null 2>&1 || return 0
-    python3 "$hud" "$@" >/dev/null 2>&1 &
+    if [ "${LABWC_CAGE_HUD_DEBUG:-}" = "1" ]; then
+        # Diagnostica: log in ~/.local/state/labwc-q4os/cage-hud.log
+        local logdir="${XDG_STATE_HOME:-$HOME/.local/state}/labwc-q4os"
+        mkdir -p "$logdir"
+        python3 "$hud" "$@" >>"$logdir/cage-hud.log" 2>&1 &
+    else
+        python3 "$hud" "$@" >/dev/null 2>&1 &
+    fi
     hud_pid=$!
 }
 

@@ -113,14 +113,19 @@ HUD_JS = r"""
   };
 
   window.addEventListener("keydown", function (event) {
-    // Ctrl+Alt+H (H = HUD): libero in Firefox, Chromium e FreeTube.
-    // Resta valido anche il vecchio Ctrl+. come alias.
+    // Comandi accettati, tutti liberi in Firefox, Chromium e FreeTube:
+    //   Ctrl+Alt+H (H = HUD), Ctrl+Shift+. (Ctrl+>), Ctrl+. (alias storico).
+    // Alt da solo apre i menu di Firefox, quindi Ctrl+Shift+. e' il ripiego.
+    window.__lbqcHudLastKey = [event.key, event.code, event.ctrlKey, event.altKey, event.shiftKey].join("|");
     if (event.metaKey) { return; }
-    var hudKey = event.ctrlKey && event.altKey && !event.shiftKey &&
-      (event.key === "h" || event.key === "H" || event.code === "KeyH");
-    var legacyKey = event.ctrlKey && !event.altKey && !event.shiftKey &&
-      (event.key === "." || event.code === "Period" || event.code === "NumpadDecimal");
-    if (!hudKey && !legacyKey) { return; }
+    var key = (event.key || "").toLowerCase();
+    var altH = event.ctrlKey && event.altKey && !event.shiftKey &&
+      (key === "h" || event.code === "KeyH");
+    var shiftDot = event.ctrlKey && !event.altKey && event.shiftKey &&
+      (key === ">" || key === "." || event.code === "Period" || event.code === "NumpadDecimal");
+    var plainDot = event.ctrlKey && !event.altKey && !event.shiftKey &&
+      (key === "." || event.code === "Period" || event.code === "NumpadDecimal");
+    if (!altH && !shiftDot && !plainDot) { return; }
     var host = build();
     var box = host.shadowRoot.getElementById("lbqc-hud");
     event.preventDefault();
@@ -297,6 +302,7 @@ async def worker(hud: Hud, ws_url: str) -> None:
 
 
 async def _bidi_hud_loop(hud: Hud, call) -> None:
+    last_key = ""
     while not hud.stop.is_set() and hud.parent_alive():
         try:
             tree = await call("browsingContext.getTree", {})
@@ -336,6 +342,17 @@ async def _bidi_hud_loop(hud: Hud, call) -> None:
                     "awaitPromise": False,
                     "resultOwnership": "none",
                 })
+                if os.environ.get("LABWC_CAGE_HUD_DEBUG") == "1":
+                    probe = await call("script.evaluate", {
+                        "expression": "window.__lbqcHudLastKey || ''",
+                        "target": target,
+                        "awaitPromise": False,
+                        "resultOwnership": "none",
+                    })
+                    seen = ((probe.get("result") or {}).get("value"))
+                    if seen and seen != last_key:
+                        log(f"BiDi: ultimo tasto {seen}")
+                        last_key = seen
             except Exception as error:
                 if os.environ.get("LABWC_CAGE_HUD_DEBUG") == "1":
                     log(f"BiDi: contesto {context}: {error}")
