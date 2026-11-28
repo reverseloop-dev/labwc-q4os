@@ -34,6 +34,32 @@ else
     bad "py_compile"
 fi
 rm -rf "$PYCACHE_DIR"
+
+# --- 2b. pattern del logo login: esattamente quattro copie --------------------
+check "pattern logo login (4 copie)"
+LOGO_TMP="$(mktemp -d)"
+if python3 -c 'import PIL' 2>/dev/null; then
+    for theme in nordic-cobalt muted-crimson sage-emerald; do
+        mkdir -p "$LOGO_TMP/themes/$theme"
+        cp "configs/sddm/themes/$theme/theme.conf" "$LOGO_TMP/themes/$theme/"
+    done
+    if logo_out="$(LABWC_Q4OS_LOGIN_DEBUG=1 PYTHONPYCACHEPREFIX="$LOGO_TMP/pyc" \
+        python3 scripts/generate-login-logo.py --themes-dir "$LOGO_TMP/themes" \
+        --logo configs/logo/rl-dev.png --width 640 --height 360 2>&1)"; then
+        for theme in nordic-cobalt muted-crimson sage-emerald; do
+            if grep -q "$theme: 4 " <<<"$logo_out"; then
+                pass "4 loghi: $theme"
+            else
+                bad "loghi non 4: $theme"
+            fi
+        done
+    else
+        bad "generate-login-logo.py"
+    fi
+else
+    printf '[  skip ] Pillow non installato\n'
+fi
+rm -rf "$LOGO_TMP"
 if python3 scripts/labwc-zram --status >/dev/null 2>&1; then
     pass "labwc-zram --status"
 else
