@@ -12,6 +12,7 @@
   } catch (e) { /* documento non ancora pronto */ }
 
   const api = (typeof browser !== "undefined") ? browser : chrome;
+  const isBro = (typeof browser !== "undefined");
   const HINT = "clicca o Ctrl+Alt+B per nascondere";
   let last = null;
   let hidden = false;
@@ -118,7 +119,10 @@
   function setHidden(value) {
     hidden = !!value;
     applyHidden();
-    try { api.storage.local.set({ lbqcHudHidden: hidden }); } catch (e) { /* noop */ }
+    try {
+      if (isBro) { api.storage.local.set({ lbqcHudHidden: hidden }).catch(() => {}); }
+      else { api.storage.local.set({ lbqcHudHidden: hidden }); }
+    } catch (e) { /* noop */ }
     if (!hidden) { refresh(); }
   }
 
@@ -168,18 +172,27 @@
   }
 
   function refresh() {
+    const done = (reply) => {
+      if (!reply || reply.error) {
+        last = null;
+        render({ error: "native" });
+        return;
+      }
+      last = reply;
+      render(reply);
+    };
     try {
-      api.runtime.sendMessage({ type: "lbqc-battery" }, (reply) => {
-        if (api.runtime.lastError || !reply || reply.error) {
-          last = null;
-          render({ pct: -1, source: "batteria n/d" });
-          return;
-        }
-        last = reply;
-        render(reply);
-      });
+      if (isBro) {
+        api.runtime.sendMessage({ type: "lbqc-battery" })
+          .then(done)
+          .catch(() => done(null));
+      } else {
+        api.runtime.sendMessage({ type: "lbqc-battery" }, (reply) => {
+          done(api.runtime.lastError ? null : reply);
+        });
+      }
     } catch (e) {
-      render({ pct: -1, source: "batteria n/d" });
+      done(null);
     }
   }
 
@@ -205,10 +218,19 @@
     build();
     applyHidden();
     try {
-      api.storage.local.get({ lbqcHudHidden: false }, (stored) => {
-        hidden = !!(stored && stored.lbqcHudHidden);
-        applyHidden();
-      });
+      if (isBro) {
+        api.storage.local.get({ lbqcHudHidden: false })
+          .then((stored) => {
+            hidden = !!(stored && stored.lbqcHudHidden);
+            applyHidden();
+          })
+          .catch(() => { hidden = false; applyHidden(); });
+      } else {
+        api.storage.local.get({ lbqcHudHidden: false }, (stored) => {
+          hidden = !!(stored && stored.lbqcHudHidden);
+          applyHidden();
+        });
+      }
     } catch (e) {
       hidden = false;
       applyHidden();

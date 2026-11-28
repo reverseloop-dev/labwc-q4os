@@ -2,6 +2,22 @@
 
 Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
 
+## [1.28.3]
+
+- Bluetooth: `rfkill` viene cercato anche in `/usr/sbin` e `/sbin` (il PATH
+  utente spesso non li contiene), quindi niente più falso "rfkill non
+  disponibile" con il pacchetto installato; `labwc-bluetooth status` usa lo
+  stesso percorso assoluto.
+- Verifica remota 1.28.2: addon 1.0.1 con `newtab.html`/`newtab.js`, stato
+  `off` salvato, servizio di boot abilitato, Chromium assente.
+- Addon 1.0.2 da seconda revisione: API `browser.*` usate con Promise
+  (callback solo per `chrome.*`) in content/newtab/background; errore native
+  host mostrato come "n/d"; parsing `profiles.ini` corretto per i profili
+  relativi.
+- `bluetooth-state wait` riprova finché l'adattatore non esiste davvero.
+- `labwc-doctor`: `config.jsonc` validato come JSONC (commenti e virgole
+  finali ammessi).
+
 ## [1.28.2]
 
 - **HUD anche sulla prima pagina**: Firefox Cage apre direttamente la nuova

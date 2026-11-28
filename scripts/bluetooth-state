@@ -42,6 +42,13 @@ apply_state() {
             on) "$RFKILL" unblock bluetooth >/dev/null 2>&1 || true ;;
         esac
         [ "$i" -ge "$tries" ] && break
+        # Senza adattatore ancora presente non c'e' nulla da verificare:
+        # riprova al giro successivo.
+        if ! "$RFKILL" list bluetooth 2>/dev/null | grep -q .; then
+            sleep 1
+            i=$((i + 1))
+            continue
+        fi
         if [ "$state" = off ]; then
             "$RFKILL" list bluetooth 2>/dev/null | grep -q "Soft blocked: yes" && break
         else

@@ -74,11 +74,51 @@ PY
 valid_json() {
     python3 - "$1" <<'PY' >/dev/null 2>&1
 import json
+import re
 import sys
 
 try:
     with open(sys.argv[1], encoding="utf-8") as handle:
-        json.load(handle)
+        text = handle.read()
+except OSError:
+    raise SystemExit(1)
+# JSONC: via commenti // e /* */ fuori dalle stringhe, poi virgole finali.
+out = []
+i = 0
+n = len(text)
+in_str = False
+esc = False
+while i < n:
+    ch = text[i]
+    if in_str:
+        out.append(ch)
+        if esc:
+            esc = False
+        elif ch == "\\":
+            esc = True
+        elif ch == '"':
+            in_str = False
+        i += 1
+        continue
+    if ch == '"':
+        in_str = True
+        out.append(ch)
+        i += 1
+        continue
+    if text.startswith("//", i):
+        j = text.find("\n", i)
+        i = n if j < 0 else j
+        continue
+    if text.startswith("/*", i):
+        j = text.find("*/", i + 2)
+        i = n if j < 0 else j + 2
+        continue
+    out.append(ch)
+    i += 1
+clean = "".join(out)
+clean = re.sub(r",(\s*[}\]])", r"\1", clean)
+try:
+    json.loads(clean)
 except Exception:
     raise SystemExit(1)
 PY

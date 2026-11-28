@@ -2179,7 +2179,8 @@ configure_bluetooth_policy() {
         info "Bluetooth: nessun adattatore ora; scelta salvata per quando comparira'."
         return 0
     fi
-    if ! command -v rfkill >/dev/null 2>&1; then
+    if ! command -v rfkill >/dev/null 2>&1 &&
+        [ ! -x /usr/sbin/rfkill ] && [ ! -x /sbin/rfkill ]; then
         if ! sudo test -s "$state_file"; then
             sudo "$helper" set off >/dev/null 2>&1 || true
         fi

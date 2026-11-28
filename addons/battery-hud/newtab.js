@@ -2,6 +2,7 @@
 (() => {
   "use strict";
   const api = (typeof browser !== "undefined") ? browser : chrome;
+  const isBro = (typeof browser !== "undefined");
   const HINT = "clicca o Ctrl+Alt+B per nascondere";
   let hidden = false;
 
@@ -91,7 +92,10 @@
   function setHidden(value) {
     hidden = !!value;
     apply();
-    try { api.storage.local.set({ lbqcHudHidden: hidden }); } catch (e) { /* noop */ }
+    try {
+      if (isBro) { api.storage.local.set({ lbqcHudHidden: hidden }).catch(() => {}); }
+      else { api.storage.local.set({ lbqcHudHidden: hidden }); }
+    } catch (e) { /* noop */ }
     if (!hidden) { refresh(); }
   }
 
@@ -127,16 +131,25 @@
   }
 
   function refresh() {
+    const done = (reply) => {
+      if (!reply || reply.error) {
+        render({ error: "native" });
+        return;
+      }
+      render(reply);
+    };
     try {
-      api.runtime.sendMessage({ type: "lbqc-battery" }, (reply) => {
-        if (api.runtime.lastError || !reply) {
-          render({ error: "native" });
-          return;
-        }
-        render(reply);
-      });
+      if (isBro) {
+        api.runtime.sendMessage({ type: "lbqc-battery" })
+          .then(done)
+          .catch(() => done(null));
+      } else {
+        api.runtime.sendMessage({ type: "lbqc-battery" }, (reply) => {
+          done(api.runtime.lastError ? null : reply);
+        });
+      }
     } catch (e) {
-      render({ error: "native" });
+      done(null);
     }
   }
 
@@ -154,17 +167,20 @@
     setHidden(!hidden);
   }, true);
 
-  try {
-    api.storage.local.get({ lbqcHudHidden: false }, (stored) => {
-      hidden = !!(stored && stored.lbqcHudHidden);
-      apply();
-      refresh();
-      setInterval(refresh, 15000);
-    });
-  } catch (e) {
+  const setup = (stored) => {
+    hidden = !!(stored && stored.lbqcHudHidden);
     apply();
     refresh();
     setInterval(refresh, 15000);
+  };
+  try {
+    if (isBro) {
+      api.storage.local.get({ lbqcHudHidden: false }).then(setup).catch(() => setup({}));
+    } else {
+      api.storage.local.get({ lbqcHudHidden: false }, setup);
+    }
+  } catch (e) {
+    setup({});
   }
 
   try {

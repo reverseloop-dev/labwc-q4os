@@ -94,24 +94,38 @@ if [ "$battery_addon" -eq 1 ] && { [ "$app" = "firefox" ] || [ "$app" = "firefox
             python3 - "$HOME/.mozilla/firefox" <<'PY' 2>/dev/null || true
 import json, os, re, sys
 base = sys.argv[1]
-ini = os.path.join(base, "profiles.ini")
-profile = ""
+sections = {}
+current = None
 try:
-    section = ""
-    for line in open(ini, encoding="utf-8", errors="ignore"):
-        line = line.strip()
-        if line.startswith("["):
-            section = line
-        elif line.startswith("Default=") and section == "[Install4F96D1932A9F858E]":
-            profile = line.split("=", 1)[1]
-    if not profile:
-        for line in open(ini, encoding="utf-8", errors="ignore"):
-            if line.startswith("Default="):
-                profile = line.split("=", 1)[1].strip()
-                break
+    for raw in open(os.path.join(base, "profiles.ini"), encoding="utf-8", errors="ignore"):
+        line = raw.strip()
+        if line.startswith("[") and line.endswith("]"):
+            current = line[1:-1]
+            sections[current] = {}
+        elif "=" in line and current:
+            key, value = line.split("=", 1)
+            sections[current][key.strip()] = value.strip()
 except OSError:
-    profile = ""
-prefs = os.path.join(base, profile, "prefs.js") if profile else ""
+    sections = {}
+profile = ""
+for name, values in sections.items():
+    if name.startswith("Install") and values.get("Default"):
+        profile = values["Default"]
+        break
+if profile and profile.isdigit():
+    fallback = sections.get("Profile" + profile, {})
+    profile = fallback.get("Path", "")
+if not profile:
+    for name, values in sections.items():
+        if name.startswith("Profile") and values.get("Default") == "1":
+            profile = values.get("Path", "")
+            break
+if not profile:
+    raise SystemExit(0)
+if profile.startswith("/"):
+    prefs = os.path.join(profile, "prefs.js")
+else:
+    prefs = os.path.join(base, profile, "prefs.js")
 try:
     text = open(prefs, encoding="utf-8", errors="ignore").read()
 except OSError:

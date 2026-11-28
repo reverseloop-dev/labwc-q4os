@@ -56,11 +56,12 @@ def adapters() -> list[str]:
 
 def rfkill_state() -> str | None:
     """"blocked", "unblocked" o None se rfkill non risponde."""
-    if not shutil.which("rfkill"):
+    if not shutil.which("rfkill") and not os.path.exists(RFKILL):
         return None
+    command = shutil.which("rfkill") or RFKILL
     try:
         result = subprocess.run(
-            ["rfkill", "list", "bluetooth"], capture_output=True,
+            [command, "list", "bluetooth"], capture_output=True,
             text=True, timeout=5, check=False,
         )
     except (OSError, subprocess.SubprocessError):
