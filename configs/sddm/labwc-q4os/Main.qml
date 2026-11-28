@@ -39,7 +39,7 @@ Rectangle {
         }
     }
 
-    // Logo reverseloop-dev "tono su tono" (logo.png dal tema corrente).
+    // Logo reverseloop-dev "tono su tono" (logo-pattern.png dal tema corrente).
     // Pattern del logo reverseloop-dev "tono su tono": logo-pattern.png
     // generato da generate-login-logo.py (quattro copie, dimensioni e
     // posizioni diverse, mai sovrapposte).

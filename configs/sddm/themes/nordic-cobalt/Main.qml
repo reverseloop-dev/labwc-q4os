@@ -54,7 +54,7 @@ Rectangle {
         }
     }
 
-    // Logo reverseloop-dev "tono su tono": logo.png generato da
+    // Logo reverseloop-dev "tono su tono": logo-pattern.png generato da
     // generate-login-logo.py (tinta del tema, alpha bassa).
     // Pattern del logo reverseloop-dev "tono su tono": logo-pattern.png
     // generato da generate-login-logo.py (quattro copie, dimensioni e
