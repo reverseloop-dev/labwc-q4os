@@ -199,6 +199,9 @@
   }, true);
 
   function start() {
+    // Fino alla lettura dello stato salvato resta chiuso: evita il flash del
+    // HUD su una pagina dove l'utente lo aveva nascosto.
+    hidden = true;
     build();
     applyHidden();
     try {
@@ -206,7 +209,10 @@
         hidden = !!(stored && stored.lbqcHudHidden);
         applyHidden();
       });
-    } catch (e) { /* storage non disponibile */ }
+    } catch (e) {
+      hidden = false;
+      applyHidden();
+    }
     refresh();
     if (timer) { clearInterval(timer); }
     timer = setInterval(refresh, 15000);

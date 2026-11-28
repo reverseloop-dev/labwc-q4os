@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "labwc-q4os Battery HUD",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Batteria, carica e durata stimata nelle pagine di Firefox in Cage.",
   "browser_specific_settings": {
     "gecko": {

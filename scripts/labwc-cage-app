@@ -53,9 +53,13 @@ case "$app" in
 esac
 
 has_debug_port=0
+debug_port=""
 for arg in "${child_command[@]:1}"; do
     case "$arg" in
-        --remote-debugging-port=*) has_debug_port=1 ;;
+        --remote-debugging-port=*)
+            has_debug_port=1
+            debug_port="${arg#--remote-debugging-port=}"
+            ;;
     esac
 done
 
@@ -147,10 +151,13 @@ elif [ "$is_chromium" -eq 1 ]; then
             child_command+=(
                 "--remote-debugging-port=$port"
                 "--remote-debugging-address=127.0.0.1"
-                "--remote-allow-origins=*"
+                "--remote-allow-origins=http://127.0.0.1:$port"
             )
             start_hud --port "$port"
         fi
+    elif [ -n "$debug_port" ]; then
+        # Porta gia' passata dal chiamante: usa quella per il HUD.
+        start_hud --port "$debug_port"
     fi
 elif [ "$app" = "freetube" ]; then
     port_file="${XDG_CONFIG_HOME:-$HOME/.config}/FreeTube/DevToolsActivePort"
@@ -163,6 +170,8 @@ elif [ "$app" = "firefox" ] || [ "$app" = "firefox-esr" ]; then
             child_command+=("--remote-debugging-port=$port")
             start_hud --bidi "$port"
         fi
+    elif [ -n "$debug_port" ]; then
+        start_hud --bidi "$debug_port"
     fi
 else
     printf 'HUD batteria: app non supportata dal HUD (%s).\n' "$app" >&2

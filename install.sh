@@ -2191,7 +2191,8 @@ configure_bluetooth_policy() {
         systemctl is-active --quiet systemd-rfkill.socket ||
         warn "Bluetooth: systemd-rfkill.socket non attivo."
     if sudo test -s "$state_file"; then
-        ok "Bluetooth: scelta utente salvata ($(sudo cat "$state_file")), resta anche al riavvio."
+        sudo "$helper" apply >/dev/null 2>&1 || true
+        ok "Bluetooth: scelta utente salvata ($(sudo cat "$state_file")), applicata anche al riavvio."
         return 0
     fi
     saved="$(sudo sh -c 'cat /var/lib/systemd/rfkill/*bluetooth* 2>/dev/null' |

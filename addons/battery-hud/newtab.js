@@ -166,4 +166,12 @@
     refresh();
     setInterval(refresh, 15000);
   }
+
+  try {
+    api.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local" || !changes || !changes.lbqcHudHidden) { return; }
+      hidden = !!changes.lbqcHudHidden.newValue;
+      apply();
+    });
+  } catch (e) { /* storage.onChanged non disponibile */ }
 })();

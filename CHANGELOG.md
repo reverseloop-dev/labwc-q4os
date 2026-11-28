@@ -19,6 +19,14 @@ Tutte le modifiche importanti del progetto. Formato ispirato a Keep a Changelog.
   mancanti; accetta il wrapper con `labwc -C` (senza `exec`).
 - Bluetooth: `rfkill` aggiunto ai pacchetti; lo stato `off` viene salvato anche
   quando `rfkill` o l'adattatore non sono presenti all'installazione.
+- Native host: `power_now` negativo in carica viene trattato come valore
+  assoluto, così la stima "al pieno" compare; testata con sysfs sintetico
+  (3h rimanenti a 10 W).
+- Da revisione: `newtab.js` ascolta `storage.onChanged`; il content script
+  resta chiuso finché non legge lo stato (niente flash); `labwc-cage-app` usa
+  una porta di debug già fornita e limita `--remote-allow-origins` a
+  `http://127.0.0.1:<porta>`; con stato Bluetooth già salvato l'installer lo
+  riapplica subito; addon 1.0.1.
 
 ## [1.28.1]
 

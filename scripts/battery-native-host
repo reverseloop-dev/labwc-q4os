@@ -13,7 +13,7 @@ import os
 import struct
 import sys
 
-SUPPLY = "/sys/class/power_supply"
+SUPPLY = os.environ.get("LABWC_POWER_SUPPLY", "/sys/class/power_supply")
 
 
 def read_int(base: str, name: str) -> int | None:
@@ -61,6 +61,8 @@ def battery() -> dict[str, object]:
             if current is not None and voltage:
                 # µA * µV = pW -> µW
                 power = abs(current) * voltage // 1_000_000
+        if power is not None:
+            power = abs(power)
         minutes_left = None
         minutes_to_full = None
         if power and power > 0:
